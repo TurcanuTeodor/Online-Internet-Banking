@@ -1,0 +1,32 @@
+package ro.app.backend_Java_SpringBoot.DTO.mapper;
+
+import ro.app.backend_Java_SpringBoot.DTO.ClientDTO;
+import ro.app.backend_Java_SpringBoot.model.*;
+import java.util.stream.Collectors;
+import java.util.ArrayList;
+
+public class ClientMapper {
+    public static ClientDTO toDTO(ClientTable e) {
+        ClientDTO dto = new ClientDTO();
+        dto.setId(e.getId());
+        dto.setLastName(e.getLastName());
+        dto.setFirstName(e.getFirstName());
+        dto.setClientTypeId(e.getClientType() != null ? e.getClientType().getId() : null);
+        dto.setSexId(e.getSex() != null ? e.getSex().getId() : null);
+        dto.setActive(e.isActive());
+        dto.setAccountIds(e.getAccounts() != null ? e.getAccounts().stream()
+                .map(AccountTable::getId).collect(Collectors.toList()) : new ArrayList<>());
+        return dto;
+    }
+
+    public static ClientTable toEntity(ClientDTO dto, ClientType ct, SexType st) {
+        ClientTable e = new ClientTable();
+        e.setId(dto.getId());
+        e.setLastName(dto.getLastName());
+        e.setFirstName(dto.getFirstName());
+        e.setClientType(ct);
+        e.setSex(st);
+        e.setActive(dto.isActive());
+        return e;
+    }
+}
