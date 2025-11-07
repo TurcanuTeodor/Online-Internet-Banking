@@ -3,7 +3,9 @@ package ro.app.backend_Java_SpringBoot.service;
 import org.springframework.stereotype.Service;
 
 import ro.app.backend_Java_SpringBoot.DTO.ContactInfoDTO;
+import ro.app.backend_Java_SpringBoot.DTO.ClientDTO;
 import ro.app.backend_Java_SpringBoot.DTO.mapper.ContactInfoMapper;
+import ro.app.backend_Java_SpringBoot.DTO.mapper.ClientMapper;
 import ro.app.backend_Java_SpringBoot.exception.ResourceNotFoundException;
 import ro.app.backend_Java_SpringBoot.model.*;
 import ro.app.backend_Java_SpringBoot.repository.*;
@@ -48,12 +50,12 @@ public class ClientService {
         return clientRepository.save(client);
     }
 
-    // --2 Find clients by name
-    public List<ClientDTO> findClientByName(String name){
-        List<ClientTable> clients= clientRepository.findByLastNameContainingIgnoreCaseorFirstNameContaingIgnoreCase(name, name);
+    // --2 Find clients by name (corectat: denumire + implementare)
+    public List<ClientDTO> searchByName(String name){
+        List<ClientTable> clients = clientRepository.findByLastNameContainingIgnoreCaseOrFirstNameContainingIgnoreCase(name, name);
         return clients.stream()
-                    .map(ClientMapper:DTO)
-                    .collect(Collectors.toList()); 
+                .map(ClientMapper::toDTO)
+                .collect(Collectors.toList());
     }
 
 

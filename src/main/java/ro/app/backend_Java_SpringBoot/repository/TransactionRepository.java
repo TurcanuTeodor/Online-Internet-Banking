@@ -26,11 +26,11 @@ public interface TransactionRepository extends JpaRepository<TransactionTable, L
     List<TransactionTable> findByTransactionTypeCode(@Param("code") String code);
 
     @Query(value = """
-        SELECT DATE(t.transaction_date) AS day,
-               SUM(CASE WHEN t.sign = '+' THEN t.amount ELSE -t.amount END) AS total
-        FROM tranzactii t
-        GROUP BY DATE(t.transaction_date)
-        ORDER BY DATE(t.transaction_date)
+        SELECT DATE(t.data_tranzactie) AS day,
+               SUM(CASE WHEN t.semn = '+' THEN t.suma ELSE -t.suma END) AS total
+        FROM tranzactie t
+        GROUP BY DATE(t.data_tranzactie)
+        ORDER BY DATE(t.data_tranzactie)
     """, nativeQuery = true)
-    List<Object[]> getDailyTotals();
+    List<Object[]> calculateDailyTotals();
 }

@@ -77,7 +77,7 @@ public class TransactionController {
     @GetMapping("/{id}")
     public ResponseEntity<TransactionDTO> getById(@PathVariable Long id) {
         var entity = transactionService.findById(id);
-        var dto = TransactionMapper.INSTANCE.toDto(entity);
+        var dto = TransactionMapper.toDTO(entity);
         return ResponseEntity.ok(dto);
     }
 }

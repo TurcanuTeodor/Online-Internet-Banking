@@ -31,7 +31,7 @@ public class ViewTransactionTable {
     @Column(name="tranzactie_data")
     private LocalDateTime transactionDate;
 
-    @Column(name"explicatii")
+    @Column(name="explicatii")
     private String details;
 
     public Long getTransactionId() { return transactionId; }

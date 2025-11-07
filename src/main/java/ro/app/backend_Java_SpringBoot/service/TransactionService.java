@@ -114,4 +114,10 @@ public class TransactionService {
 
         return result;
     }
+
+    // adăugat: findById folosit de controller
+    public TransactionTable findById(Long id) {
+        return transactionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
+    }
 }

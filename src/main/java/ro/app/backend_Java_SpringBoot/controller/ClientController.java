@@ -12,7 +12,6 @@ import ro.app.backend_Java_SpringBoot.DTO.mapper.ContactInfoMapper;
 import ro.app.backend_Java_SpringBoot.model.*;
 import ro.app.backend_Java_SpringBoot.service.ClientService;
 
-
 import java.util.List;
 import java.util.Map;
 
@@ -42,8 +41,7 @@ public class ClientController {
     // 2) Caută clienți după nume (lastName conține)
     @GetMapping("/search")
     public ResponseEntity<List<ClientDTO>> search(@RequestParam String name) {
-        var clients = clientService.searchByName(name);
-        var dtos = clients.stream().map(ClientMapper.INSTANCE::toDto).toList();
+        List<ClientDTO> dtos = clientService.searchByName(name); // service returnează DTO-uri
         return ResponseEntity.ok(dtos);
     }
 
