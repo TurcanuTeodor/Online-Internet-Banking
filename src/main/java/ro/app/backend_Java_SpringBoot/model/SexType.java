@@ -1,11 +1,7 @@
 package ro.app.backend_Java_SpringBoot.model;
 
+import jakarta.persistence.*;
 import org.hibernate.annotations.Immutable;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 
 @Entity
 @Immutable
@@ -16,22 +12,40 @@ public class SexType {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "cod", nullable = false)
+    @Column(name = "cod", nullable = false, unique = true, length = 10)
     private String code;
 
-    @Column(name = "denumire", nullable = false)
-    private String description;
+    @Column(name = "denumire", nullable = false, length = 100)
+    private String name;
 
+    // --- Getters & Setters ---
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getCode() {
         return code;
     }
 
-    public String getDescription() {
-        return description;
+    public void setCode(String code) {
+        this.code = code;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    // --- Utility ---
+    @Override
+    public String toString() {
+        return code + " - " + name;
+    }
 }

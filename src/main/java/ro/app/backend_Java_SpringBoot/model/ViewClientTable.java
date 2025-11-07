@@ -1,7 +1,11 @@
 package ro.app.backend_Java_SpringBoot.model;
 
-import jakarta.persistence.*;
 import org.hibernate.annotations.Immutable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
 @Immutable
@@ -32,4 +36,16 @@ public class ViewClientTable {
     public String getClientTypeName() { return clientTypeName; }
     public String getSexDescription() { return sexDescription; }
     public Boolean getActive() { return active; }
+
+    @Override
+    public String toString() {
+        return "ViewClientTable{" +
+                "clientId=" + clientId +
+                ", clientLastName='" + clientLastName + '\'' +
+                ", clientFirstName='" + clientFirstName + '\'' +
+                ", clientTypeName='" + clientTypeName + '\'' +
+                ", sexDescription='" + sexDescription + '\'' +
+                ", active=" + active +
+                '}';
+    }
 }

@@ -1,6 +1,6 @@
-package ro.app.backend_Java_SpringBoot.DTO.mapper;
+package ro.app.backend_Java_SpringBoot.dto.mapper;
 
-import ro.app.backend_Java_SpringBoot.DTO.AccountDTO;
+import ro.app.backend_Java_SpringBoot.dto.AccountDTO;
 import ro.app.backend_Java_SpringBoot.model.AccountTable;
 import ro.app.backend_Java_SpringBoot.model.ClientTable;
 import ro.app.backend_Java_SpringBoot.model.CurrencyType;

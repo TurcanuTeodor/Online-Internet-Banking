@@ -1,15 +1,10 @@
 package ro.app.backend_Java_SpringBoot.controller;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ro.app.backend_Java_SpringBoot.DTO.ClientDTO;
-import ro.app.backend_Java_SpringBoot.DTO.ContactInfoDTO;
-import ro.app.backend_Java_SpringBoot.DTO.mapper.ClientMapper;
-import ro.app.backend_Java_SpringBoot.DTO.mapper.ContactInfoMapper;
-import ro.app.backend_Java_SpringBoot.model.*;
+import ro.app.backend_Java_SpringBoot.dto.ClientDTO;
+import ro.app.backend_Java_SpringBoot.dto.ContactInfoDTO;
 import ro.app.backend_Java_SpringBoot.service.ClientService;
 
 import java.util.List;
@@ -21,9 +16,6 @@ public class ClientController {
 
     private final ClientService clientService;
 
-    @PersistenceContext
-    private EntityManager em;
-
     public ClientController(ClientService clientService) {
         this.clientService = clientService;
     }
@@ -31,18 +23,14 @@ public class ClientController {
     // 1) Create client (PF/PJ)
     @PostMapping
     public ResponseEntity<ClientDTO> create(@Valid @RequestBody ClientDTO dto) {
-        ClientType ct = em.getReference(ClientType.class, dto.getClientTypeId());
-        SexType st = em.getReference(SexType.class, dto.getSexId());
-        ClientTable entity = ClientMapper.toEntity(dto, ct, st);
-        ClientTable saved = clientService.createClient(entity);
-        return ResponseEntity.ok(ClientMapper.toDTO(saved));
+        ClientDTO created = clientService.createClient(dto);  // Return DTO directly
+        return ResponseEntity.ok(created);
     }
 
-    // 2) Caută clienți după nume (lastName conține)
+    // 2) Search clients by name
     @GetMapping("/search")
     public ResponseEntity<List<ClientDTO>> search(@RequestParam String name) {
-        List<ClientDTO> dtos = clientService.searchByName(name); // service returnează DTO-uri
-        return ResponseEntity.ok(dtos);
+        return ResponseEntity.ok(clientService.searchByName(name));
     }
 
     // 3) Update client contact info
@@ -50,15 +38,14 @@ public class ClientController {
     public ResponseEntity<ContactInfoDTO> updateContact(
             @PathVariable Long clientId,
             @Valid @RequestBody ContactInfoDTO dto) {
-
-        ContactInfo updated = clientService.updateClientContactInfo(clientId, dto);
-        return ResponseEntity.ok(ContactInfoMapper.toDTO(updated));
+        ContactInfoDTO updated = clientService.updateClientContactInfo(clientId, dto);
+        return ResponseEntity.ok(updated);
     }
 
-    // 4) Sum-up client (conturi, sold total, tranzacții recente)
+    // 4) Get client summary
     @GetMapping("/{id}/summary")
-    public Map<String, Object> getSummary(@PathVariable Long id) {
-        return clientService.getClientSummary(id);
+    public ResponseEntity<Map<String, Object>> getSummary(@PathVariable Long id) {
+        return ResponseEntity.ok(clientService.getClientSummary(id));
     }
 
     // 5) Soft delete (active=false)
@@ -68,9 +55,9 @@ public class ClientController {
         return ResponseEntity.noContent().build();
     }
 
-    // View read-only din view_client
+    // 6) View read-only clients
     @GetMapping("/view")
-    public List<ViewClientTable> viewAll() {
-        return clientService.getAllViewClients();
+    public ResponseEntity<List<?>> viewAll() {
+        return ResponseEntity.ok(clientService.getAllViewClients());
     }
 }

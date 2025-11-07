@@ -6,10 +6,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import ro.app.backend_Java_SpringBoot.DTO.TransactionDTO;
-import ro.app.backend_Java_SpringBoot.DTO.mapper.TransactionMapper;
-
 import org.springframework.web.bind.annotation.*;
+
+import ro.app.backend_Java_SpringBoot.dto.TransactionDTO;
+import ro.app.backend_Java_SpringBoot.dto.mapper.TransactionMapper;
 import ro.app.backend_Java_SpringBoot.model.*;
 import ro.app.backend_Java_SpringBoot.service.TransactionService;
 

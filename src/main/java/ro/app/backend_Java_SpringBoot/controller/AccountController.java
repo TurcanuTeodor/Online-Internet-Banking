@@ -6,8 +6,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ro.app.backend_Java_SpringBoot.DTO.AccountDTO;
-import ro.app.backend_Java_SpringBoot.DTO.mapper.AccountMapper;
+
+import ro.app.backend_Java_SpringBoot.dto.AccountDTO;
+import ro.app.backend_Java_SpringBoot.dto.mapper.AccountMapper;
 import ro.app.backend_Java_SpringBoot.model.AccountTable;
 import ro.app.backend_Java_SpringBoot.service.AccountService;
 

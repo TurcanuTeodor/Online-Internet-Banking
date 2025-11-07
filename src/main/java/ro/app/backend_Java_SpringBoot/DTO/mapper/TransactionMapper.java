@@ -1,6 +1,6 @@
-package ro.app.backend_Java_SpringBoot.DTO.mapper;
+package ro.app.backend_Java_SpringBoot.dto.mapper;
 
-import ro.app.backend_Java_SpringBoot.DTO.TransactionDTO;
+import ro.app.backend_Java_SpringBoot.dto.TransactionDTO;
 import ro.app.backend_Java_SpringBoot.model.*;
 
 public class TransactionMapper {

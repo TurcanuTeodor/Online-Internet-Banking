@@ -1,9 +1,10 @@
-package ro.app.backend_Java_SpringBoot.DTO;
+package ro.app.backend_Java_SpringBoot.dto;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.util.List;
-import java.util.ArrayList;
 
 public class ClientDTO {
     private Long id;
@@ -20,7 +21,7 @@ public class ClientDTO {
     private Long sexId;
 
     @NotNull    
-    private boolean active;
+    private boolean active = true;
 
     private List<Long> accountIds = new ArrayList<>();
 
