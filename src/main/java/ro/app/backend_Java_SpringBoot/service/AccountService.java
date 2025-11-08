@@ -31,15 +31,25 @@ public class AccountService {
         this.transactionTypeRepository = transactionTypeRepository;
     }
 
-    private String generateIban(String currencyCode) {
-        String iban;
-        do {
-            iban = "RO" + currencyCode.toUpperCase() + String.format("%010d", (int)(Math.random() * 1_000_000_000));
-        } while (accountRepository.findByIban(iban).isPresent());
-        return iban;
+    private String generateIban(CurrencyType currency) {
+    String currencyCode = currency.getCode().toUpperCase(); // e.g. "RO", "EUR", "USD"
+
+    // You can keep this short or add fake bank code for realism
+    String bankCode = "BANK";
+    String accountNumber = String.format("%010d", (int)(Math.random() * 1_000_000_000));
+
+    // IBAN now starts with the actual currency code from your table
+    String iban = currencyCode + bankCode + accountNumber;
+
+    // Ensure it’s unique in the database
+    while (accountRepository.findByIban(iban).isPresent()) {
+        accountNumber = String.format("%010d", (int)(Math.random() * 1_000_000_000));
+        iban = currencyCode + bankCode + accountNumber;
     }
 
-    // --1 openAccount
+    return iban;
+}
+
     @Transactional
     public AccountTable openAccount(Long clientId, String currencyCode) {
         ClientTable client = clientRepository.findById(clientId)
@@ -53,12 +63,14 @@ public class AccountService {
         account.setCurrency(currency);
         account.setBalance(BigDecimal.ZERO);
         account.setStatus("ACTIV");
-        account.setIban(generateIban(currencyCode));
+
+        // Generate IBAN based on the currency entity (not just the input string)
+        account.setIban(generateIban(currency));
 
         return accountRepository.save(account);
     }
 
-    // --2 closeAccount
+    // 2️) Close an existing account
     @Transactional
     public AccountTable closeAccount(Long id) {
         AccountTable account = accountRepository.findById(id)
@@ -76,19 +88,19 @@ public class AccountService {
         return accountRepository.save(account);
     }
 
-    // --3 getAccountsByClient
+    // 3️) Get all accounts for a specific client
     public List<AccountTable> getAccountsByClient(Long clientId) {
         return accountRepository.findByClientId(clientId);
     }
 
-    // --4 getBalanceByIban
+    // 4️) Get balance by IBAN
     public BigDecimal getBalanceByIban(String iban) {
         return accountRepository.findByIban(iban)
                 .map(AccountTable::getBalance)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
     }
 
-    // --5 deposit
+    // 5️) Deposit money into an account
     @Transactional
     public TransactionTable deposit(String iban, BigDecimal amount) {
         AccountTable account = accountRepository.findByIban(iban)
@@ -114,7 +126,7 @@ public class AccountService {
         return tx;
     }
 
-    // --6 withdraw
+    // 6️) Withdraw money from an account
     @Transactional
     public TransactionTable withdraw(String iban, BigDecimal amount) {
         AccountTable account = accountRepository.findByIban(iban)
@@ -144,7 +156,7 @@ public class AccountService {
         return tx;
     }
 
-    // --7 transfer
+    // 7️) Transfer between two accounts
     @Transactional
     public void transfer(String fromIban, String toIban, BigDecimal amount) {
         if (fromIban.equalsIgnoreCase(toIban)) {
@@ -163,34 +175,34 @@ public class AccountService {
         TransactionType transferType = transactionTypeRepository.findByCodeIgnoreCase("TRF")
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction type 'TRF' not found"));
 
-        // actualizare solduri
+        // update balances
         from.setBalance(from.getBalance().subtract(amount));
         to.setBalance(to.getBalance().add(amount));
 
-        // tranzacție de debit
-        TransactionTable t1 = new TransactionTable();
-        t1.setAccount(from);
-        t1.setAmount(amount);
-        t1.setOriginalAmount(amount);
-        t1.setOriginalCurrency(from.getCurrency());
-        t1.setSign("-");
-        t1.setTransactionType(transferType);
-        t1.setTransactionDate(LocalDateTime.now());
-        t1.setDetails("Transfer to account " + toIban);
+        // debit transaction
+        TransactionTable debit = new TransactionTable();
+        debit.setAccount(from);
+        debit.setAmount(amount);
+        debit.setOriginalAmount(amount);
+        debit.setOriginalCurrency(from.getCurrency());
+        debit.setSign("-");
+        debit.setTransactionType(transferType);
+        debit.setTransactionDate(LocalDateTime.now());
+        debit.setDetails("Transfer to account " + toIban);
 
-        // tranzacție de credit
-        TransactionTable t2 = new TransactionTable();
-        t2.setAccount(to);
-        t2.setAmount(amount);
-        t2.setOriginalAmount(amount);
-        t2.setOriginalCurrency(to.getCurrency());
-        t2.setSign("+");
-        t2.setTransactionType(transferType);
-        t2.setTransactionDate(LocalDateTime.now());
-        t2.setDetails("Transfer from account " + fromIban);
+        // credit transaction
+        TransactionTable credit = new TransactionTable();
+        credit.setAccount(to);
+        credit.setAmount(amount);
+        credit.setOriginalAmount(amount);
+        credit.setOriginalCurrency(to.getCurrency());
+        credit.setSign("+");
+        credit.setTransactionType(transferType);
+        credit.setTransactionDate(LocalDateTime.now());
+        credit.setDetails("Transfer from account " + fromIban);
 
-        transactionRepository.save(t1);
-        transactionRepository.save(t2);
+        transactionRepository.save(debit);
+        transactionRepository.save(credit);
         accountRepository.save(from);
         accountRepository.save(to);
     }
