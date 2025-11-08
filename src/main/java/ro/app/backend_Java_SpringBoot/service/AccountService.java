@@ -32,23 +32,23 @@ public class AccountService {
     }
 
     private String generateIban(CurrencyType currency) {
-    String currencyCode = currency.getCode().toUpperCase(); // e.g. "RO", "EUR", "USD"
+        String currencyCode = currency.getCode().toUpperCase(); // e.g. "RO", "EUR", "USD"
 
-    // You can keep this short or add fake bank code for realism
-    String bankCode = "BANK";
-    String accountNumber = String.format("%010d", (int)(Math.random() * 1_000_000_000));
+        // You can keep this short or add fake bank code for realism
+        String bankCode = "BANK";
+        String accountNumber = String.format("%010d", (int)(Math.random() * 1_000_000_000));
 
-    // IBAN now starts with the actual currency code from your table
-    String iban = currencyCode + bankCode + accountNumber;
+        // IBAN now starts with the actual currency code from your table
+        String iban = currencyCode + bankCode + accountNumber;
 
-    // Ensure it’s unique in the database
-    while (accountRepository.findByIban(iban).isPresent()) {
-        accountNumber = String.format("%010d", (int)(Math.random() * 1_000_000_000));
-        iban = currencyCode + bankCode + accountNumber;
+        // Ensure it’s unique in the database
+        while (accountRepository.findByIban(iban).isPresent()) {
+            accountNumber = String.format("%010d", (int)(Math.random() * 1_000_000_000));
+            iban = currencyCode + bankCode + accountNumber;
+        }
+
+        return iban;
     }
-
-    return iban;
-}
 
     @Transactional
     public AccountTable openAccount(Long clientId, String currencyCode) {

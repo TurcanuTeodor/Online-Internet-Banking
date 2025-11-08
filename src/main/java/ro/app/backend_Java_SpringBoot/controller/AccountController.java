@@ -1,7 +1,6 @@
 package ro.app.backend_Java_SpringBoot.controller;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Digits;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

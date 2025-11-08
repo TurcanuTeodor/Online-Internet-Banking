@@ -1,18 +1,14 @@
 package ro.app.backend_Java_SpringBoot.controller;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import ro.app.backend_Java_SpringBoot.dto.TransactionDTO;
 import ro.app.backend_Java_SpringBoot.dto.mapper.TransactionMapper;
-import ro.app.backend_Java_SpringBoot.model.*;
+import ro.app.backend_Java_SpringBoot.model.ViewTransactionTable;
 import ro.app.backend_Java_SpringBoot.service.TransactionService;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -23,61 +19,57 @@ public class TransactionController {
 
     private final TransactionService transactionService;
 
-    @PersistenceContext
-    private EntityManager em;
-
     public TransactionController(TransactionService transactionService) {
         this.transactionService = transactionService;
     }
 
-    // 1) toate tranzacțiile după IBAN
+    // 1️) Get all transactions from view (read-only)
+    @GetMapping("/view-all")
+    public List<ViewTransactionTable> getAllFromView() {
+        return transactionService.getAllView();
+    }
+
+    // 2️) Get transactions by IBAN (from real table)
     @GetMapping("/by-iban/{iban}")
-    public List<TransactionTable> byIban(@PathVariable String iban) {
-        return transactionService.getTransactionsByAccountIban(iban);
+    public List<TransactionDTO> getByIban(@PathVariable @NotBlank String iban) {
+        return transactionService.getTransactionsByAccountIban(iban)
+                .stream()
+                .map(TransactionMapper::toDTO)
+                .toList();
     }
 
-    // 2) toate tranzacțiile unui client
+    // 3️) Get transactions by client ID
     @GetMapping("/by-client/{clientId}")
-    public List<TransactionTable> byClient(@PathVariable Long clientId) {
-        return transactionService.getTransactionsByClient(clientId);
+    public List<TransactionDTO> getByClient(@PathVariable Long clientId) {
+        return transactionService.getTransactionsByClient(clientId)
+                .stream()
+                .map(TransactionMapper::toDTO)
+                .toList();
     }
 
-    // 3) între două date
+    // 4️) Get transactions between two dates
     @GetMapping("/between")
-    public List<TransactionTable> between(
+    public List<TransactionDTO> getBetweenDates(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return transactionService.getTransactionsBetweenDates(from, to);
+        return transactionService.getTransactionsBetweenDates(from, to)
+                .stream()
+                .map(TransactionMapper::toDTO)
+                .toList();
     }
 
-    // 4) după tip (cod)
+    // 5️) Get transactions by type code (DEPOSIT, WITHDRAW, TRANSFER)
     @GetMapping("/by-type/{code}")
-    public List<TransactionTable> byType(@PathVariable @NotBlank String code) {
-        return transactionService.getTransactionsByType(code);
+    public List<TransactionDTO> getByType(@PathVariable String code) {
+        return transactionService.getTransactionsByType(code)
+                .stream()
+                .map(TransactionMapper::toDTO)
+                .toList();
     }
 
-    // 5) record manual de tranzacție
-    @PostMapping
-    public ResponseEntity<TransactionDTO> record(@Valid @RequestBody TransactionDTO dto) {
-        AccountTable account = em.getReference(AccountTable.class, dto.getAccountId());
-        TransactionType type = em.getReference(TransactionType.class, dto.getTransactionTypeId());
-        CurrencyType origCur = em.getReference(CurrencyType.class, dto.getOriginalCurrencyId());
-
-        TransactionTable entity = TransactionMapper.toEntity(dto, account, type, origCur);
-        TransactionTable saved = transactionService.recordTransaction(entity);
-        return ResponseEntity.ok(TransactionMapper.toDTO(saved));
-    }
-
-    // 6) totaluri zilnice 
+    // 6️) Get daily totals (aggregated report)
     @GetMapping("/daily-totals")
-    public Map<LocalDate, java.math.BigDecimal> dailyTotals() {
+    public Map<LocalDate, BigDecimal> getDailyTotals() {
         return transactionService.calculateDailyTotals();
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<TransactionDTO> getById(@PathVariable Long id) {
-        var entity = transactionService.findById(id);
-        var dto = TransactionMapper.toDTO(entity);
-        return ResponseEntity.ok(dto);
     }
 }
