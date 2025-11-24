@@ -48,9 +48,11 @@ The project is implemented with Java Spring Boot, using Spring Data JPA for ORM 
 
 ## Key Features
 
-- Full CRUD operations for clients, accounts, and transactions  
-- IBAN generator for new accounts  
-- Balance tracking for deposits, withdrawals, and transfers  
+- Full CRUD operations for clients, including contact-info updates
+- Account management APIs: open/close accounts, list accounts by client, and check balance
+- Core bankng operations with balance tracking: deposit, withdrawal, and transfer
+- Transaction logging for every balance operation, plus advanced read-only filtering endpoints
+- IBAN generator for new accounts   
 - Native SQL aggregation for daily transaction totals  
 - Database views for read-only access  
 - Centralized exception handling and DTO-based validation  
