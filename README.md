@@ -35,10 +35,6 @@ The project is implemented with Java Spring Boot, using Spring Data JPA for ORM 
 
 ## Architecture
 
-[ Controller ]  →  [ Service ]  →  [ Repository ]  →  [ Entity (Model) ]  →  [ Database ]  
-     ↑  
-   [ DTO ↔ Mapper ]
-
 - Controller — Defines REST endpoints and request mappings  
 - Service — Implements business logic and validations  
 - Repository — Handles data access with Spring Data JPA  
