@@ -154,7 +154,7 @@ Views (Read-only)
 
 Edit the file: src/main/resources/application.properties
 
-```properties
+```
 spring.datasource.url=jdbc:postgresql://localhost:5432/cibernetica?currentSchema=public
 spring.datasource.username=postgres
 spring.datasource.password=your_password
@@ -165,6 +165,27 @@ server.port=8080
 ```
 
 Adjust the database credentials if needed. Ensure the schema exists — ddl-auto=validate means tables must already exist.
+
+### TLS / HTTPS
+
+This project includes TLS/HTTPS support (see src/main/java/ro/app/backend_Java_SpringBoot/config/SslConfig.java). To enable HTTPS for local or production use, add TLS properties to application.properties and provide a keystore (JKS or PKCS12). Example properties:
+
+```
+server.port=8443
+server.ssl.enabled=true
+server.ssl.key-store=classpath:keystore.p12
+server.ssl.key-store-password=changeit
+server.ssl.key-store-type=PKCS12
+server.ssl.key-alias=tomcat
+```
+
+For local testing you can generate a self-signed PKCS12 keystore (Windows):
+
+```
+keytool -genkeypair -alias tomcat -keyalg RSA -keysize 2048 -storetype PKCS12 -keystore keystore.p12 -validity 3650 -storepass changeit -keypass changeit -dname "CN=localhost, OU=Dev, O=MyOrg, L=City, S=State, C=RO"
+```
+
+Place the keystore under src/main/resources (or update the path), restart the application and browse to https://localhost:8443. Accept the self-signed certificate in the browser or add it to your OS/browser trust store for development.
 
 ## Running the Application
 
