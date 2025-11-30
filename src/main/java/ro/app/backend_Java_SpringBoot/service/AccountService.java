@@ -2,6 +2,10 @@ package ro.app.backend_Java_SpringBoot.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
+
 import ro.app.backend_Java_SpringBoot.exception.ResourceNotFoundException;
 import ro.app.backend_Java_SpringBoot.model.*;
 import ro.app.backend_Java_SpringBoot.repository.*;
@@ -32,16 +36,15 @@ public class AccountService {
     }
 
     private String generateIban(CurrencyType currency) {
-        String currencyCode = currency.getCode().toUpperCase(); // e.g. "RO", "EUR", "USD"
+        String currencyCode = currency.getCode().toUpperCase(); // eg: "RO", "EUR", "USD"
 
-        // You can keep this short or add fake bank code for realism
         String bankCode = "BANK";
         String accountNumber = String.format("%010d", (int)(Math.random() * 1_000_000_000));
 
-        // IBAN now starts with the actual currency code from your table
+        // IBAN starts with the currency code
         String iban = currencyCode + bankCode + accountNumber;
 
-        // Ensure it’s unique in the database
+        // it’s unique in the database
         while (accountRepository.findByIban(iban).isPresent()) {
             accountNumber = String.format("%010d", (int)(Math.random() * 1_000_000_000));
             iban = currencyCode + bankCode + accountNumber;
@@ -50,7 +53,9 @@ public class AccountService {
         return iban;
     }
 
+    // 1)Open a new account
     @Transactional
+    @CacheEvict(value= "accountsByClient", key= "#clientId")
     public AccountTable openAccount(Long clientId, String currencyCode) {
         ClientTable client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
@@ -64,7 +69,7 @@ public class AccountService {
         account.setBalance(BigDecimal.ZERO);
         account.setStatus("ACTIV");
 
-        // Generate IBAN based on the currency entity (not just the input string)
+        // Generate IBAN based on the currency entity
         account.setIban(generateIban(currency));
 
         return accountRepository.save(account);
@@ -72,6 +77,10 @@ public class AccountService {
 
     // 2️) Close an existing account
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value= "accountsByClient", allEntries= true),
+            @CacheEvict(value= "balance", allEntries=true)
+    })
     public AccountTable closeAccount(Long id) {
         AccountTable account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
@@ -89,11 +98,13 @@ public class AccountService {
     }
 
     // 3️) Get all accounts for a specific client
+    @Cacheable(value= "accountsByClient", key= "#clientId")
     public List<AccountTable> getAccountsByClient(Long clientId) {
         return accountRepository.findByClientId(clientId);
     }
 
     // 4️) Get balance by IBAN
+    @Cacheable(value= "balance", key="#iban")
     public BigDecimal getBalanceByIban(String iban) {
         return accountRepository.findByIban(iban)
                 .map(AccountTable::getBalance)
@@ -102,7 +113,12 @@ public class AccountService {
 
     // 5️) Deposit money into an account
     @Transactional
+    @CacheEvict(value= "balance", key= "#iban")
     public TransactionTable deposit(String iban, BigDecimal amount) {
+        if(amount ==null || amount.compareTo(BigDecimal.ZERO) <= 0){
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+
         AccountTable account = accountRepository.findByIban(iban)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
@@ -128,7 +144,12 @@ public class AccountService {
 
     // 6️) Withdraw money from an account
     @Transactional
+    @CacheEvict(value= "balance", key= "#iban")
     public TransactionTable withdraw(String iban, BigDecimal amount) {
+        if(amount ==null || amount.compareTo(BigDecimal.ZERO) <= 0){
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+
         AccountTable account = accountRepository.findByIban(iban)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
@@ -158,7 +179,15 @@ public class AccountService {
 
     // 7️) Transfer between two accounts
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value= "balance", key= "#fromIban"),
+        @CacheEvict(value= "balance", key= "#toIban")
+    })
     public void transfer(String fromIban, String toIban, BigDecimal amount) {
+        if(amount ==null || amount.compareTo(BigDecimal.ZERO) <= 0){
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+
         if (fromIban.equalsIgnoreCase(toIban)) {
             throw new IllegalArgumentException("Cannot transfer to the same account");
         }
