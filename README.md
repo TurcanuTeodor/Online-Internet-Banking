@@ -70,7 +70,7 @@ Tools | VS Code / IntelliJ / Postman
 
 src/main/java/ro/app/banking
 
-- BackendJavaSpringBootApplication.java — Entry point
+- BankingApplication.java — Entry point
 
 - controller/ — REST controllers  
   - ClientController.java  

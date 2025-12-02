@@ -37,11 +37,11 @@ public class Account {
     private BigDecimal balance;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "valuta_id")
+    @JoinColumn(name = "currency_type_id")
     private CurrencyType currency;
 
     @ManyToOne
-    @JoinColumn(name = "currency_type_id")
+    @JoinColumn(name = "client_id")
     @JsonBackReference("client-accounts")
     private Client client;
 
