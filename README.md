@@ -68,7 +68,7 @@ Tools | VS Code / IntelliJ / Postman
 
 ## Project Structure
 
-src/main/java/ro/app/backend_Java_SpringBoot
+src/main/java/ro/app/banking
 
 - BackendJavaSpringBootApplication.java — Entry point
 
@@ -168,7 +168,7 @@ Adjust the database credentials if needed. Ensure the schema exists — ddl-auto
 
 ### TLS / HTTPS
 
-This project includes TLS/HTTPS support (see src/main/java/ro/app/backend_Java_SpringBoot/config/SslConfig.java). To enable HTTPS for local or production use, add TLS properties to application.properties and provide a keystore (JKS or PKCS12). Example properties:
+This project includes TLS/HTTPS support (see src/main/java/ro/app/banking/config/SslConfig.java). To enable HTTPS for local or production use, add TLS properties to application.properties and provide a keystore (JKS or PKCS12). Example properties:
 
 ```
 server.port=8443
@@ -199,7 +199,7 @@ Option 2: Package and Run
 
 ```
 mvn clean package
-java -jar target/backend_Java_SpringBoot-0.0.1-SNAPSHOT.jar
+java -jar target/banking-0.0.1-SNAPSHOT.jar
 ```
 
 Server starts at: http://localhost:8080
