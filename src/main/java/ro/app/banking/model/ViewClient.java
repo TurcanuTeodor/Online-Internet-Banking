@@ -39,7 +39,7 @@ public class ViewClient {
 
     @Override
     public String toString() {
-        return "ViewClientTable{" +
+        return "ViewClient{" +
                 "clientId=" + clientId +
                 ", clientLastName='" + clientLastName + '\'' +
                 ", clientFirstName='" + clientFirstName + '\'' +

@@ -10,19 +10,19 @@ import ro.app.banking.model.Transaction;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
     // Toate tranzacțiile unui cont
-    @Query("SELECT t FROM TransactionTable t WHERE t.account.iban = :iban ORDER BY t.transactionDate DESC")
+    @Query("SELECT t FROM Transaction t WHERE t.account.iban = :iban ORDER BY t.transactionDate DESC")
     List<Transaction> findByAccountIban(@Param("iban") String iban);
 
     // Toate pt client
-    @Query("SELECT t FROM TransactionTable t WHERE t.account.client.id = :clientId ORDER BY t.transactionDate DESC")
+    @Query("SELECT t FROM Transaction t WHERE t.account.client.id = :clientId ORDER BY t.transactionDate DESC")
     List<Transaction> findByClientId(@Param("clientId") Long clientId);
 
     // Tranzacțiile într-un interval de date — comparăm doar partea de dată a LocalDateTime
-    @Query("SELECT t FROM TransactionTable t WHERE function('date', t.transactionDate) BETWEEN :from AND :to ORDER BY t.transactionDate")
+    @Query("SELECT t FROM Transaction t WHERE function('date', t.transactionDate) BETWEEN :from AND :to ORDER BY t.transactionDate")
     List<Transaction> findBetweenDates(@Param("from") java.time.LocalDate from, @Param("to") java.time.LocalDate to);
 
     // Tranzacțiile de un anumit tip 
-    @Query("SELECT t FROM TransactionTable t WHERE t.transactionType.code = :code ORDER BY t.transactionDate DESC")
+    @Query("SELECT t FROM Transaction t WHERE t.transactionType.code = :code ORDER BY t.transactionDate DESC")
     List<Transaction> findByTransactionTypeCode(@Param("code") String code);
 
     @Query(value = """

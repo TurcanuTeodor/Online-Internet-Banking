@@ -93,11 +93,11 @@ src/main/java/ro/app/banking
   - ViewTransactionRepository.java
 
 - model/ — Entities and database mappings  
-  - ClientTable.java  
-  - AccountTable.java  
-  - TransactionTable.java  
+  - Client.java  
+  - Account.java  
+  - Transaction.java  
   - Lookup entities: CurrencyType, TransactionType, SexType, ClientType  
-  - Read-only views: ViewClientTable, ViewAccountTable, ViewTransactionTable
+  - Read-only views: ViewClient, ViewAccount, ViewTransaction
 
 - dto/ — Data Transfer Objects  
   - ClientDTO.java  
@@ -275,7 +275,7 @@ The application follows a layered flow to process each request:
    - These repositories handle save(), findBy...(), and update() operations using Spring Data JPA.
 
 4. Entities and database tables  
-   - Each entity (e.g., AccountTable, TransactionTable) maps directly to a table in the PostgreSQL database.  
+   - Each entity (e.g., Account, Transaction) maps directly to a table in the PostgreSQL database.  
    - Hibernate automatically translates entity changes into SQL queries.
 
 5. DTOs and Mappers  
