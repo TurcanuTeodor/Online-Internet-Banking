@@ -1,21 +1,25 @@
 package ro.app.backend_Java_SpringBoot.model;
 
-import jakarta.persistence.*;
 import org.hibernate.annotations.Immutable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
 @Immutable
-@Table(name = "tip_sex")
+@Table(name = "SEX_TYPE")
 public class SexType {
 
     @Id
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "cod", nullable = false, unique = true, length = 10)
+    @Column(name = "code", nullable = false, unique = true, length = 10)
     private String code;
 
-    @Column(name = "denumire", nullable = false, length = 100)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
     // --- Getters & Setters ---

@@ -1,37 +1,45 @@
 package ro.app.backend_Java_SpringBoot.model;
 
-import jakarta.persistence.*;
-import org.hibernate.annotations.Immutable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.Immutable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 @Entity
 @Immutable
-@Table(name = "view_tranzactie")
-public class ViewTransactionTable {
+@Table(name = "view_transaction")
+public class ViewTransaction {
     @Id
     @Column(name="transaction_id")
     private Long transactionId;
 
-    @Column(name="cont_iban")
+    @Column(name="account_iban")
     private String accountIban;
 
-    @Column(name="tip_tranzactie_denumire")
+    @Column(name="transaction_type_name")
     private String transactionTypeName;
 
-    @Column(name="tranzactie_suma")
+    @Column(name="transaction_amount")
     private BigDecimal transactionAmount;
 
-    @Column(name="tranzactie_semn")
+    @Column(name="transaction_original_amount")
+    private BigDecimal transactionOriginalAmount;
+
+    @Column(name="transaction_sign")
     private String transactionSign;
 
-    @Column(name="valuta_cod")
+    @Column(name="currency_type_code")
     private String currencyCode;
 
-    @Column(name="tranzactie_data")
+    @Column(name="transaction_date")
     private LocalDateTime transactionDate;
 
-    @Column(name="explicatii")
+    @Column(name="transaction_details")
     private String details;
 
     public Long getTransactionId() { return transactionId; }
@@ -42,4 +50,5 @@ public class ViewTransactionTable {
     public String getCurrencyCode() { return currencyCode; }
     public LocalDateTime getTransactionDate() { return transactionDate; }
     public String getDetails(){ return details;}
+    public BigDecimal getTransactionOriginalAmount() {return transactionOriginalAmount;}
 }

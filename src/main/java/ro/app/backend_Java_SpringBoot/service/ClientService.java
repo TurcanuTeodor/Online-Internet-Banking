@@ -54,8 +54,8 @@ public class ClientService {
         SexType sexType = new SexType();
         sexType.setId(dto.getSexId());
 
-        ClientTable entity = ClientMapper.toEntity(dto, clientType, sexType);
-        ClientTable saved = clientRepository.save(entity);
+        Client entity = ClientMapper.toEntity(dto, clientType, sexType);
+        Client saved = clientRepository.save(entity);
         return ClientMapper.toDTO(saved);
     }
 
@@ -71,7 +71,7 @@ public class ClientService {
     // --3 Update contact info
     @Transactional
     public ContactInfoDTO updateClientContactInfo(Long clientId, ContactInfoDTO dto) {
-        ClientTable client = clientRepository.findById(clientId)
+        Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID " + clientId));
 
         ContactInfo contactInfo = Optional.ofNullable(contactInfoRepository.findByClientId(clientId))
@@ -84,15 +84,15 @@ public class ClientService {
 
     // --4 Get client summary
     public Map<String, Object> getClientSummary(Long clientId) {
-        ClientTable client = clientRepository.findById(clientId)
+        Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
 
-        List<AccountTable> accounts = accountRepository.findByClientId(clientId);
+        List<Account> accounts = accountRepository.findByClientId(clientId);
         BigDecimal totalBalance = accounts.stream()
-                .map(AccountTable::getBalance)
+                .map(Account::getBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        List<TransactionTable> recentTransactions = transactionRepository.findByClientId(clientId)
+        List<Transaction> recentTransactions = transactionRepository.findByClientId(clientId)
                 .stream()
                 .limit(5)
                 .collect(Collectors.toList());
@@ -108,7 +108,7 @@ public class ClientService {
     // --5 Soft delete
     @Transactional
     public void deleteClient(Long id) {
-        ClientTable client = clientRepository.findById(id)
+        Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
         if (!client.isActive()) {
             throw new ResourceNotFoundException("Client already inactive");
@@ -118,7 +118,7 @@ public class ClientService {
     }
 
     // --6 View clients (read-only)
-    public List<ViewClientTable> getAllViewClients() {
+    public List<ViewClient> getAllViewClients() {
         return viewClientRepository.findAll();
     }
 }

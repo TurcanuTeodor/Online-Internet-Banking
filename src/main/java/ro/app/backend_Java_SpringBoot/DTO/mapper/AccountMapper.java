@@ -1,14 +1,18 @@
 package ro.app.backend_Java_SpringBoot.dto.mapper;
 
-import ro.app.backend_Java_SpringBoot.dto.AccountDTO;
-import ro.app.backend_Java_SpringBoot.model.*;
-import java.util.stream.Collectors;
-import java.util.ArrayList;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+
+import ro.app.backend_Java_SpringBoot.dto.AccountDTO;
+import ro.app.backend_Java_SpringBoot.model.Account;
+import ro.app.backend_Java_SpringBoot.model.Client;
+import ro.app.backend_Java_SpringBoot.model.CurrencyType;
+import ro.app.backend_Java_SpringBoot.model.Transaction;
 
 public class AccountMapper {
 
-    public static AccountDTO toDTO(AccountTable e) {
+    public static AccountDTO toDTO(Account e) {
         AccountDTO dto = new AccountDTO();
         dto.setId(e.getId());
         dto.setIban(e.getIban());
@@ -20,13 +24,13 @@ public class AccountMapper {
         dto.setUpdatedAt(e.getUpdatedAt());
         dto.setTransactionIds(
                 e.getTransactions() != null
-                        ? e.getTransactions().stream().map(TransactionTable::getId).collect(Collectors.toList())
+                        ? e.getTransactions().stream().map(Transaction::getId).collect(Collectors.toList())
                         : new ArrayList<>());
         return dto;
     }
 
-    public static AccountTable toEntity(AccountDTO dto, ClientTable client, CurrencyType currency) {
-        AccountTable e = new AccountTable();
+    public static Account toEntity(AccountDTO dto, Client client, CurrencyType currency) {
+        Account e = new Account();
         e.setId(dto.getId());
         e.setIban(dto.getIban());
         e.setBalance(dto.getBalance() != null ? dto.getBalance() : BigDecimal.ZERO);

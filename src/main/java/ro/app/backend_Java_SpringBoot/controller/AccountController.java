@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.*;
 
 import ro.app.backend_Java_SpringBoot.dto.AccountDTO;
 import ro.app.backend_Java_SpringBoot.dto.mapper.AccountMapper;
-import ro.app.backend_Java_SpringBoot.model.AccountTable;
-import ro.app.backend_Java_SpringBoot.model.TransactionTable;
+import ro.app.backend_Java_SpringBoot.model.Account;
+import ro.app.backend_Java_SpringBoot.model.Transaction;
 import ro.app.backend_Java_SpringBoot.service.AccountService;
 import ro.app.backend_Java_SpringBoot.dto.request.OpenAccountRequest;
 import ro.app.backend_Java_SpringBoot.dto.request.AmountRequest;
@@ -29,21 +29,21 @@ public class AccountController {
     // 1) openAccount
     @PostMapping("/open")
     public ResponseEntity<AccountDTO> open(@Valid @RequestBody OpenAccountRequest req) {
-        AccountTable account = accountService.openAccount(req.getClientId(), req.getCurrencyCode());
+        Account account = accountService.openAccount(req.getClientId(), req.getCurrencyCode());
         return ResponseEntity.ok(AccountMapper.toDTO(account));
     }
 
     // 2) closeAccount
     @PostMapping("/{accountId}/close")
     public ResponseEntity<AccountDTO> close(@PathVariable Long accountId) {
-        AccountTable account = accountService.closeAccount(accountId);
+        Account account = accountService.closeAccount(accountId);
         return ResponseEntity.ok(AccountMapper.toDTO(account));
     }
 
     // 3) getAccountsByClient
     @GetMapping("/by-client/{clientId}")
     public ResponseEntity<List<AccountDTO>> byClient(@PathVariable Long clientId) {
-        List<AccountTable> accounts = accountService.getAccountsByClient(clientId);
+        List<Account> accounts = accountService.getAccountsByClient(clientId);
         return ResponseEntity.ok(accounts.stream().map(AccountMapper::toDTO).toList());
     }
 
@@ -55,13 +55,13 @@ public class AccountController {
 
     // 5) deposit
     @PostMapping("/{iban}/deposit")
-    public ResponseEntity<TransactionTable> deposit(@PathVariable String iban, @Valid @RequestBody AmountRequest req) {
+    public ResponseEntity<Transaction> deposit(@PathVariable String iban, @Valid @RequestBody AmountRequest req) {
         return ResponseEntity.ok(accountService.deposit(iban, req.getAmount()));
     }
 
     // 6) withdraw
     @PostMapping("/{iban}/withdraw")
-    public ResponseEntity<TransactionTable> withdraw(@PathVariable String iban, @Valid @RequestBody AmountRequest req) {
+    public ResponseEntity<Transaction> withdraw(@PathVariable String iban, @Valid @RequestBody AmountRequest req) {
         return ResponseEntity.ok(accountService.withdraw(iban, req.getAmount()));
     }
 

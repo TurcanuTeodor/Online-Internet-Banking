@@ -4,11 +4,11 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import ro.app.backend_Java_SpringBoot.model.ClientTable;
+import ro.app.backend_Java_SpringBoot.model.Client;
 
-public interface ClientRepository extends JpaRepository<ClientTable, Long> {
+public interface ClientRepository extends JpaRepository<Client, Long> {
     
-    List<ClientTable> findByLastNameContainingIgnoreCase(String name);
+    List<Client> findByLastNameContainingIgnoreCase(String name);
 
-    List<ClientTable> findByLastNameContainingIgnoreCaseOrFirstNameContainingIgnoreCase(String name, String nameAgain);
+    List<Client> findByLastNameContainingIgnoreCaseOrFirstNameContainingIgnoreCase(String name, String nameAgain);
 }

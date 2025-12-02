@@ -1,7 +1,7 @@
 package ro.app.backend_Java_SpringBoot.dto.mapper;
 
 import ro.app.backend_Java_SpringBoot.dto.ContactInfoDTO;
-import ro.app.backend_Java_SpringBoot.model.ClientTable;
+import ro.app.backend_Java_SpringBoot.model.Client;
 import ro.app.backend_Java_SpringBoot.model.ContactInfo;
 
 public class ContactInfoMapper {
@@ -16,7 +16,7 @@ public class ContactInfoMapper {
         return dto;
     }
 
-    public static ContactInfo toEntity(ContactInfoDTO dto, ClientTable client) {
+    public static ContactInfo toEntity(ContactInfoDTO dto, Client client) {
         ContactInfo e = new ContactInfo();
         e.setPhone(dto.getPhone());
         e.setEmail(dto.getEmail());

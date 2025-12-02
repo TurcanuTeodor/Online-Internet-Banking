@@ -1,5 +1,6 @@
 package ro.app.backend_Java_SpringBoot.model;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
@@ -14,48 +15,46 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
-import java.math.BigDecimal;
-
 @Entity
-@Table(name = "tranzactie")
-public class TransactionTable {
+@Table(name = "TRANSACTION")
+public class Transaction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "suma", nullable = false, precision = 15, scale = 2)
+    @Column(name = "amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
-    @Column(name = "suma_originala", nullable = false, precision = 15, scale = 2)
+    @Column(name = "original_amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal originalAmount;
     
-    @Column(name = "semn", nullable = false)
+    @Column(name = "sign", nullable = false)
     private String sign;
 
-    @Column(name = "explicatii", columnDefinition = "TEXT")
+    @Column(name = "details", columnDefinition = "TEXT")
     private String details;
 
     @Column(name = "data_tranzactie", nullable = false)
     private LocalDateTime transactionDate;
 
     @ManyToOne
-    @JoinColumn(name = "cont_id")
+    @JoinColumn(name = "account_id")
     @JsonBackReference("account-transactions")
-    private AccountTable account;
+    private Account account;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "tip_tranzactie_id", nullable = false)
+    @JoinColumn(name = "transaction_type_id", nullable = false)
     private TransactionType transactionType;
 
     @ManyToOne(optional = true)
-    @JoinColumn(name = "valuta_originala")
+    @JoinColumn(name = "original_currency")
     private CurrencyType originalCurrency;
 
-    public TransactionTable() {
+    public Transaction() {
     }
 
-    public TransactionTable(AccountTable account, TransactionType transactionType, BigDecimal amount, BigDecimal originalAmount, CurrencyType originalCurrency, String sign, String details, LocalDateTime transactionDate) {
+    public Transaction(Account account, TransactionType transactionType, BigDecimal amount, BigDecimal originalAmount, CurrencyType originalCurrency, String sign, String details, LocalDateTime transactionDate) {
         this.account = account;
         this.transactionType = transactionType;
         this.amount = amount;
@@ -74,11 +73,11 @@ public class TransactionTable {
         this.id = id;
     }
 
-    public AccountTable getAccount() {
+    public Account getAccount() {
         return account;
     }
 
-    public void setAccount(AccountTable account) {
+    public void setAccount(Account account) {
         this.account = account;
     }
 

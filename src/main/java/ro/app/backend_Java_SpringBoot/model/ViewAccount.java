@@ -1,43 +1,48 @@
 package ro.app.backend_Java_SpringBoot.model;
 
-import jakarta.persistence.*;
-import org.hibernate.annotations.Immutable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.Immutable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 @Entity
 @Immutable
-@Table(name = "view_cont")
-public class ViewAccountTable {
+@Table(name = "view_account")
+public class ViewAccount {
     @Id
-    @Column(name = "cont_id")
+    @Column(name = "account_id")
     private Long accountId;
 
-    @Column(name = "cont_iban")
+    @Column(name = "account_iban")
     private String accountIban;
 
-    @Column(name = "cont_sold")
+    @Column(name = "account_balance")
     private BigDecimal accountBalance;
 
-    @Column(name = "valuta_cod")
+    @Column(name = "currency_type_code")
     private String currencyCode;
 
     @Column(name = "client_id")
     private Long clientId;
 
-    @Column(name = "client_nume")
+    @Column(name = "client_last_name")
     private String clientLastName;
 
-    @Column(name = "client_prenume")
+    @Column(name = "client_first_name")
     private String clientFirstName;
 
-    @Column(name = "status")
+    @Column(name = "account_status")
     private String status;
 
-    @Column(name = "created_at")
+    @Column(name = "account_created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "account_updated_at")
     private LocalDateTime updatedAt;
 
     public Long getAccountId() { return accountId; }

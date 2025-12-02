@@ -4,7 +4,7 @@ import ro.app.backend_Java_SpringBoot.dto.TransactionDTO;
 import ro.app.backend_Java_SpringBoot.model.*;
 
 public class TransactionMapper {
-    public static TransactionDTO toDTO(TransactionTable e) {
+    public static TransactionDTO toDTO(Transaction e) {
         TransactionDTO dto = new TransactionDTO();
         dto.setId(e.getId());
         dto.setAccountId(e.getAccount() != null ? e.getAccount().getId() : null);
@@ -18,11 +18,11 @@ public class TransactionMapper {
         return dto;
     }
 
-    public static TransactionTable toEntity(TransactionDTO dto,
-                                            AccountTable account,
+    public static Transaction toEntity(TransactionDTO dto,
+                                            Account account,
                                             TransactionType type,
                                             CurrencyType originalCurrency) {
-        TransactionTable e = new TransactionTable();
+        Transaction e = new Transaction();
         e.setId(dto.getId());
         e.setAccount(account);
         e.setTransactionType(type);

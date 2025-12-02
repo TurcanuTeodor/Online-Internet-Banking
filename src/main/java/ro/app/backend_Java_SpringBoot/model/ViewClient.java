@@ -10,24 +10,24 @@ import jakarta.persistence.Table;
 @Entity
 @Immutable
 @Table(name = "view_client")
-public class ViewClientTable {
+public class ViewClient {
     @Id
     @Column(name="client_id")
     private Long clientId;
 
-    @Column(name="client_nume")
+    @Column(name="client_last_name")
     private String clientLastName;
 
-    @Column(name="client_prenume")
+    @Column(name="client_first_name")
     private String clientFirstName;
 
-    @Column(name="tip_client_denumire")
+    @Column(name="client_type_name")
     private String clientTypeName;
 
-    @Column(name="sex_denumire")
+    @Column(name="sex_type_name")
     private String sexDescription;
 
-    @Column(name = "activ")
+    @Column(name = "client_active")
     private Boolean active;
 
     public Long getClientId() { return clientId; }

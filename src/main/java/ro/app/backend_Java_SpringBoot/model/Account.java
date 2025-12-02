@@ -1,5 +1,8 @@
 package ro.app.backend_Java_SpringBoot.model;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
@@ -17,13 +20,10 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 
 @Entity
-@Table(name = "cont")
-public class AccountTable {
+@Table(name = "ACCOUNT")
+public class Account {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,7 +33,7 @@ public class AccountTable {
     @Column(name = "iban", nullable = false, unique = true)
     private String iban;
 
-    @Column(name = "sold", nullable = false, precision = 15, scale = 2)
+    @Column(name = "balance", nullable = false, precision = 15, scale = 2)
     private BigDecimal balance;
 
     @ManyToOne(optional = false)
@@ -41,28 +41,28 @@ public class AccountTable {
     private CurrencyType currency;
 
     @ManyToOne
-    @JoinColumn(name = "client_id")
+    @JoinColumn(name = "currency_type_id")
     @JsonBackReference("client-accounts")
-    private ClientTable client;
+    private Client client;
 
     @OneToMany(mappedBy = "account", cascade = CascadeType.ALL)
     @JsonManagedReference("account-transactions")
-    private List<TransactionTable> transactions = new ArrayList<>();
+    private List<Transaction> transactions = new ArrayList<>();
 
     @Column(name = "status", nullable = false)
     private String status = "ACTIV";
 
-    @Column(name = "data_deschidere", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "data_actualizare")
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public AccountTable() {
+    public Account() {
     }
 
     //Constructor for new account with default balance and status
-     public AccountTable(String iban, CurrencyType currency, ClientTable client) {
+     public Account(String iban, CurrencyType currency, Client client) {
         this.iban = iban;
         this.currency = currency;
         this.client = client;
@@ -71,8 +71,8 @@ public class AccountTable {
         this.createdAt = LocalDateTime.now();
     }
 
-    public AccountTable(String iban, BigDecimal balance, CurrencyType currency,
-                        ClientTable client, String status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Account(String iban, BigDecimal balance, CurrencyType currency,
+                        Client client, String status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.iban = iban;
         this.balance = balance != null ? balance : BigDecimal.ZERO;
         this.currency = currency;
@@ -114,19 +114,19 @@ public class AccountTable {
         this.currency = currency;
     }
 
-    public ClientTable getClient() {
+    public Client getClient() {
         return client;
     }
 
-    public void setClient(ClientTable client) {
+    public void setClient(Client client) {
         this.client = client;
     }
 
-     public List<TransactionTable> getTransactions() {
+     public List<Transaction> getTransactions() {
         return transactions;
     }
 
-    public void setTransactions(List<TransactionTable> transactions) {
+    public void setTransactions(List<Transaction> transactions) {
         this.transactions = transactions;
     }
 
@@ -168,12 +168,12 @@ public class AccountTable {
     }
 
     // === METODE UTILE ===
-    public void addTransaction(TransactionTable transaction) {
+    public void addTransaction(Transaction transaction) {
         transactions.add(transaction);
         transaction.setAccount(this);
     }
 
-    public void removeTransaction(TransactionTable transaction) {
+    public void removeTransaction(Transaction transaction) {
         transactions.remove(transaction);
         transaction.setAccount(null);
     }

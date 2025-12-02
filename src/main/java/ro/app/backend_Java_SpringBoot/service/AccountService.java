@@ -56,14 +56,14 @@ public class AccountService {
     // 1)Open a new account
     @Transactional
     @CacheEvict(value= "accountsByClient", key= "#clientId")
-    public AccountTable openAccount(Long clientId, String currencyCode) {
-        ClientTable client = clientRepository.findById(clientId)
+    public Account openAccount(Long clientId, String currencyCode) {
+        Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
 
         CurrencyType currency = currencyRepository.findByCodeIgnoreCase(currencyCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Currency not found"));
 
-        AccountTable account = new AccountTable();
+        Account account = new Account();
         account.setClient(client);
         account.setCurrency(currency);
         account.setBalance(BigDecimal.ZERO);
@@ -81,8 +81,8 @@ public class AccountService {
             @CacheEvict(value= "accountsByClient", allEntries= true),
             @CacheEvict(value= "balance", allEntries=true)
     })
-    public AccountTable closeAccount(Long id) {
-        AccountTable account = accountRepository.findById(id)
+    public Account closeAccount(Long id) {
+        Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
         if ("INCHIS".equalsIgnoreCase(account.getStatus())) {
@@ -99,7 +99,7 @@ public class AccountService {
 
     // 3️) Get all accounts for a specific client
     @Cacheable(value= "accountsByClient", key= "#clientId")
-    public List<AccountTable> getAccountsByClient(Long clientId) {
+    public List<Account> getAccountsByClient(Long clientId) {
         return accountRepository.findByClientId(clientId);
     }
 
@@ -107,19 +107,19 @@ public class AccountService {
     @Cacheable(value= "balance", key="#iban")
     public BigDecimal getBalanceByIban(String iban) {
         return accountRepository.findByIban(iban)
-                .map(AccountTable::getBalance)
+                .map(Account::getBalance)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
     }
 
     // 5️) Deposit money into an account
     @Transactional
     @CacheEvict(value= "balance", key= "#iban")
-    public TransactionTable deposit(String iban, BigDecimal amount) {
+    public Transaction deposit(String iban, BigDecimal amount) {
         if(amount ==null || amount.compareTo(BigDecimal.ZERO) <= 0){
             throw new IllegalArgumentException("Amount must be positive");
         }
 
-        AccountTable account = accountRepository.findByIban(iban)
+        Account account = accountRepository.findByIban(iban)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
         account.setBalance(account.getBalance().add(amount));
@@ -127,7 +127,7 @@ public class AccountService {
         TransactionType depositType = transactionTypeRepository.findByCodeIgnoreCase("DEP")
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction type 'DEP' not found"));
 
-        TransactionTable tx = new TransactionTable();
+        Transaction tx = new Transaction();
         tx.setAccount(account);
         tx.setAmount(amount);
         tx.setOriginalAmount(amount);
@@ -145,12 +145,12 @@ public class AccountService {
     // 6️) Withdraw money from an account
     @Transactional
     @CacheEvict(value= "balance", key= "#iban")
-    public TransactionTable withdraw(String iban, BigDecimal amount) {
+    public Transaction withdraw(String iban, BigDecimal amount) {
         if(amount ==null || amount.compareTo(BigDecimal.ZERO) <= 0){
             throw new IllegalArgumentException("Amount must be positive");
         }
 
-        AccountTable account = accountRepository.findByIban(iban)
+        Account account = accountRepository.findByIban(iban)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
         if (account.getBalance().compareTo(amount) < 0) {
@@ -162,7 +162,7 @@ public class AccountService {
         TransactionType withdrawType = transactionTypeRepository.findByCodeIgnoreCase("RET")
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction type 'RET' not found"));
 
-        TransactionTable tx = new TransactionTable();
+        Transaction tx = new Transaction();
         tx.setAccount(account);
         tx.setAmount(amount);
         tx.setOriginalAmount(amount);
@@ -192,9 +192,9 @@ public class AccountService {
             throw new IllegalArgumentException("Cannot transfer to the same account");
         }
 
-        AccountTable from = accountRepository.findByIban(fromIban)
+        Account from = accountRepository.findByIban(fromIban)
                 .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
-        AccountTable to = accountRepository.findByIban(toIban)
+        Account to = accountRepository.findByIban(toIban)
                 .orElseThrow(() -> new ResourceNotFoundException("Destination account not found"));
 
         if (from.getBalance().compareTo(amount) < 0) {
@@ -209,7 +209,7 @@ public class AccountService {
         to.setBalance(to.getBalance().add(amount));
 
         // debit transaction
-        TransactionTable debit = new TransactionTable();
+        Transaction debit = new Transaction();
         debit.setAccount(from);
         debit.setAmount(amount);
         debit.setOriginalAmount(amount);
@@ -220,7 +220,7 @@ public class AccountService {
         debit.setDetails("Transfer to account " + toIban);
 
         // credit transaction
-        TransactionTable credit = new TransactionTable();
+        Transaction credit = new Transaction();
         credit.setAccount(to);
         credit.setAmount(amount);
         credit.setOriginalAmount(amount);

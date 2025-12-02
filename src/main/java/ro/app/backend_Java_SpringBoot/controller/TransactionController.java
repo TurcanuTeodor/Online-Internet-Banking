@@ -5,7 +5,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import ro.app.backend_Java_SpringBoot.dto.TransactionDTO;
 import ro.app.backend_Java_SpringBoot.dto.mapper.TransactionMapper;
-import ro.app.backend_Java_SpringBoot.model.ViewTransactionTable;
+import ro.app.backend_Java_SpringBoot.model.ViewTransaction;
 import ro.app.backend_Java_SpringBoot.service.TransactionService;
 
 import java.math.BigDecimal;
@@ -25,7 +25,7 @@ public class TransactionController {
 
     // 1️) Get all transactions from view (read-only)
     @GetMapping("/view-all")
-    public List<ViewTransactionTable> getAllFromView() {
+    public List<ViewTransaction> getAllFromView() {
         return transactionService.getAllView();
     }
 

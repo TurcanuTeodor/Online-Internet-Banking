@@ -18,45 +18,45 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "client")
-public class ClientTable {
+@Table(name = "CLIENT")
+public class Client {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "nume", nullable = false)
+    @Column(name = "last_name", nullable = false)
     private String lastName;
 
-    @Column(name = "prenume", nullable = false)
+    @Column(name = "first_name", nullable = false)
     private String firstName;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "tip_client_id", nullable = false)
+    @JoinColumn(name = "client_type_id", nullable = false)
     private ClientType clientType;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "sex_id", nullable = false)
-    private SexType sex;
+    @JoinColumn(name = "sex_type_id", nullable = false)
+    private SexType sexType;
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.PERSIST)
     @JsonManagedReference("client-accounts")
     @JsonIgnore // prevent serialization cycle and avoid accidentally exposing accounts
-    private List<AccountTable> accounts = new ArrayList<>();
+    private List<Account> accounts = new ArrayList<>();
 
     @Column(name = "activ", nullable = false)
     private boolean active = true;
 
 
-    public ClientTable() {
+    public Client() {
     }
 
-    public ClientTable(String firstName, String lastName, ClientType clientType, SexType sex, boolean active) {
+    public Client(String firstName, String lastName, ClientType clientType, SexType sex, boolean active) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.clientType = clientType;
-        this.sex = sex;
+        this.sexType = sex;
         this.active = active;
     }
 
@@ -93,18 +93,18 @@ public class ClientTable {
     }
 
     public SexType getSex() {
-        return sex;
+        return sexType;
     }
 
     public void setSex(SexType sex) {
-        this.sex = sex;
+        this.sexType = sex;
     }
 
-    public List<AccountTable> getAccounts() {
+    public List<Account> getAccounts() {
         return accounts;
     }
 
-    public void setAccounts(List<AccountTable> accounts) {
+    public void setAccounts(List<Account> accounts) {
         this.accounts = accounts;
     }
 
@@ -117,12 +117,12 @@ public class ClientTable {
     }
 
     // === METODE UTILE
-    public void addAccount(AccountTable account) {
+    public void addAccount(Account account) {
         accounts.add(account);
         account.setClient(this);
     }
 
-    public void removeAccount(AccountTable account) {
+    public void removeAccount(Account account) {
         accounts.remove(account);
         account.setClient(null);
     }
