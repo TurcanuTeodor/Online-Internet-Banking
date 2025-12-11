@@ -35,7 +35,7 @@ public class Transaction {
     @Column(name = "details", columnDefinition = "TEXT")
     private String details;
 
-    @Column(name = "data_tranzactie", nullable = false)
+    @Column(name = "transaction_date", nullable = false)
     private LocalDateTime transactionDate;
 
     @ManyToOne
