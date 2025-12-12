@@ -1,18 +1,27 @@
 package ro.app.banking.service;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Caching;
-
-import ro.app.banking.exception.ResourceNotFoundException;
-import ro.app.banking.model.*;
-import ro.app.banking.repository.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.validation.constraints.NotNull;
+import ro.app.banking.exception.ResourceNotFoundException;
+import ro.app.banking.model.Account;
+import ro.app.banking.model.Client;
+import ro.app.banking.model.CurrencyType;
+import ro.app.banking.model.Transaction;
+import ro.app.banking.model.TransactionType;
+import ro.app.banking.repository.AccountRepository;
+import ro.app.banking.repository.ClientRepository;
+import ro.app.banking.repository.CurrencyTypeRepository;
+import ro.app.banking.repository.TransactionRepository;
+import ro.app.banking.repository.TransactionTypeRepository;
 
 @Service
 public class AccountService {
@@ -56,7 +65,11 @@ public class AccountService {
     // 1)Open a new account
     @Transactional
     @CacheEvict(value= "accountsByClient", key= "#clientId")
-    public Account openAccount(Long clientId, String currencyCode) {
+    public Account openAccount(@NotNull Long clientId, String currencyCode) {
+        if (clientId == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }   
+
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
 
@@ -81,7 +94,11 @@ public class AccountService {
             @CacheEvict(value= "accountsByClient", key= "#result.client_id"),
             @CacheEvict(value= "balance", key= "#result.iban")
     })
-    public Account closeAccount(Long id) {
+    public Account closeAccount(@NotNull Long id) {
+        if(id==null){
+            throw new IllegalArgumentException("Account ID cannot be null");
+        }
+
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 

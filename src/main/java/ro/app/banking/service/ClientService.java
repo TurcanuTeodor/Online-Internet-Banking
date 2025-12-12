@@ -1,18 +1,33 @@
 package ro.app.banking.service;
 
-import jakarta.transaction.Transactional;
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
+
+import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotNull;
 import ro.app.banking.dto.ClientDTO;
 import ro.app.banking.dto.ContactInfoDTO;
 import ro.app.banking.dto.mapper.ClientMapper;
 import ro.app.banking.dto.mapper.ContactInfoMapper;
 import ro.app.banking.exception.ResourceNotFoundException;
-import ro.app.banking.model.*;
-import ro.app.banking.repository.*;
-
-import java.math.BigDecimal;
-import java.util.*;
-import java.util.stream.Collectors;
+import ro.app.banking.model.Account;
+import ro.app.banking.model.Client;
+import ro.app.banking.model.ClientType;
+import ro.app.banking.model.ContactInfo;
+import ro.app.banking.model.SexType;
+import ro.app.banking.model.Transaction;
+import ro.app.banking.model.ViewClient;
+import ro.app.banking.repository.AccountRepository;
+import ro.app.banking.repository.ClientRepository;
+import ro.app.banking.repository.ContactInfoRepository;
+import ro.app.banking.repository.TransactionRepository;
+import ro.app.banking.repository.ViewClientRepository;
 
 @Service
 public class ClientService {
@@ -55,7 +70,8 @@ public class ClientService {
         sexType.setId(dto.getSexId());
 
         Client entity = ClientMapper.toEntity(dto, clientType, sexType);
-        Client saved = clientRepository.save(entity);
+        @SuppressWarnings("null")
+        final Client saved = clientRepository.save(entity);
         return ClientMapper.toDTO(saved);
     }
 
@@ -70,24 +86,31 @@ public class ClientService {
 
     // --3 Update contact info
     @Transactional
-    public ContactInfoDTO updateClientContactInfo(Long clientId, ContactInfoDTO dto) {
-        Client client = clientRepository.findById(clientId)
+    public ContactInfoDTO updateClientContactInfo(@NotNull Long clientId, ContactInfoDTO dto) {
+        if(clientId==null){
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
+        final Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID " + clientId));
 
         ContactInfo contactInfo = Optional.ofNullable(contactInfoRepository.findByClientId(clientId))
                 .map(existing -> ContactInfoMapper.updateEntity(existing, dto))
-                .orElse(ContactInfoMapper.toEntity(dto, client));
+                .orElseGet(() -> ContactInfoMapper.toEntity(dto, client));
 
-        ContactInfo saved = contactInfoRepository.save(contactInfo);
+        @SuppressWarnings("null")
+        final ContactInfo saved = contactInfoRepository.save(contactInfo);
         return ContactInfoMapper.toDTO(saved);
     }
 
     // --4 Get client summary
-    public Map<String, Object> getClientSummary(Long clientId) {
-        Client client = clientRepository.findById(clientId)
+    public Map<String, Object> getClientSummary(@NotNull Long clientId) {
+        if(clientId==null){
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
+        final Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
 
-        List<Account> accounts = accountRepository.findByClientId(clientId);
+        final List<Account> accounts = accountRepository.findByClientId(clientId);
         BigDecimal totalBalance = accounts.stream()
                 .map(Account::getBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -107,7 +130,11 @@ public class ClientService {
 
     // --5 Soft delete
     @Transactional
-    public void deleteClient(Long id) {
+    public void deleteClient(@NotNull Long id) {
+        if(id==null){
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
+
         Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
         if (!client.isActive()) {
