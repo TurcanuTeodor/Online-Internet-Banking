@@ -1,12 +1,16 @@
 package ro.app.banking.security;
 
-import ro.app.banking.model.User;
+import java.util.Collection;
+import java.util.List;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.List;
+import ro.app.banking.model.User;
+
+//UserPrincipal is an adapter between the User entity(db model)
+//and Spring Security's UserDetails inteface
 
 public class UserPrincipal implements UserDetails {
 
@@ -28,10 +32,12 @@ public class UserPrincipal implements UserDetails {
         return user.isTwoFactorEnabled();
     }
 
+    //Returns the authorities/roles granted to the user
+    //Spring Security expects roles to be prefixed with "ROLE_"
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // ROLE din DB ex: "USER" / "ADMIN"
-        return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()));
+        // Example: DB role "USER" -> "ROLE_USER"
+        return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
     }
 
     @Override
@@ -46,21 +52,21 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return true; // extinde cu un câmp "expired" mai târziu
+        return true; // Can be extended later with an "expired" field
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true; // extinde cu "locked"
+        return true; // Can be extended later with a "locked" flag
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true; // extinde cu "credentialsExpired"
+        return true; // Can be extended with "credentialsExpired"
     }
 
     @Override
     public boolean isEnabled() {
-        return true; // extinde cu "enabled"
+        return true; // Can be extended with an "enabled" field
     }
 }
