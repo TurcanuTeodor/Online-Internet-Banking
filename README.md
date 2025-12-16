@@ -1,7 +1,5 @@
 # Online Internet Banking — Backend (Spring Boot)
 
-This is my student project for a simple online banking backend. I implement core banking operations (clients, accounts, transactions) with Spring Boot, PostgreSQL, JWT authentication, and 2FA (TOTP). I wrote this README to explain what I built, how it works, and how to run and test it.
-
 ## Table of Contents
 
 - Project Overview
