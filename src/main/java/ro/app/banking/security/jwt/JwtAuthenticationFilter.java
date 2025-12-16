@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import io.jsonwebtoken.Claims;
@@ -15,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import ro.app.banking.security.CustomUserDetailsService;
 import ro.app.banking.security.UserPrincipal;
 
+@Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -38,6 +40,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if(jwtService.isValid(token) && SecurityContextHolder.getContext().getAuthentication() == null){ //SecurityContextHolder= where Spring Secur keeps the current user so it needs to be null/no auth
             Claims claims= jwtService.parseClaims(token); //extract info from token
+
+            Object twofa = claims.get("2fa");
+            if (twofa == null || !"ok".equals(twofa)) {
+                //temp or non-2FA-validated tokens must not authenticate requests
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             String subject = claims.getSubject(); //username/email
 
             UserPrincipal principal = (UserPrincipal) userDetailsService.loadUserByUsername(subject); //find user +details in db using subject

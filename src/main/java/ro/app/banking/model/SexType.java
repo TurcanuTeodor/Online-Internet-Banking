@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Immutable
-@Table(name = "SEX_TYPE")
+@Table(name = "\"SEX_TYPE\"")
 public class SexType {
 
     @Id

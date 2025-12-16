@@ -22,7 +22,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "ACCOUNT")
+@Table(name = "\"ACCOUNT\"")
 public class Account {
 
     @Id

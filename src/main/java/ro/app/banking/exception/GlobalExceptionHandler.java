@@ -7,12 +7,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-import org.springframework.lang.NonNull;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -29,6 +29,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             req.getRequestURI()
         );
         return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+    }
+
+    // --- Handle AuthenticationException (401) ---
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest req) {
+        ErrorResponse body = new ErrorResponse(
+            HttpStatus.UNAUTHORIZED.value(),
+            HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+            ex.getMessage(),
+            req.getRequestURI()
+        );
+        return new ResponseEntity<>(body, HttpStatus.UNAUTHORIZED);
     }
 
     @Override

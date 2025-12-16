@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 
 @Entity
-@Table(name = "CONTACT_INFO")
+@Table(name = "\"CONTACT_INFO\"")
 public class ContactInfo {
 
     @Id

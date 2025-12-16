@@ -1,7 +1,12 @@
 package ro.app.banking.dto.auth;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class LoginRequest {
+    @NotBlank(message = "Username/Email is required")
     private String usernameOrEmail;
+    
+    @NotBlank(message = "Password is required")
     private String password;
 
     public LoginRequest(){}

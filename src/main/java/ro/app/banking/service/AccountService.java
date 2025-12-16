@@ -91,7 +91,7 @@ public class AccountService {
     // 2️) Close an existing account
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value= "accountsByClient", key= "#result.client_id"),
+            @CacheEvict(value= "accountsByClient", key= "#result.client.id"),
             @CacheEvict(value= "balance", key= "#result.iban")
     })
     public Account closeAccount(@NotNull Long id) {

@@ -59,7 +59,7 @@ public class ClientService {
                 .anyMatch(c -> c.getFirstName().equalsIgnoreCase(dto.getFirstName()));
 
         if (exists) {
-            throw new ResourceNotFoundException(
+            throw new IllegalArgumentException(
                     "Client already exists: " + dto.getFirstName() + " " + dto.getLastName());
         }
 
@@ -76,6 +76,7 @@ public class ClientService {
     }
 
     // --2 Find clients by name
+    @Transactional
     public List<ClientDTO> searchByName(String name) {
         return clientRepository
                 .findByLastNameContainingIgnoreCaseOrFirstNameContainingIgnoreCase(name, name)

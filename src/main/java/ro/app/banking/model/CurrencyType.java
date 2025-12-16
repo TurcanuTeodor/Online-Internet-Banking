@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Immutable
-@Table(name = "CURRENCY_TYPE")
+@Table(name = "\"CURRENCY_TYPE\"")
 public class CurrencyType {
 
     @Id

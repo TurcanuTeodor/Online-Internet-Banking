@@ -16,7 +16,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "TRANSACTION")
+@Table(name = "\"TRANSACTION\"")
 public class Transaction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

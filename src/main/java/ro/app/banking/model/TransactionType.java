@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Immutable
-@Table(name = "TRANSACTION_TYPE")
+@Table(name = "\"TRANSACTION_TYPE\"")
 public class TransactionType {
 
     @Id

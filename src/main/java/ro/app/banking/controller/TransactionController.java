@@ -2,6 +2,7 @@ package ro.app.banking.controller;
 
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ro.app.banking.dto.TransactionDTO;
 import ro.app.banking.dto.mapper.TransactionMapper;
@@ -15,6 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/transactions")
+@Validated
 public class TransactionController {
 
     private final TransactionService transactionService;

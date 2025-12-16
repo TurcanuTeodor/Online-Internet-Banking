@@ -1,7 +1,9 @@
 package ro.app.banking.controller;
 
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ro.app.banking.dto.ClientDTO;
 import ro.app.banking.dto.ContactInfoDTO;
@@ -12,6 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/clients")
+@Validated
 public class ClientController {
 
     private final ClientService clientService;
@@ -23,8 +26,8 @@ public class ClientController {
     // 1) Create client (PF/PJ)
     @PostMapping
     public ResponseEntity<ClientDTO> create(@Valid @RequestBody ClientDTO dto) {
-        ClientDTO created = clientService.createClient(dto);  // Return DTO directly
-        return ResponseEntity.ok(created);
+        ClientDTO created = clientService.createClient(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     // 2) Search clients by name

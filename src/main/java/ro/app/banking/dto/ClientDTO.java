@@ -12,6 +12,7 @@ public class ClientDTO {
     @NotBlank
     private String lastName;
 
+    @NotBlank
     private String firstName;
 
     @NotNull

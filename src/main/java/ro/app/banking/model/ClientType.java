@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Immutable
-@Table(name = "CLIENT_TYPE")
+@Table(name = "\"CLIENT_TYPE\"")
 public class ClientType {
 
     @Id
