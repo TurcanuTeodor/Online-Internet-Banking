@@ -2,6 +2,9 @@ package ro.app.banking.model;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -37,8 +40,9 @@ public class User {
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false, length = 50)
-    private Role role= Role.USER;
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "role", nullable = false, columnDefinition = "ROLE_ENUM")
+    private Role role = Role.USER;
 
     @Column(name = "two_factor_enabled", nullable = false)
     private boolean twoFactorEnabled = false;

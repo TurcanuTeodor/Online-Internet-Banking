@@ -11,6 +11,8 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -20,6 +22,8 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "\"ACCOUNT\"")
@@ -49,8 +53,10 @@ public class Account {
     @JsonManagedReference("account-transactions")
     private List<Transaction> transactions = new ArrayList<>();
 
-    @Column(name = "status", nullable = false)
-    private String status = "ACTIV";
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status", nullable = false, columnDefinition = "ACCOUNT_STATUS_ENUM")
+    private AccountStatus status = AccountStatus.ACTIVE;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -67,17 +73,17 @@ public class Account {
         this.currency = currency;
         this.client = client;
         this.balance = BigDecimal.ZERO;
-        this.status = "ACTIV";
+        this.status = AccountStatus.ACTIVE;
         this.createdAt = LocalDateTime.now();
     }
 
     public Account(String iban, BigDecimal balance, CurrencyType currency,
-                        Client client, String status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                        Client client, AccountStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.iban = iban;
         this.balance = balance != null ? balance : BigDecimal.ZERO;
         this.currency = currency;
         this.client = client;
-        this.status = (status != null && !status.isEmpty()) ? status : "ACTIV";
+        this.status = (status != null) ? status : AccountStatus.ACTIVE;
         this.createdAt = (createdAt != null) ? createdAt : LocalDateTime.now();
         this.updatedAt = updatedAt;
     }
@@ -130,11 +136,11 @@ public class Account {
         this.transactions = transactions;
     }
 
-    public String getStatus() {
+    public AccountStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(AccountStatus status) {
         this.status = status;
     }
 
@@ -159,7 +165,7 @@ public class Account {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         if (this.balance == null) this.balance = BigDecimal.ZERO;
-        if (this.status == null) this.status = "ACTIV";
+        if (this.status == null) this.status = AccountStatus.ACTIVE;
     }
 
     @PreUpdate

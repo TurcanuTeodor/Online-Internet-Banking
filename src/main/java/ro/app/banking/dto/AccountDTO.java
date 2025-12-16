@@ -25,7 +25,7 @@ public class AccountDTO {
     private Long clientId;
 
     @NotBlank
-    private String status = "ACTIV";
+    private String status = "ACTIVE";
 
     @NotNull
     private LocalDateTime createdAt;

@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Immutable
-@Table(name = "view_transaction")
+@Table(name = "\"VIEW_TRANSACTION\"")
 public class ViewTransaction {
     @Id
     @Column(name="transaction_id")

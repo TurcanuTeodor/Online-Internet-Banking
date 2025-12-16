@@ -1,0 +1,28 @@
+-- V3__Create_sex_and_client_types.sql
+
+CREATE TABLE "SEX_TYPE" (
+    id BIGSERIAL PRIMARY KEY,
+    code VARCHAR(10) NOT NULL UNIQUE,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "CLIENT_TYPE" (
+    id BIGSERIAL PRIMARY KEY,
+    code VARCHAR(10) NOT NULL UNIQUE,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert default sex types
+INSERT INTO "SEX_TYPE" (code, name) VALUES
+    ('M', 'MALE'),
+    ('F', 'FEMALE'),
+    ('O', 'OTHER');
+
+-- Insert default client types
+INSERT INTO "CLIENT_TYPE" (code, name) VALUES
+    ('PF', 'INDIVIDUAL'),
+    ('PJ', 'COMPANY');

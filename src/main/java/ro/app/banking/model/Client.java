@@ -45,7 +45,7 @@ public class Client {
     @JsonIgnore // prevent serialization cycle and avoid accidentally exposing accounts
     private List<Account> accounts = new ArrayList<>();
 
-    @Column(name = "activ", nullable = false)
+    @Column(name = "active", nullable = false)
     private boolean active = true;
 
 

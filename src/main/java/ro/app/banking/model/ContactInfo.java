@@ -26,7 +26,7 @@ public class ContactInfo {
     private String phone;
 
     @Email
-    @Column(name = "email", length = 100)
+    @Column(name = "email", length = 255)
     private String email;
 
     @Column(name = "contact_person", length = 100)
@@ -34,6 +34,15 @@ public class ContactInfo {
 
     @Column(name = "website", length = 100)
     private String website;
+
+    @Column(name = "address", length = 255)
+    private String address;
+
+    @Column(name = "city", length = 100)
+    private String city;
+
+    @Column(name = "postal_code", length = 20)
+    private String postalCode;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -52,4 +61,13 @@ public class ContactInfo {
 
     public String getWebsite() { return website; }
     public void setWebsite(String website) { this.website = website; }
+
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    public String getPostalCode() { return postalCode; }
+    public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
 }

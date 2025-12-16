@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import ro.app.banking.dto.AccountDTO;
 import ro.app.banking.model.Account;
+import ro.app.banking.model.AccountStatus;
 import ro.app.banking.model.Client;
 import ro.app.banking.model.CurrencyType;
 import ro.app.banking.model.Transaction;
@@ -19,7 +20,7 @@ public class AccountMapper {
         dto.setBalance(e.getBalance());
         dto.setCurrencyId(e.getCurrency() != null ? e.getCurrency().getId() : null);
         dto.setClientId(e.getClient() != null ? e.getClient().getId() : null);
-        dto.setStatus(e.getStatus());
+        dto.setStatus(e.getStatus() != null ? e.getStatus().name() : "ACTIVE");
         dto.setCreatedAt(e.getCreatedAt());
         dto.setUpdatedAt(e.getUpdatedAt());
         dto.setTransactionIds(
@@ -36,7 +37,7 @@ public class AccountMapper {
         e.setBalance(dto.getBalance() != null ? dto.getBalance() : BigDecimal.ZERO);
         e.setClient(client);
         e.setCurrency(currency);
-        e.setStatus(dto.getStatus() != null ? dto.getStatus() : "ACTIV");
+        e.setStatus(dto.getStatus() != null ? AccountStatus.valueOf(dto.getStatus().toUpperCase()) : AccountStatus.ACTIVE);
         return e;
     }
 }

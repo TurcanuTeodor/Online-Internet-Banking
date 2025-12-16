@@ -44,7 +44,7 @@ public class TransactionService {
         return transactionRepository.findBetweenDates(from, to);
     }
 
-    // 5) Transactions by type (e.g. TRANSFER, DEPOSIT)
+    // 5) Transactions by type (e.g. TRF, DEP, RET)
     public List<Transaction> getTransactionsByType(String code) {
         return transactionRepository.findByTransactionTypeCode(code);
     }

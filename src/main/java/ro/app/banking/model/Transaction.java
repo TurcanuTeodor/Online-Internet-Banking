@@ -32,7 +32,7 @@ public class Transaction {
     @Column(name = "sign", nullable = false)
     private String sign;
 
-    @Column(name = "details", columnDefinition = "TEXT")
+    @Column(name = "details", length = 255)
     private String details;
 
     @Column(name = "transaction_date", nullable = false)
@@ -48,7 +48,7 @@ public class Transaction {
     private TransactionType transactionType;
 
     @ManyToOne(optional = true)
-    @JoinColumn(name = "original_currency")
+    @JoinColumn(name = "original_currency_type_id")
     private CurrencyType originalCurrency;
 
     public Transaction() {

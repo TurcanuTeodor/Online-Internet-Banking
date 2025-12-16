@@ -60,7 +60,7 @@ public class TransactionController {
                 .toList();
     }
 
-    // 5️) Get transactions by type code (DEPOSIT, WITHDRAW, TRANSFER)
+    // 5️) Get transactions by type code (DEP, RET, TRF)
     @GetMapping("/by-type/{code}")
     public List<TransactionDTO> getByType(@PathVariable String code) {
         return transactionService.getTransactionsByType(code)

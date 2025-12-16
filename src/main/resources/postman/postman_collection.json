@@ -1,0 +1,324 @@
+{
+  "info": {
+    "name": "Online Internet Banking (Backend)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Minimal Postman collection for testing the Online Internet Banking backend (Spring Boot, PostgreSQL, JWT, 2FA)."
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api","auth","register"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": 1,\n  \"usernameOrEmail\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let res = {};",
+                  "try { res = pm.response.json(); } catch(e) {}",
+                  "if (res.twoFactorRequired) {",
+                  "  pm.environment.set('tempToken', res.token);",
+                  "  pm.environment.unset('token');",
+                  "} else if (res.token) {",
+                  "  pm.environment.set('token', res.token);",
+                  "  pm.environment.unset('tempToken');",
+                  "}",
+                  "if (res.clientId) pm.environment.set('clientId', res.clientId);",
+                  "if (res.role) pm.environment.set('role', res.role);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2FA - Setup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/auth/2fa/setup", "host": ["{{baseUrl}}"], "path": ["api","auth","2fa","setup"]}
+          }
+        },
+        {
+          "name": "2FA - Confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/auth/2fa/confirm", "host": ["{{baseUrl}}"], "path": ["api","auth","2fa","confirm"]},
+            "body": {"mode":"raw","raw": "{\n  \"code\": \"{{totpCode}}\"\n}"}
+          }
+        },
+        {
+          "name": "2FA - Verify (exchange temp -> JWT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/auth/2fa/verify", "host": ["{{baseUrl}}"], "path": ["api","auth","2fa","verify"]},
+            "body": {"mode":"raw","raw": "{\n  \"tempToken\": \"{{tempToken}}\",\n  \"code\": \"{{totpCode}}\"\n}"}
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let res = {};",
+                  "try { res = pm.response.json(); } catch(e) {}",
+                  "if (res.token) pm.environment.set('token', res.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "Create Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/clients", "host": ["{{baseUrl}}"], "path": ["api","clients"]},
+            "body": {"mode":"raw","raw": "{\n  \"lastName\": \"Doe\",\n  \"firstName\": \"John\",\n  \"clientTypeId\": 1,\n  \"sexId\": 1,\n  \"active\": true\n}"}
+          }
+        },
+        {
+          "name": "Search by Name",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/clients/search?name=Doe", "host": ["{{baseUrl}}"], "path": ["api","clients","search"], "query": [{"key":"name","value":"Doe"}]}
+          }
+        },
+        {
+          "name": "Update Contact Info",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/clients/{{clientId}}/contact", "host": ["{{baseUrl}}"], "path": ["api","clients","{{clientId}}","contact"]},
+            "body": {"mode":"raw","raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+40123456789\",\n  \"contactPerson\": \"John Doe\",\n  \"website\": \"https://example.com\"\n}"}
+          }
+        },
+        {
+          "name": "View Clients (read-only view)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/clients/view", "host": ["{{baseUrl}}"], "path": ["api","clients","view"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Accounts",
+      "item": [
+        {
+          "name": "Open Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/accounts/open", "host": ["{{baseUrl}}"], "path": ["api","accounts","open"]},
+            "body": {"mode":"raw","raw": "{\n  \"clientId\": {{clientId}},\n  \"currencyCode\": \"EUR\"\n}"}
+          }
+        },
+        {
+          "name": "Close Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/accounts/{{accountId}}/close", "host": ["{{baseUrl}}"], "path": ["api","accounts","{{accountId}}","close"]}
+          }
+        },
+        {
+          "name": "Accounts by Client",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/accounts/by-client/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["api","accounts","by-client","{{clientId}}"]}
+          }
+        },
+        {
+          "name": "Balance by IBAN",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/accounts/{{iban}}/balance", "host": ["{{baseUrl}}"], "path": ["api","accounts","{{iban}}","balance"]}
+          }
+        },
+        {
+          "name": "Deposit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/accounts/{{iban}}/deposit", "host": ["{{baseUrl}}"], "path": ["api","accounts","{{iban}}","deposit"]},
+            "body": {"mode":"raw","raw": "{\n  \"amount\": 150.00\n}"}
+          }
+        },
+        {
+          "name": "Withdraw",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/accounts/{{iban}}/withdraw", "host": ["{{baseUrl}}"], "path": ["api","accounts","{{iban}}","withdraw"]},
+            "body": {"mode":"raw","raw": "{\n  \"amount\": 50.00\n}"}
+          }
+        },
+        {
+          "name": "Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/accounts/transfer", "host": ["{{baseUrl}}"], "path": ["api","accounts","transfer"]},
+            "body": {"mode":"raw","raw": "{\n  \"fromIban\": \"{{iban}}\",\n  \"toIban\": \"{{iban2}}\",\n  \"amount\": 100.00\n}"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "View All (read-only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/transactions/view-all", "host": ["{{baseUrl}}"], "path": ["api","transactions","view-all"]}
+          }
+        },
+        {
+          "name": "By IBAN",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/transactions/by-iban/{{iban}}", "host": ["{{baseUrl}}"], "path": ["api","transactions","by-iban","{{iban}}"]}
+          }
+        },
+        {
+          "name": "By Client",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/transactions/by-client/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["api","transactions","by-client","{{clientId}}"]}
+          }
+        },
+        {
+          "name": "Between Dates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/between?from=2025-01-01&to=2025-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","transactions","between"],
+              "query": [
+                {"key":"from","value":"2025-01-01"},
+                {"key":"to","value":"2025-12-31"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "By Type (DEP/RET/TRF)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/transactions/by-type/DEP", "host": ["{{baseUrl}}"], "path": ["api","transactions","by-type","DEP"]}
+          }
+        },
+        {
+          "name": "Daily Totals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {"raw": "{{baseUrl}}/api/transactions/daily-totals", "host": ["{{baseUrl}}"], "path": ["api","transactions","daily-totals"]}
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "https://localhost:8443"},
+    {"key": "token", "value": ""},
+    {"key": "tempToken", "value": ""},
+    {"key": "totpCode", "value": "123456"},
+    {"key": "clientId", "value": "1"},
+    {"key": "accountId", "value": "1"},
+    {"key": "iban", "value": "RO49BANK0000000001EUR"},
+    {"key": "iban2", "value": "RO49BANK0000000002EUR"}
+  ]
+}

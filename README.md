@@ -1,304 +1,229 @@
-# Online Internet Banking — Backend (Java Spring Boot)
+# Online Internet Banking — Backend (Spring Boot)
 
-A Spring Boot backend system simulating the core logic of an online banking application.  
-The project provides RESTful APIs for managing clients, accounts, and transactions, built with a layered architecture and PostgreSQL persistence.
+This is my student project for a simple online banking backend. I implement core banking operations (clients, accounts, transactions) with Spring Boot, PostgreSQL, JWT authentication, and 2FA (TOTP). I wrote this README to explain what I built, how it works, and how to run and test it.
 
 ## Table of Contents
 
-- [Project Overview](#project-overview)  
-- [Architecture](#architecture)  
-- [Key Features](#key-features)  
-- [Technology Stack](#technology-stack)  
-- [Project Structure](#project-structure)  
-- [Database Design](#database-design)  
-- [Requirements](#requirements)  
-- [Setup and Configuration](#setup-and-configuration)  
-- [Running the Application](#running-the-application)  
-- [REST API — Endpoints and Examples](#rest-api---endpoints-and-examples)  
-  - [Client Endpoints](#client-endpoints)  
-  - [Account Endpoints](#account-endpoints)  
-  - [Transaction Endpoints](#transaction-endpoints)  
-- [How It Works Internally](#how-it-works-internally)  
-- [Validation and Error Handling](#validation-and-error-handling)
+- Project Overview
+- Architecture & Components
+- Security (JWT + 2FA + HTTPS)
+- Database & Migrations (Flyway)
+- Running & Configuration
+- API Endpoints & Examples (incl. Auth)
+- Validation & Error Handling
+- Caching
+- Troubleshooting (DB reset, quoting, enums)
 
 ---
 
 ## Project Overview
 
-This backend simulates the core functionality of an online banking platform, including:
+- REST backend with layered architecture (controller → service → repository → DB)
+- Persistent data in PostgreSQL using JPA/Hibernate
+- Authentication with JWT and optional 2FA (Google Authenticator compatible)
+- Flyway manages schema and seed data (V1…V10)
+- HTTPS enabled on port 8443 (self-signed keystore for dev)
 
-- Client management: Create, view, update, and soft-delete clients  
-- Account operations: Open/close accounts, deposit, withdraw, transfer funds, and check balances  
-- Transaction records: Log transactions automatically and generate aggregated summaries
+## Architecture & Components
 
-The project is implemented with Java Spring Boot, using Spring Data JPA for ORM and PostgreSQL as the database layer. It follows a clean, layered design pattern that separates controller logic, business logic, and data persistence.
+- Controllers: expose REST endpoints for auth, clients, accounts, transactions
+- Services: business rules (open/close accounts, deposit/withdraw/transfer, validations)
+- Repositories: Spring Data JPA for DB access
+- Models (Entities): map to tables and views
+- DTOs + Mappers: clean payloads between API and entities
+- Exception handling: consistent JSON errors via `GlobalExceptionHandler`
 
-## Architecture
+Important classes (examples):
+- `AccountService`: IBAN generation, balance updates, transaction logging
+- `AuthService`: register, login, 2FA setup/confirm/verify
+- `JwtAuthenticationFilter`: validates JWT and enforces 2FA claim for protected routes
+- `SecurityConfig`: Spring Security configuration
 
-- Controller — Defines REST endpoints and request mappings  
-- Service — Implements business logic and validations  
-- Repository — Handles data access with Spring Data JPA  
-- DTOs & Mappers — Transfer data between layers cleanly  
-- Model (Entities) — Define the database tables  
-- Exception Handling — Provides structured error responses
+## Security (JWT + 2FA + HTTPS)
 
-## Key Features
+- Login returns either a final JWT (no 2FA) or a short temp token (when 2FA is enabled)
+- 2FA flow: setup (generate secret + QR) → confirm → verify; then tokens include `2fa=ok`
+- `JwtAuthenticationFilter` checks signature, expiration, issuer, and requires `2fa=ok` for access if user has 2FA enabled
+- Passwords are hashed; user roles use a PostgreSQL ENUM (`ROLE_ENUM`)
+- HTTPS on 8443 with a PKCS12 keystore (for local dev, self‑signed)
 
-- Full CRUD operations for clients, including contact-info updates
-- Account management APIs: open/close accounts, list accounts by client, and check balance
-- Core bankng operations with balance tracking: deposit, withdrawal, and transfer
-- Transaction logging for every balance operation, plus advanced read-only filtering endpoints
-- IBAN generator for new accounts   
-- Native SQL aggregation for daily transaction totals  
-- Database views for read-only access  
-- Centralized exception handling and DTO-based validation  
-- Easily extendable architecture for future additions (authentication, reports, etc.)
+## Database & Migrations (Flyway)
 
-## Technology Stack
+Flyway versioned migrations live in `src/main/resources/db/migration`:
 
-Layer | Technology
---- | ---
-Language | Java 17
-Framework | Spring Boot 3.x
-Persistence | Spring Data JPA
-Database | PostgreSQL
-Build Tool | Maven
-Data Format | JSON (REST API)
-Tools | VS Code / IntelliJ / Postman
+- V1: PostgreSQL enums → `ROLE_ENUM`, `ACCOUNT_STATUS_ENUM`
+- V2: `CURRENCY_TYPE`, `TRANSACTION_TYPE` (columns: `id`, `code`, `name`, timestamps)
+  - Seed codes are short: `EUR`, `USD`, `RON`, `GBP` and `DEP` (Deposit), `RET` (Withdrawal), `TRF` (Transfer)
+- V3: `SEX_TYPE`, `CLIENT_TYPE` (both have `code` + `name`; seeds: `M/F/O`, `PF/PJ`)
+- V4: `CLIENT` (first_name, last_name, `client_type_id`, `sex_type_id`, `active`, audit)
+- V5: `CONTACT_INFO` (email, phone, contact_person, website, address, city, postal_code)
+- V6: `USER` (Postgres enum column `role ROLE_ENUM`)
+- V7: `ACCOUNT` (status `ACCOUNT_STATUS_ENUM`, `currency_type_id` FK)
+- V8: `TRANSACTION` (`transaction_type_id`, `original_currency_type_id`, amount/original_amount)
+- V9: read‑only views → `VIEW_CLIENT`, `VIEW_ACCOUNT`, `VIEW_TRANSACTION`
+- V10: seed sample data (25 clients, 50 accounts, 50 transactions)
 
-## Project Structure
+Entity highlights:
+- `User.role` and `Account.status` are mapped to Postgres enums using `@Enumerated(EnumType.STRING)` + `@JdbcTypeCode(SqlTypes.NAMED_ENUM)`
+- Lookup entities (`CurrencyType`, `TransactionType`, `ClientType`, `SexType`) have `code` and `name`
+- View entities (`ViewClient`, `ViewAccount`, `ViewTransaction`) map to SQL views with aliased columns
 
-src/main/java/ro/app/banking
+Table naming: tables and views are quoted uppercase (e.g., `"ACCOUNT"`). In `application.properties` I set `spring.jpa.properties.hibernate.globally_quoted_identifiers=true` so Hibernate matches the quoted names.
 
-- BankingApplication.java — Entry point
+## Running & Configuration
 
-- controller/ — REST controllers  
-  - ClientController.java  
-  - AccountController.java  
-  - TransactionController.java
+Environment: Java 17+ (runs fine on newer JDKs), Maven, PostgreSQL.
 
-- service/ — Business logic layer  
-  - ClientService.java  
-  - AccountService.java  
-  - TransactionService.java
+Configure in `src/main/resources/application.properties` (values are loaded from `.env.properties`):
 
-- repository/ — Data access layer (JPA Repositories)  
-  - ClientRepository.java  
-  - AccountRepository.java  
-  - TransactionRepository.java  
-  - CurrencyTypeRepository.java  
-  - TransactionTypeRepository.java  
-  - ViewAccountRepository.java  
-  - ViewClientRepository.java  
-  - ViewTransactionRepository.java
+```properties
+spring.config.import=optional:file:.env.properties
 
-- model/ — Entities and database mappings  
-  - Client.java  
-  - Account.java  
-  - Transaction.java  
-  - Lookup entities: CurrencyType, TransactionType, SexType, ClientType  
-  - Read-only views: ViewClient, ViewAccount, ViewTransaction
+# DataSource
+spring.datasource.url=${DB_URL}
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
 
-- dto/ — Data Transfer Objects  
-  - ClientDTO.java  
-  - AccountDTO.java  
-  - TransactionDTO.java
-
-- dto/mapper/ — Mappers between DTOs and Entities  
-  - ClientMapper.java  
-  - AccountMapper.java  
-  - TransactionMapper.java
-
-- dto/request/ — Request models for endpoints  
-  - OpenAccountRequest.java  
-  - TransferRequest.java  
-  - AmountRequest.java
-
-- exception/  
-  - GlobalExceptionHandler.java  
-  - ResourceNotFoundException.java  
-  - ErrorResponse.java
-
-## Database Design
-
-The database includes 8 tables and 3 view tables.
-
-Main Tables
-- client — stores personal data and client type  
-- cont — account details with currency and IBAN  
-- tranzactie — transaction logs (amount, type, date, references)
-
-Lookup Tables
-- tip_client  
-- tip_tranzactie  
-- valuta  
-- tip_sex
-
-Auxiliary Tables
-- date_de_contact
-
-Views (Read-only)
-- view_client  
-- view_account  
-- view_transaction
-
-## Requirements
-
-- Java 17+  
-- Maven 3.6+  
-- PostgreSQL 14+  
-- IDE: VS Code / IntelliJ / Eclipse  
-- Internet connection (for dependencies)
-
-## Setup and Configuration
-
-Edit the file: src/main/resources/application.properties
-
-```
-spring.datasource.url=jdbc:postgresql://localhost:5432/cibernetica?currentSchema=public
-spring.datasource.username=postgres
-spring.datasource.password=your_password
+# JPA / Hibernate
 spring.jpa.hibernate.ddl-auto=validate
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
-server.port=8080
-```
+spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+spring.jpa.hibernate.naming.implicit-strategy=org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
+spring.jpa.properties.hibernate.globally_quoted_identifiers=true
 
-Adjust the database credentials if needed. Ensure the schema exists — ddl-auto=validate means tables must already exist.
+# Flyway
+spring.flyway.enabled=true
+spring.flyway.locations=classpath:db/migration
+spring.flyway.baseline-on-migrate=true
 
-### TLS / HTTPS
-
-This project includes TLS/HTTPS support (see src/main/java/ro/app/banking/config/SslConfig.java). To enable HTTPS for local or production use, add TLS properties to application.properties and provide a keystore (JKS or PKCS12). Example properties:
-
-```
-server.port=8443
+# HTTPS
 server.ssl.enabled=true
 server.ssl.key-store=classpath:keystore.p12
-server.ssl.key-store-password=changeit
+server.ssl.key-store-password=${SSL_KEYSTORE_PASSWORD}
 server.ssl.key-store-type=PKCS12
 server.ssl.key-alias=tomcat
+server.port=${SERVER_PORT:8443}
 ```
 
-For local testing you can generate a self-signed PKCS12 keystore (Windows):
+Run with Maven wrapper (Flyway runs automatically on startup):
 
-```
-keytool -genkeypair -alias tomcat -keyalg RSA -keysize 2048 -storetype PKCS12 -keystore keystore.p12 -validity 3650 -storepass changeit -keypass changeit -dname "CN=localhost, OU=Dev, O=MyOrg, L=City, S=State, C=RO"
-```
-
-Place the keystore under src/main/resources (or update the path), restart the application and browse to https://localhost:8443. Accept the self-signed certificate in the browser or add it to your OS/browser trust store for development.
-
-## Running the Application
-
-Option 1: Maven Wrapper
-
-```
-mvnw spring-boot:run
+```bash
+./mvnw spring-boot:run
 ```
 
-Option 2: Package and Run
+The server listens on HTTPS `https://localhost:8443`.
 
-```
-mvn clean package
-java -jar target/banking-0.0.1-SNAPSHOT.jar
-```
+## API Endpoints & Examples
 
-Server starts at: http://localhost:8080
+Auth (2FA-capable)
+- `POST /api/auth/register` → create user tied to an existing client
+- `POST /api/auth/login` → returns final JWT or temp token if 2FA is enabled
+- `POST /api/auth/2fa/setup` → get secret + QR
+- `POST /api/auth/2fa/confirm` → enable 2FA
+- `POST /api/auth/2fa/verify` → exchange temp token + TOTP for final JWT
 
-## REST API — Endpoints and Examples
+Clients
+- `POST /api/clients` → create
+- `PUT /api/clients/{id}/contact` → update contact info
+- `GET /api/clients/view` → list from view (read‑only)
 
-### Client Endpoints
+Accounts
+- `POST /api/accounts/open` → open account (default status ACTIVE)
+- `POST /api/accounts/{iban}/deposit`
+- `POST /api/accounts/{iban}/withdraw`
+- `POST /api/accounts/transfer`
+- `GET /api/accounts/view`
 
-Method | Endpoint | Description
---- | --- | ---
-POST | /api/clients | Create a new client
-GET | /api/clients/search?name={name} | Search clients by name
-PUT | /api/clients/{id}/contact | Update contact info
-DELETE | /api/clients/{id} | Soft delete client
-GET | /api/clients/view | Get all clients (read-only view)
+Transactions
+- `GET /api/transactions/view`
+- `GET /api/transactions/account/{iban}`
+- `GET /api/transactions/filter?...`
 
-Example — Create Client
+Example: register → login → 2FA
 
 ```json
+// Register
+POST /api/auth/register
 {
-  "firstName": "Maria",
-  "lastName": "Popescu",
-  "email": "maria.popescu@example.com",
-  "clientTypeCode": "PF",
-  "sexCode": "F"
+  "clientId": 1,
+  "usernameOrEmail": "john.doe@example.com",
+  "password": "SecurePass123!"
+}
+
+// Login (returns temp token if 2FA is enabled)
+POST /api/auth/login
+{
+  "usernameOrEmail": "john.doe@example.com",
+  "password": "SecurePass123!"
+}
+
+// 2FA verify (use code from authenticator app)
+POST /api/auth/2fa/verify
+{
+  "code": "123456"
 }
 ```
 
-### Account Endpoints
-
-Method | Endpoint | Description
---- | --- | ---
-POST | /api/accounts/open | Open a new account
-POST | /api/accounts/{iban}/deposit | Deposit funds
-POST | /api/accounts/{iban}/withdraw | Withdraw funds
-POST | /api/accounts/transfer | Transfer between accounts
-GET | /api/accounts/view | List all accounts (read-only view)
-
-Example — Transfer
+Example: transfer
 
 ```json
+POST /api/accounts/transfer
 {
-  "sourceIban": "RORON123456789",
-  "targetIban": "ROEUR987654321",
-  "amount": 1000.00
+  "fromIban": "RO49BANK0000000001EUR",
+  "toIban": "RO49BANK0000000002EUR",
+  "amount": 150.00
 }
 ```
 
-### Transaction Endpoints
+Transaction types use short codes: `DEP`, `RET`, `TRF`.
 
-Method | Endpoint | Description
---- | --- | ---
-GET | /api/transactions/view | Get all transactions
-GET | /api/transactions/account/{iban} | Transactions for an account
-GET | /api/transactions/filter?... | Filter by client, date, or type
-GET | /api/transactions/daily-totals | Get daily totals (aggregation)
+## Validation & Error Handling
 
-## How It Works Internally
-
-The application follows a layered flow to process each request:
-
-1. Request sent to the Controller  
-   - A REST endpoint (for example, /api/accounts/transfer) receives the HTTP request.  
-   - The Controller validates input data and passes it to the corresponding Service layer.
-
-2. Service layer processes the logic  
-   - The Service contains the business rules:  
-     - For account transfers, it verifies that: both source and target IBANs exist; the source account has sufficient balance; the currency and client details are valid.  
-     - It then updates both account balances and creates a new transaction record.
-
-3. Repository handles database communication  
-   - The Service calls JPA Repositories (e.g., AccountRepository, TransactionRepository).  
-   - These repositories handle save(), findBy...(), and update() operations using Spring Data JPA.
-
-4. Entities and database tables  
-   - Each entity (e.g., Account, Transaction) maps directly to a table in the PostgreSQL database.  
-   - Hibernate automatically translates entity changes into SQL queries.
-
-5. DTOs and Mappers  
-   - Data Transfer Objects (DTOs) ensure that only required fields are sent to or received from the client.  
-   - Mappers (e.g., AccountMapper) convert between entity objects and DTOs.
-
-6. Response returned to the client  
-   - The Service sends a processed result (DTO) back to the Controller.  
-   - The Controller sends a clean JSON response to the client (Postman or frontend application).
-
-This structure ensures clean separation of concerns, reusability, and testability across all layers.
-
-## Validation and Error Handling
-
-Input fields are validated via Spring annotations (@NotNull, @Email, etc.). Invalid data or missing resources trigger structured JSON error responses from GlobalExceptionHandler.
-
-Example error:
+- DTOs use Bean Validation annotations (e.g., `@NotNull`, `@Email`, `@Size`)
+- A global exception handler returns consistent JSON:
 
 ```json
 {
-  "timestamp": "2025-11-08T12:30:15",
+  "timestamp": "2025-12-16T12:30:15Z",
   "status": 404,
-  "error": "Resource not found",
-  "message": "Client with ID 15 not found"
+  "error": "Resource Not Found",
+  "message": "Client not found",
+  "path": "/api/clients/123"
 }
 ```
+
+Auth errors use a dedicated exception type and respond with 401.
+
+## Caching
+
+- Caffeine cache for quick reads (e.g., account balances, accounts by client)
+- Simple TTL configuration in `application.properties`
+
+## Troubleshooting
+
+Quoted identifiers
+- Tables are created quoted/uppercase (e.g., `"ACCOUNT"`). I enabled `globally_quoted_identifiers` so Hibernate matches them.
+
+PostgreSQL enums
+- `User.role` and `Account.status` are true database enums (not varchar). I used `@JdbcTypeCode(SqlTypes.NAMED_ENUM)` so Hibernate binds correctly.
+
+Flyway reruns
+- Flyway runs only new migrations. If I change an old migration, it won’t re‑apply unless I reset the DB or create a new version (e.g., V11) with `ALTER TABLE` statements.
+
+Drop database with active sessions (psql):
+
+```sql
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = 'banking' AND pid <> pg_backend_pid();
+
+DROP DATABASE banking;
+```
+
+Seed data
+- V10 inserts 25 clients, 50 accounts (some with multiple currencies), and 50 transactions. Rerun by resetting the DB or adding a new seed migration.
+
+---
+
+That’s it. This README summarizes what I built, how I wired security and database migrations, and how to run/test the project. If you want me to add diagrams or more examples, I can extend it.

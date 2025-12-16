@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.validation.constraints.NotNull;
 import ro.app.banking.exception.ResourceNotFoundException;
 import ro.app.banking.model.Account;
+import ro.app.banking.model.AccountStatus;
 import ro.app.banking.model.Client;
 import ro.app.banking.model.CurrencyType;
 import ro.app.banking.model.Transaction;
@@ -80,7 +81,7 @@ public class AccountService {
         account.setClient(client);
         account.setCurrency(currency);
         account.setBalance(BigDecimal.ZERO);
-        account.setStatus("ACTIV");
+        account.setStatus(AccountStatus.ACTIVE);
 
         // Generate IBAN based on the currency entity
         account.setIban(generateIban(currency));
@@ -102,7 +103,7 @@ public class AccountService {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
-        if ("INCHIS".equalsIgnoreCase(account.getStatus())) {
+        if (AccountStatus.CLOSED.equals(account.getStatus())) {
             throw new IllegalStateException("Account already closed");
         }
 
@@ -110,7 +111,7 @@ public class AccountService {
             throw new IllegalStateException("Account balance must be zero before closing");
         }
 
-        account.setStatus("INCHIS");
+        account.setStatus(AccountStatus.CLOSED);
         return accountRepository.save(account);
     }
 
