@@ -1,7 +1,5 @@
 # Online Internet Banking — Backend (Spring Boot)
 
-This is my student project for a simple online banking backend. I implement core banking operations (clients, accounts, transactions) with Spring Boot, PostgreSQL, JWT authentication, and 2FA (TOTP). I wrote this README to explain what I built, how it works, and how to run and test it.
-
 ## Table of Contents
 
 - Project Overview
@@ -12,7 +10,6 @@ This is my student project for a simple online banking backend. I implement core
 - API Endpoints & Examples (incl. Auth)
 - Validation & Error Handling
 - Caching
-- Troubleshooting (DB reset, quoting, enums)
 
 ---
 
@@ -106,13 +103,13 @@ server.ssl.key-alias=tomcat
 server.port=${SERVER_PORT:8443}
 ```
 
-Run with Maven wrapper (Flyway runs automatically on startup):
+Run with Maven wrapper:
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-The server listens on HTTPS `https://localhost:8443`.
+Flyway migrations run automatically on startup. The server listens on `https://localhost:8443`.
 
 ## API Endpoints & Examples
 
@@ -226,4 +223,12 @@ Seed data
 
 ---
 
-That’s it. This README summarizes what I built, how I wired security and database migrations, and how to run/test the project. If you want me to add diagrams or more examples, I can extend it.
+## Quick Start Checklist
+
+1. Create `.env.properties` with `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `SSL_KEYSTORE_PASSWORD`, `SERVER_PORT`
+2. Create the PostgreSQL database
+3. Run `./mvnw spring-boot:run`
+4. Flyway applies migrations automatically; check logs for `Flyway: successfully validated` (or reset the DB if needed)
+5. Import the Postman collection from `postman_collection.json` and test endpoints
+
+The API is at `https://localhost:8443/api/**` and requires JWT for most requests (except auth endpoints).
