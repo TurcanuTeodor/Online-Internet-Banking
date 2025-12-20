@@ -17,9 +17,15 @@ import dev.samstevens.totp.time.TimeProvider;
 @Service
 public class TotpService {
     private final SecretGenerator secretGenerator = new DefaultSecretGenerator();
-    private final TimeProvider timeProvider = new SystemTimeProvider(); //current server time
-    private final CodeGenerator codeGenerator = new DefaultCodeGenerator(); //generator calculates the totp = secret+time
-    private final CodeVerifier codeVerifier = new DefaultCodeVerifier(codeGenerator, timeProvider); //verifier req codeGen to calc code, compares with the user's and tracks time
+
+    //current server time
+    private final TimeProvider timeProvider = new SystemTimeProvider(); 
+
+    //generator calculates the totp = secret+time with SHA256
+    private final CodeGenerator codeGenerator = new DefaultCodeGenerator(HashingAlgorithm.SHA256); 
+
+    //verifier req codeGen to calc code, compares with the user's and tracks time
+    private final CodeVerifier codeVerifier = new DefaultCodeVerifier(codeGenerator, timeProvider); 
 
     @Value("${app.2fa.app-name}") 
     private String appName; //this name appears in Google Auth
@@ -34,7 +40,7 @@ public class TotpService {
                                 .label(email)
                                 .secret(secret)
                                 .issuer(appName)
-                                .algorithm(HashingAlgorithm.SHA1)
+                                .algorithm(HashingAlgorithm.SHA256)
                                 .digits(6)
                                 .period(30)
                                 .build();
