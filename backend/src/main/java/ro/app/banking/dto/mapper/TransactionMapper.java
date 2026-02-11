@@ -11,7 +11,9 @@ public class TransactionMapper {
         TransactionDTO dto = new TransactionDTO();
         dto.setId(e.getId());
         dto.setAccountId(e.getAccount() != null ? e.getAccount().getId() : null);
+        dto.setAccountIban(e.getAccount() != null ? e.getAccount().getIban() : null);
         dto.setTransactionTypeCode(e.getTransactionType() != null ? e.getTransactionType().getCode() : null);
+        dto.setTransactionTypeName(e.getTransactionType() != null ? e.getTransactionType().getLabel() : null);
         dto.setAmount(e.getAmount());
         dto.setOriginalAmount(e.getOriginalAmount());
         dto.setOriginalCurrencyCode(e.getOriginalCurrency() != null ? e.getOriginalCurrency().getCode() : null);

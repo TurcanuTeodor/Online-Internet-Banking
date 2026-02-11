@@ -1,19 +1,20 @@
 -- V9__Create_views.sql
 
--- View for clients (read-only)
+-- View for clients (read-only) - includes contact info
 CREATE OR REPLACE VIEW "VIEW_CLIENT" AS
 SELECT 
     c.id AS client_id,
     c.first_name AS client_first_name,
     c.last_name AS client_last_name,
     ct.name AS client_type_name,
-    st.name AS sex_type_name,
     c.active AS client_active,
+    COALESCE(ci.phone, '') AS phone,
+    COALESCE(ci.email, '') AS email,
     c.created_at,
     c.updated_at
 FROM "CLIENT" c
 JOIN "CLIENT_TYPE" ct ON c.client_type_id = ct.id
-JOIN "SEX_TYPE" st ON c.sex_type_id = st.id;
+LEFT JOIN "CONTACT_INFO" ci ON c.id = ci.client_id;
 
 -- View for accounts (read-only)
 CREATE OR REPLACE VIEW "VIEW_ACCOUNT" AS
@@ -48,3 +49,4 @@ FROM "TRANSACTION" t
 JOIN "ACCOUNT" a ON t.account_id = a.id
 JOIN "TRANSACTION_TYPE" tt ON t.transaction_type_id = tt.id
 LEFT JOIN "CURRENCY_TYPE" cur ON t.original_currency_type_id = cur.id;
+

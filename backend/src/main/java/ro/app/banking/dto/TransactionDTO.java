@@ -10,8 +10,12 @@ public class TransactionDTO {
     @NotNull
     private Long accountId;
 
+    private String accountIban;
+
     @NotBlank
     private String transactionTypeCode;
+
+    private String transactionTypeName;
 
     @NotNull @Digits(integer=15, fraction=2)
     private BigDecimal amount;
@@ -34,8 +38,12 @@ public class TransactionDTO {
     public void setId(Long id) { this.id = id; }
     public Long getAccountId() { return accountId; }
     public void setAccountId(Long accountId) { this.accountId = accountId; }
+    public String getAccountIban() { return accountIban; }
+    public void setAccountIban(String accountIban) { this.accountIban = accountIban; }
     public String getTransactionTypeCode() { return transactionTypeCode; }
     public void setTransactionTypeCode(String transactionTypeCode) { this.transactionTypeCode = transactionTypeCode; }
+    public String getTransactionTypeName() { return transactionTypeName; }
+    public void setTransactionTypeName(String transactionTypeName) { this.transactionTypeName = transactionTypeName; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
     public BigDecimal getOriginalAmount() { return originalAmount; }

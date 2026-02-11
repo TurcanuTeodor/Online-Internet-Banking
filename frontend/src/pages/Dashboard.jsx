@@ -3,6 +3,7 @@ import { logout } from '../../services/authService';
 import { LogOut, Wallet, Plus, ArrowUpRight, ArrowDownRight, Send, Eye, EyeOff, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import QRCode from 'qrcode';
 import { getAccountsByClient, openAccount, deposit, withdraw, transfer, getBalanceByIban } from '../../services/accountService';
 import { getTransactionsByClient } from '../../services/transactionService';
 import { setup2FA, confirm2FA } from '../../services/authService';
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [activeModal, setActiveModal] = useState(null); // 'openAccount', 'deposit', 'withdraw', 'transfer', '2fa'
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [twoFaSetup, setTwoFaSetup] = useState(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState(null);
   const [twoFaEnabled, setTwoFaEnabled] = useState(false);
   
   // Form states
@@ -63,6 +65,15 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+
+  // Generate QR code when 2FA setup data is received
+  useEffect(() => {
+    if (twoFaSetup?.otpauthUrl) {
+      QRCode.toDataURL(twoFaSetup.otpauthUrl)
+        .then(url => setQrCodeDataUrl(url))
+        .catch(err => console.error('Failed to generate QR code:', err));
+    }
+  }, [twoFaSetup]);
 
   const handleOpenAccount = async () => {
     try {
@@ -323,9 +334,9 @@ export default function Dashboard() {
                           </td>
                           <td className="px-6 py-4 text-sm font-mono text-zinc-400">{tx.accountIban}</td>
                           <td className={`px-6 py-4 text-sm font-bold text-right ${
-                            tx.transactionTypeName === 'Deposit' ? 'text-emerald-400' : 'text-red-400'
+                            tx.sign === 'CREDIT' ? 'text-emerald-400' : 'text-red-400'
                           }`}>
-                            {tx.transactionTypeName === 'Deposit' ? '+' : '-'}
+                            {tx.sign === 'CREDIT' ? '+' : '-'}
                             {formatCurrency(tx.amount, tx.originalCurrencyCode)}
                           </td>
                         </tr>
@@ -439,7 +450,7 @@ export default function Dashboard() {
                   Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
                 </p>
                 <div className="bg-white p-4 rounded-xl mb-4 flex justify-center">
-                  <img src={twoFaSetup.qrCodeUrl} alt="2FA QR Code" className="w-48 h-48" />
+                  {qrCodeDataUrl && <img src={qrCodeDataUrl} alt="2FA QR Code" className="w-48 h-48" />}
                 </div>
                 <p className="text-zinc-400 text-xs mb-2">Or enter this secret manually:</p>
                 <p className="font-mono text-sm bg-zinc-800 p-2 rounded mb-4">{twoFaSetup.secret}</p>

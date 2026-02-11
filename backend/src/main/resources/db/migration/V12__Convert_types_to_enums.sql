@@ -68,15 +68,13 @@ SELECT
         WHEN 'PF' THEN 'INDIVIDUAL'
         WHEN 'PJ' THEN 'COMPANY'
     END AS client_type_name,
-    CASE c.sex_type
-        WHEN 'M' THEN 'MALE'
-        WHEN 'F' THEN 'FEMALE'
-        WHEN 'O' THEN 'OTHER'
-    END AS sex_type_name,
     c.active AS client_active,
+    COALESCE(ci.phone, '') AS phone,
+    COALESCE(ci.email, '') AS email,
     c.created_at,
     c.updated_at
-FROM "CLIENT" c;
+FROM "CLIENT" c
+LEFT JOIN "CONTACT_INFO" ci ON c.id = ci.client_id;
 
 CREATE OR REPLACE VIEW "VIEW_ACCOUNT" AS
 SELECT 

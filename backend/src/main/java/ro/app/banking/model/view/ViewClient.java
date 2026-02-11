@@ -24,18 +24,22 @@ public class ViewClient {
     @Column(name="client_type_name")
     private String clientTypeName;
 
-    @Column(name="sex_type_name")
-    private String sexDescription;
-
     @Column(name = "client_active")
     private Boolean active;
+
+    @Column(name = "phone")
+    private String phone;
+
+    @Column(name = "email")
+    private String email;
 
     public Long getClientId() { return clientId; }
     public String getClientLastName() { return clientLastName; }
     public String getClientFirstName() { return clientFirstName; }
     public String getClientTypeName() { return clientTypeName; }
-    public String getSexDescription() { return sexDescription; }
     public Boolean getActive() { return active; }
+    public String getPhone() { return phone; }
+    public String getEmail() { return email; }
 
     @Override
     public String toString() {
@@ -44,8 +48,9 @@ public class ViewClient {
                 ", clientLastName='" + clientLastName + '\'' +
                 ", clientFirstName='" + clientFirstName + '\'' +
                 ", clientTypeName='" + clientTypeName + '\'' +
-                ", sexDescription='" + sexDescription + '\'' +
                 ", active=" + active +
+                ", phone='" + phone + '\'' +
+                ", email='" + email + '\'' +
                 '}';
     }
 }

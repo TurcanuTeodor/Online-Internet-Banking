@@ -102,6 +102,7 @@ export default function AdminDashboard() {
                       <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">ID</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Name</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Email</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Phone</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Type</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Status</th>
                     </tr>
@@ -110,11 +111,12 @@ export default function AdminDashboard() {
                     {clients.map((client) => (
                       <tr key={client.clientId} className="hover:bg-zinc-800/30 transition-colors">
                         <td className="px-6 py-4 text-sm text-zinc-400">{client.clientId}</td>
-                        <td className="px-6 py-4 text-sm font-medium">{client.firstName} {client.lastName}</td>
+                        <td className="px-6 py-4 text-sm font-medium">{client.clientFirstName} {client.clientLastName}</td>
                         <td className="px-6 py-4 text-sm text-zinc-400">{client.email || 'N/A'}</td>
+                        <td className="px-6 py-4 text-sm text-zinc-400">{client.phone || 'N/A'}</td>
                         <td className="px-6 py-4 text-sm">
                           <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">
-                            {client.clientTypeCode}
+                            {client.clientTypeName}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm">
@@ -153,15 +155,15 @@ export default function AdminDashboard() {
                     {transactions.map((tx) => (
                       <tr key={tx.transactionId} className="hover:bg-zinc-800/30 transition-colors">
                         <td className="px-6 py-4 text-sm text-zinc-400">{tx.transactionId}</td>
-                        <td className="px-6 py-4 text-sm font-mono text-xs">{tx.iban}</td>
+                        <td className="px-6 py-4 text-sm font-mono text-xs">{tx.accountIban}</td>
                         <td className="px-6 py-4 text-sm">
                           <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">
-                            {tx.transactionTypeCode}
+                            {tx.transactionTypeName}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm font-medium">
-                          <span className={tx.sign === 'CREDIT' ? 'text-emerald-400' : 'text-red-400'}>
-                            {tx.sign === 'CREDIT' ? '+' : '-'}{tx.amount} {tx.currencyCode}
+                          <span className={tx.transactionSign === 'CREDIT' ? 'text-emerald-400' : 'text-red-400'}>
+                            {tx.transactionSign === 'CREDIT' ? '+' : '-'}{tx.transactionAmount} {tx.currencyCode}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-zinc-400">
