@@ -10,8 +10,8 @@ public class TransactionDTO {
     @NotNull
     private Long accountId;
 
-    @NotNull
-    private Long transactionTypeId;
+    @NotBlank
+    private String transactionTypeCode;
 
     @NotNull @Digits(integer=15, fraction=2)
     private BigDecimal amount;
@@ -19,8 +19,7 @@ public class TransactionDTO {
     @NotNull @Digits(integer=15, fraction=2)
     private BigDecimal originalAmount;
 
-    @NotNull
-    private Long originalCurrencyId;
+    private String originalCurrencyCode;
 
     @NotBlank
     private String sign; 
@@ -35,14 +34,14 @@ public class TransactionDTO {
     public void setId(Long id) { this.id = id; }
     public Long getAccountId() { return accountId; }
     public void setAccountId(Long accountId) { this.accountId = accountId; }
-    public Long getTransactionTypeId() { return transactionTypeId; }
-    public void setTransactionTypeId(Long transactionTypeId) { this.transactionTypeId = transactionTypeId; }
+    public String getTransactionTypeCode() { return transactionTypeCode; }
+    public void setTransactionTypeCode(String transactionTypeCode) { this.transactionTypeCode = transactionTypeCode; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
     public BigDecimal getOriginalAmount() { return originalAmount; }
     public void setOriginalAmount(BigDecimal originalAmount) { this.originalAmount = originalAmount; }
-    public Long getOriginalCurrencyId() { return originalCurrencyId; }
-    public void setOriginalCurrencyId(Long originalCurrencyId) { this.originalCurrencyId = originalCurrencyId; }
+    public String getOriginalCurrencyCode() { return originalCurrencyCode; }
+    public void setOriginalCurrencyCode(String originalCurrencyCode) { this.originalCurrencyCode = originalCurrencyCode; }
     public String getSign() { return sign; }
     public void setSign(String sign) { this.sign = sign; }
     public String getDetails() { return details; }

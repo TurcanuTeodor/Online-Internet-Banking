@@ -6,7 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import ro.app.banking.model.Transaction;
+import ro.app.banking.model.entity.Transaction;
+import ro.app.banking.model.enums.TransactionType;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
     // Toate tranzacțiile unui cont
@@ -22,8 +23,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findBetweenDates(@Param("from") java.time.LocalDate from, @Param("to") java.time.LocalDate to);
 
     // Tranzacțiile de un anumit tip 
-    @Query("SELECT t FROM Transaction t WHERE t.transactionType.code = :code ORDER BY t.transactionDate DESC")
-    List<Transaction> findByTransactionTypeCode(@Param("code") String code);
+    @Query("SELECT t FROM Transaction t WHERE t.transactionType = :type ORDER BY t.transactionDate DESC")
+    List<Transaction> findByTransactionType(@Param("type") TransactionType type);
 
     @Query("""
         SELECT function('date', t.transactionDate) AS day,

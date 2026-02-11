@@ -4,8 +4,8 @@ import jakarta.validation.Valid;
 import ro.app.banking.dto.*;
 import ro.app.banking.dto.mapper.*;
 import ro.app.banking.dto.request.*;
-import ro.app.banking.model.Account;
-import ro.app.banking.model.Transaction;
+import ro.app.banking.model.entity.Account;
+import ro.app.banking.model.entity.Transaction;
 import ro.app.banking.service.AccountService;
 
 import org.springframework.http.HttpStatus;

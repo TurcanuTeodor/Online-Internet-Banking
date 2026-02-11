@@ -7,7 +7,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import ro.app.banking.model.User;
+import ro.app.banking.model.entity.User;
 
 //UserPrincipal is an adapter between the User entity(db model)
 //and Spring Security's UserDetails inteface

@@ -18,8 +18,8 @@
 - REST backend with layered architecture (controller → service → repository → DB)
 - Persistent data in PostgreSQL using JPA/Hibernate
 - Authentication with JWT and optional 2FA (Google Authenticator compatible)
-- Flyway manages schema and seed data (V1…V10)
-- HTTPS enabled on port 8443 (self-signed keystore for dev)
+- Flyway manages schema and seed data (V1…V13)
+- HTTPS enabled on port 8443 (self-signed keystore for dev) and HTTP on 8080
 
 ## Architecture & Components
 
@@ -59,10 +59,13 @@ Flyway versioned migrations live in `src/main/resources/db/migration`:
 - V8: `TRANSACTION` (`transaction_type_id`, `original_currency_type_id`, amount/original_amount)
 - V9: read‑only views → `VIEW_CLIENT`, `VIEW_ACCOUNT`, `VIEW_TRANSACTION`
 - V10: seed sample data (25 clients, 50 accounts, 50 transactions)
+- V11: add sample users (admin + regular user)
+- V12: convert lookup tables to Postgres enums (ClientType, SexType, CurrencyType, TransactionType)
+- V13: fix sample user password hashes
 
 Entity highlights:
 - `User.role` and `Account.status` are mapped to Postgres enums using `@Enumerated(EnumType.STRING)` + `@JdbcTypeCode(SqlTypes.NAMED_ENUM)`
-- Lookup entities (`CurrencyType`, `TransactionType`, `ClientType`, `SexType`) have `code` and `name`
+- Lookup entities removed in favor of Java enums in `model.enums`
 - View entities (`ViewClient`, `ViewAccount`, `ViewTransaction`) map to SQL views with aliased columns
 
 Table naming: tables and views are quoted uppercase (e.g., `"ACCOUNT"`). In `application.properties` I set `spring.jpa.properties.hibernate.globally_quoted_identifiers=true` so Hibernate matches the quoted names.
@@ -109,7 +112,7 @@ Run with Maven wrapper:
 ./mvnw spring-boot:run
 ```
 
-Flyway migrations run automatically on startup. The server listens on `https://localhost:8443`.
+Flyway migrations run automatically on startup. The server listens on `https://localhost:8443` and `http://localhost:8080`.
 
 ## API Endpoints & Examples
 
@@ -130,12 +133,16 @@ Accounts
 - `POST /api/accounts/{iban}/deposit`
 - `POST /api/accounts/{iban}/withdraw`
 - `POST /api/accounts/transfer`
-- `GET /api/accounts/view`
+- `GET /api/accounts/by-client/{clientId}`
+- `GET /api/accounts/{iban}/balance`
 
 Transactions
-- `GET /api/transactions/view`
-- `GET /api/transactions/account/{iban}`
-- `GET /api/transactions/filter?...`
+- `GET /api/transactions/view-all`
+- `GET /api/transactions/by-iban/{iban}`
+- `GET /api/transactions/by-client/{clientId}`
+- `GET /api/transactions/by-type/{code}`
+- `GET /api/transactions/between?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- `GET /api/transactions/daily-totals`
 
 Example: register → login → 2FA
 
@@ -206,7 +213,7 @@ PostgreSQL enums
 - `User.role` and `Account.status` are true database enums (not varchar). I used `@JdbcTypeCode(SqlTypes.NAMED_ENUM)` so Hibernate binds correctly.
 
 Flyway reruns
-- Flyway runs only new migrations. If I change an old migration, it won’t re‑apply unless I reset the DB or create a new version (e.g., V11) with `ALTER TABLE` statements.
+- Flyway runs only new migrations. If I change an old migration, it won’t re‑apply unless I reset the DB or create a new version (e.g., V12 or V13) with `ALTER TABLE` statements.
 
 Drop database with active sessions (psql):
 

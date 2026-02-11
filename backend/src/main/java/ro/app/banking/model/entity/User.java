@@ -1,4 +1,4 @@
-package ro.app.banking.model;
+package ro.app.banking.model.entity;
 
 import java.time.LocalDateTime;
 
@@ -18,6 +18,8 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+
+import ro.app.banking.model.enums.Role;
 
 @Entity
 @Table(name = "\"USER\"")

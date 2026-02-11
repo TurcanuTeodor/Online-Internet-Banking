@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import ro.app.banking.model.Client;
+import ro.app.banking.model.entity.Client;
 
 public interface ClientRepository extends JpaRepository<Client, Long> {
     

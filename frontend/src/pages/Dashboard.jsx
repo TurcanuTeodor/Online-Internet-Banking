@@ -1,0 +1,466 @@
+import { useNavigate } from 'react-router-dom';
+import { logout } from '../../services/authService';
+import { LogOut, Wallet, Plus, ArrowUpRight, ArrowDownRight, Send, Eye, EyeOff, Shield } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
+import { getAccountsByClient, openAccount, deposit, withdraw, transfer, getBalanceByIban } from '../../services/accountService';
+import { getTransactionsByClient } from '../../services/transactionService';
+import { setup2FA, confirm2FA } from '../../services/authService';
+
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const [clientId, setClientId] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showBalances, setShowBalances] = useState(true);
+  const [activeModal, setActiveModal] = useState(null); // 'openAccount', 'deposit', 'withdraw', 'transfer', '2fa'
+  const [selectedAccount, setSelectedAccount] = useState(null);
+  const [twoFaSetup, setTwoFaSetup] = useState(null);
+  const [twoFaEnabled, setTwoFaEnabled] = useState(false);
+  
+  // Form states
+  const [newAccountCurrency, setNewAccountCurrency] = useState('EUR');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [transferForm, setTransferForm] = useState({ toIban: '', amount: '' });
+  const [twoFaCode, setTwoFaCode] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    const token = localStorage.getItem('jwt_token');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setClientId(decoded.clientId);
+        setTwoFaEnabled(decoded['2fa_verified'] === true);
+      } catch (error) {
+        console.error('Failed to decode token:', error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (clientId) {
+      fetchData();
+    }
+  }, [clientId]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [accountsData, transactionsData] = await Promise.all([
+        getAccountsByClient(clientId),
+        getTransactionsByClient(clientId)
+      ]);
+      setAccounts(accountsData);
+      setTransactions(transactionsData.slice(0, 10)); // Show last 10 transactions
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenAccount = async () => {
+    try {
+      await openAccount(clientId, newAccountCurrency);
+      setSuccess('Account opened successfully!');
+      setActiveModal(null);
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to open account');
+    }
+  };
+
+  const handleDeposit = async () => {
+    try {
+      await deposit(selectedAccount.iban, parseFloat(depositAmount));
+      setSuccess(`Deposited ${depositAmount} ${selectedAccount.currencyCode} successfully!`);
+      setActiveModal(null);
+      setDepositAmount('');
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Deposit failed');
+    }
+  };
+
+  const handleWithdraw = async () => {
+    try {
+      await withdraw(selectedAccount.iban, parseFloat(withdrawAmount));
+      setSuccess(`Withdrew ${withdrawAmount} ${selectedAccount.currencyCode} successfully!`);
+      setActiveModal(null);
+      setWithdrawAmount('');
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Withdrawal failed');
+    }
+  };
+
+  const handleTransfer = async () => {
+    try {
+      await transfer(selectedAccount.iban, transferForm.toIban, parseFloat(transferForm.amount));
+      setSuccess(`Transferred ${transferForm.amount} ${selectedAccount.currencyCode} successfully!`);
+      setActiveModal(null);
+      setTransferForm({ toIban: '', amount: '' });
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Transfer failed');
+    }
+  };
+
+  const handleSetup2FA = async () => {
+    try {
+      const data = await setup2FA();
+      setTwoFaSetup(data);
+      setActiveModal('2fa');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to setup 2FA');
+    }
+  };
+
+  const handleConfirm2FA = async () => {
+    try {
+      await confirm2FA(twoFaCode);
+      setSuccess('2FA enabled successfully!');
+      setActiveModal(null);
+      setTwoFaEnabled(true);
+      setTwoFaCode('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid code');
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const formatCurrency = (amount, currency) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD'
+    }).format(amount);
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-900 to-slate-950">
+      {/* Nav */}
+      <nav className="glass border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+              <Wallet className="w-5 h-5 text-emerald-400" />
+            </div>
+            <h1 className="text-xl font-bold">CashTactics Dashboard</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {!twoFaEnabled && (
+              <button onClick={handleSetup2FA} className="btn-secondary flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                Enable 2FA
+              </button>
+            )}
+            <button onClick={handleLogout} className="btn-secondary flex items-center gap-2">
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Error/Success Messages */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 animate-fade-in">
+            {error}
+            <button onClick={() => setError('')} className="ml-4 underline">Dismiss</button>
+          </div>
+        )}
+        {success && (
+          <div className="mb-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 animate-fade-in">
+            {success}
+            <button onClick={() => setSuccess('')} className="ml-4 underline">Dismiss</button>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="glass rounded-2xl p-12 text-center">
+            <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-zinc-400">Loading your accounts...</p>
+          </div>
+        ) : (
+          <>
+            {/* Accounts Section */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">Your Accounts</h2>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowBalances(!showBalances)}
+                    className="btn-secondary flex items-center gap-2"
+                  >
+                    {showBalances ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showBalances ? 'Hide' : 'Show'} Balances
+                  </button>
+                  <button
+                    onClick={() => setActiveModal('openAccount')}
+                    className="btn-primary flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Open Account
+                  </button>
+                </div>
+              </div>
+
+              {accounts.length === 0 ? (
+                <div className="glass rounded-2xl p-12 text-center">
+                  <Wallet className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
+                  <p className="text-zinc-400 mb-4">No accounts yet</p>
+                  <button onClick={() => setActiveModal('openAccount')} className="btn-primary">
+                    Open Your First Account
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {accounts.map((account) => (
+                    <div key={account.id} className="glass rounded-2xl p-6 hover:border-emerald-500/20 transition-all">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                          <Wallet className="w-6 h-6 text-emerald-400" />
+                        </div>
+                        <span className={`px-3 py-1 rounded-lg text-xs font-medium ${
+                          account.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-700 text-zinc-400'
+                        }`}>
+                          {account.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-500 mb-2">IBAN</p>
+                      <p className="text-sm font-mono text-zinc-300 mb-4">{account.iban}</p>
+                      <p className="text-2xl font-bold mb-6">
+                        {showBalances ? formatCurrency(account.balance, account.currencyCode) : '••••••'}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedAccount(account);
+                            setActiveModal('deposit');
+                          }}
+                          className="btn-secondary flex items-center justify-center gap-1 text-xs"
+                        >
+                          <ArrowDownRight className="w-3 h-3" />
+                          Deposit
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedAccount(account);
+                            setActiveModal('withdraw');
+                          }}
+                          className="btn-secondary flex items-center justify-center gap-1 text-xs"
+                        >
+                          <ArrowUpRight className="w-3 h-3" />
+                          Withdraw
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedAccount(account);
+                            setActiveModal('transfer');
+                          }}
+                          className="btn-secondary flex items-center justify-center gap-1 text-xs"
+                        >
+                          <Send className="w-3 h-3" />
+                          Transfer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Recent Transactions */}
+            <div>
+              <h2 className="text-2xl font-bold mb-4">Recent Transactions</h2>
+              {transactions.length === 0 ? (
+                <div className="glass rounded-2xl p-12 text-center">
+                  <p className="text-zinc-400">No transactions yet</p>
+                </div>
+              ) : (
+                <div className="glass rounded-2xl overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-zinc-800/50">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase">Date</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase">Type</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase">Account</th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800">
+                      {transactions.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-zinc-800/30">
+                          <td className="px-6 py-4 text-sm text-zinc-300">{formatDate(tx.transactionDate)}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              tx.transactionTypeName === 'Deposit' ? 'bg-emerald-500/20 text-emerald-400' :
+                              tx.transactionTypeName === 'Withdrawal' ? 'bg-red-500/20 text-red-400' :
+                              'bg-blue-500/20 text-blue-400'
+                            }`}>
+                              {tx.transactionTypeName}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm font-mono text-zinc-400">{tx.accountIban}</td>
+                          <td className={`px-6 py-4 text-sm font-bold text-right ${
+                            tx.transactionTypeName === 'Deposit' ? 'text-emerald-400' : 'text-red-400'
+                          }`}>
+                            {tx.transactionTypeName === 'Deposit' ? '+' : '-'}
+                            {formatCurrency(tx.amount, tx.originalCurrencyCode)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Modals */}
+      {activeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setActiveModal(null)}>
+          <div className="glass rounded-2xl p-6 max-w-md w-full animate-fade-in" onClick={(e) => e.stopPropagation()}>
+            {activeModal === 'openAccount' && (
+              <>
+                <h3 className="text-xl font-bold mb-4">Open New Account</h3>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Currency</label>
+                <select
+                  value={newAccountCurrency}
+                  onChange={(e) => setNewAccountCurrency(e.target.value)}
+                  className="input-field mb-4"
+                >
+                  <option value="EUR">EUR - Euro</option>
+                  <option value="USD">USD - US Dollar</option>
+                  <option value="RON">RON - Romanian Leu</option>
+                  <option value="GBP">GBP - British Pound</option>
+                </select>
+                <div className="flex gap-3">
+                  <button onClick={() => setActiveModal(null)} className="btn-secondary flex-1">Cancel</button>
+                  <button onClick={handleOpenAccount} className="btn-primary flex-1">Open Account</button>
+                </div>
+              </>
+            )}
+
+            {activeModal === 'deposit' && selectedAccount && (
+              <>
+                <h3 className="text-xl font-bold mb-4">Deposit to {selectedAccount.iban}</h3>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Amount ({selectedAccount.currencyCode})</label>
+                <input
+                  type="number"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  className="input-field mb-4"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                />
+                <div className="flex gap-3">
+                  <button onClick={() => setActiveModal(null)} className="btn-secondary flex-1">Cancel</button>
+                  <button onClick={handleDeposit} className="btn-primary flex-1">Deposit</button>
+                </div>
+              </>
+            )}
+
+            {activeModal === 'withdraw' && selectedAccount && (
+              <>
+                <h3 className="text-xl font-bold mb-4">Withdraw from {selectedAccount.iban}</h3>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Amount ({selectedAccount.currencyCode})</label>
+                <input
+                  type="number"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  className="input-field mb-4"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                />
+                <div className="flex gap-3">
+                  <button onClick={() => setActiveModal(null)} className="btn-secondary flex-1">Cancel</button>
+                  <button onClick={handleWithdraw} className="btn-primary flex-1">Withdraw</button>
+                </div>
+              </>
+            )}
+
+            {activeModal === 'transfer' && selectedAccount && (
+              <>
+                <h3 className="text-xl font-bold mb-4">Transfer from {selectedAccount.iban}</h3>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">To IBAN</label>
+                <input
+                  type="text"
+                  value={transferForm.toIban}
+                  onChange={(e) => setTransferForm({...transferForm, toIban: e.target.value})}
+                  className="input-field mb-4"
+                  placeholder="RO49BANK0000000002EUR"
+                />
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Amount ({selectedAccount.currencyCode})</label>
+                <input
+                  type="number"
+                  value={transferForm.amount}
+                  onChange={(e) => setTransferForm({...transferForm, amount: e.target.value})}
+                  className="input-field mb-4"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                />
+                <div className="flex gap-3">
+                  <button onClick={() => setActiveModal(null)} className="btn-secondary flex-1">Cancel</button>
+                  <button onClick={handleTransfer} className="btn-primary flex-1">Transfer</button>
+                </div>
+              </>
+            )}
+
+            {activeModal === '2fa' && twoFaSetup && (
+              <>
+                <h3 className="text-xl font-bold mb-4">Setup Two-Factor Authentication</h3>
+                <p className="text-zinc-400 text-sm mb-4">
+                  Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                </p>
+                <div className="bg-white p-4 rounded-xl mb-4 flex justify-center">
+                  <img src={twoFaSetup.qrCodeUrl} alt="2FA QR Code" className="w-48 h-48" />
+                </div>
+                <p className="text-zinc-400 text-xs mb-2">Or enter this secret manually:</p>
+                <p className="font-mono text-sm bg-zinc-800 p-2 rounded mb-4">{twoFaSetup.secret}</p>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Enter verification code</label>
+                <input
+                  type="text"
+                  value={twoFaCode}
+                  onChange={(e) => setTwoFaCode(e.target.value)}
+                  className="input-field mb-4"
+                  placeholder="000000"
+                  maxLength={6}
+                />
+                <div className="flex gap-3">
+                  <button onClick={() => setActiveModal(null)} className="btn-secondary flex-1">Cancel</button>
+                  <button onClick={handleConfirm2FA} className="btn-primary flex-1">Confirm</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

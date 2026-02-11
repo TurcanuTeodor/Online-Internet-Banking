@@ -6,7 +6,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ro.app.banking.dto.TransactionDTO;
 import ro.app.banking.dto.mapper.TransactionMapper;
-import ro.app.banking.model.ViewTransaction;
+import ro.app.banking.model.view.ViewTransaction;
 import ro.app.banking.service.TransactionService;
 
 import java.math.BigDecimal;

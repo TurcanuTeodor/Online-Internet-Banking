@@ -1,4 +1,4 @@
-package ro.app.banking.model;
+package ro.app.banking.model.embedded;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,6 +9,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
+
+import ro.app.banking.model.entity.Client;
 
 @Entity
 @Table(name = "\"CONTACT_INFO\"")

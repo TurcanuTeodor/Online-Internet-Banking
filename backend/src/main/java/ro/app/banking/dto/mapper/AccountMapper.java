@@ -5,11 +5,11 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import ro.app.banking.dto.AccountDTO;
-import ro.app.banking.model.Account;
-import ro.app.banking.model.AccountStatus;
-import ro.app.banking.model.Client;
-import ro.app.banking.model.CurrencyType;
-import ro.app.banking.model.Transaction;
+import ro.app.banking.model.entity.Account;
+import ro.app.banking.model.entity.Client;
+import ro.app.banking.model.entity.Transaction;
+import ro.app.banking.model.enums.AccountStatus;
+import ro.app.banking.model.enums.CurrencyType;
 
 public class AccountMapper {
 
@@ -18,7 +18,7 @@ public class AccountMapper {
         dto.setId(e.getId());
         dto.setIban(e.getIban());
         dto.setBalance(e.getBalance());
-        dto.setCurrencyId(e.getCurrency() != null ? e.getCurrency().getId() : null);
+        dto.setCurrencyCode(e.getCurrency() != null ? e.getCurrency().getCode() : null);
         dto.setClientId(e.getClient() != null ? e.getClient().getId() : null);
         dto.setStatus(e.getStatus() != null ? e.getStatus().name() : "ACTIVE");
         dto.setCreatedAt(e.getCreatedAt());

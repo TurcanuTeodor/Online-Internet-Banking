@@ -4,10 +4,10 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import ro.app.banking.dto.ClientDTO;
-import ro.app.banking.model.Account;
-import ro.app.banking.model.Client;
-import ro.app.banking.model.ClientType;
-import ro.app.banking.model.SexType;
+import ro.app.banking.model.entity.Account;
+import ro.app.banking.model.entity.Client;
+import ro.app.banking.model.enums.ClientType;
+import ro.app.banking.model.enums.SexType;
 
 public class ClientMapper {
     public static ClientDTO toDTO(Client e) {
@@ -15,8 +15,8 @@ public class ClientMapper {
         dto.setId(e.getId());
         dto.setLastName(e.getLastName());
         dto.setFirstName(e.getFirstName());
-        dto.setClientTypeId(e.getClientType() != null ? e.getClientType().getId() : null);
-        dto.setSexId(e.getSex() != null ? e.getSex().getId() : null);
+        dto.setClientTypeCode(e.getClientType() != null ? e.getClientType().getCode() : null);
+        dto.setSexCode(e.getSex() != null ? e.getSex().getCode() : null);
         dto.setActive(e.isActive());
         dto.setAccountIds(e.getAccounts() != null
                 ? e.getAccounts().stream().map(Account::getId).collect(Collectors.toList())

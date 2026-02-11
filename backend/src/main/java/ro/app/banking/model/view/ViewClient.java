@@ -1,4 +1,4 @@
-package ro.app.banking.model;
+package ro.app.banking.model.view;
 
 import org.hibernate.annotations.Immutable;
 

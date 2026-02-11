@@ -1,4 +1,4 @@
-package ro.app.banking.model;
+package ro.app.banking.model.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,10 +10,18 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import ro.app.banking.model.enums.CurrencyType;
+import ro.app.banking.model.enums.TransactionType;
 
 @Entity
 @Table(name = "\"TRANSACTION\"")
@@ -43,12 +51,14 @@ public class Transaction {
     @JsonBackReference("account-transactions")
     private Account account;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "transaction_type_id", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "transaction_type_code", nullable = false, columnDefinition = "TRANSACTION_TYPE_ENUM")
     private TransactionType transactionType;
 
-    @ManyToOne(optional = true)
-    @JoinColumn(name = "original_currency_type_id")
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "original_currency_code", columnDefinition = "CURRENCY_ENUM")
     private CurrencyType originalCurrency;
 
     public Transaction() {

@@ -15,11 +15,11 @@ public class ClientDTO {
     @NotBlank
     private String firstName;
 
-    @NotNull
-    private Long clientTypeId;
+    @NotBlank
+    private String clientTypeCode;
 
-    @NotNull
-    private Long sexId;
+    @NotBlank
+    private String sexCode;
 
     @NotNull    
     private boolean active = true;
@@ -33,10 +33,10 @@ public class ClientDTO {
     public void setLastName(String lastName) { this.lastName = lastName; }
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
-    public Long getClientTypeId() { return clientTypeId; }
-    public void setClientTypeId(Long clientTypeId) { this.clientTypeId = clientTypeId; }
-    public Long getSexId() { return sexId; }
-    public void setSexId(Long sexId) { this.sexId = sexId; }
+    public String getClientTypeCode() { return clientTypeCode; }
+    public void setClientTypeCode(String clientTypeCode) { this.clientTypeCode = clientTypeCode; }
+    public String getSexCode() { return sexCode; }
+    public void setSexCode(String sexCode) { this.sexCode = sexCode; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public List<Long> getAccountIds() { return accountIds; }

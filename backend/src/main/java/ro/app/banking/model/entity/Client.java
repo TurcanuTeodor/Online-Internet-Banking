@@ -1,4 +1,4 @@
-package ro.app.banking.model;
+package ro.app.banking.model.entity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,10 +12,16 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
+import ro.app.banking.model.enums.ClientType;
+import ro.app.banking.model.enums.SexType;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "\"CLIENT\"")
@@ -32,12 +38,14 @@ public class Client {
     @Column(name = "first_name", nullable = false)
     private String firstName;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "client_type_id", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "client_type", nullable = false, columnDefinition = "CLIENT_TYPE_ENUM")
     private ClientType clientType;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "sex_type_id", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "sex_type", nullable = false, columnDefinition = "SEX_TYPE_ENUM")
     private SexType sexType;
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.PERSIST)

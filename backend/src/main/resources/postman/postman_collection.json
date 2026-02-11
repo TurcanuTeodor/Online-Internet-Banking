@@ -117,7 +117,7 @@
               {"key": "Authorization", "value": "Bearer {{token}}"}
             ],
             "url": {"raw": "{{baseUrl}}/api/clients", "host": ["{{baseUrl}}"], "path": ["api","clients"]},
-            "body": {"mode":"raw","raw": "{\n  \"lastName\": \"Doe\",\n  \"firstName\": \"John\",\n  \"clientTypeId\": 1,\n  \"sexId\": 1,\n  \"active\": true\n}"}
+            "body": {"mode":"raw","raw": "{\n  \"lastName\": \"Doe\",\n  \"firstName\": \"John\",\n  \"clientTypeCode\": \"PF\",\n  \"sexCode\": \"M\",\n  \"active\": true\n}"}
           }
         },
         {

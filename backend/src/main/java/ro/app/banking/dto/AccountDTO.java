@@ -18,8 +18,8 @@ public class AccountDTO {
     @Digits(integer = 15, fraction = 2)
     private BigDecimal balance = BigDecimal.ZERO;
 
-    @NotNull
-    private Long currencyId;
+    @NotBlank
+    private String currencyCode;
 
     @NotNull
     private Long clientId;
@@ -44,8 +44,8 @@ public class AccountDTO {
     public BigDecimal getBalance() { return balance; }
     public void setBalance(BigDecimal balance) { this.balance = balance; }
 
-    public Long getCurrencyId() { return currencyId; }
-    public void setCurrencyId(Long currencyId) { this.currencyId = currencyId; }
+    public String getCurrencyCode() { return currencyCode; }
+    public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
 
     public Long getClientId() { return clientId; }
     public void setClientId(Long clientId) { this.clientId = clientId; }

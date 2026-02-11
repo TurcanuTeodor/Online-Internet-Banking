@@ -5,7 +5,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import ro.app.banking.model.User;
+import ro.app.banking.model.entity.User;
 import ro.app.banking.repository.UserRepository;
 
 //loads a user by username/email

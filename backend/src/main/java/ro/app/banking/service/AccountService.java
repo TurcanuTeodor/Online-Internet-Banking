@@ -12,17 +12,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.validation.constraints.NotNull;
 import ro.app.banking.exception.ResourceNotFoundException;
-import ro.app.banking.model.Account;
-import ro.app.banking.model.AccountStatus;
-import ro.app.banking.model.Client;
-import ro.app.banking.model.CurrencyType;
-import ro.app.banking.model.Transaction;
-import ro.app.banking.model.TransactionType;
+import ro.app.banking.model.entity.Account;
+import ro.app.banking.model.entity.Client;
+import ro.app.banking.model.entity.Transaction;
+import ro.app.banking.model.enums.AccountStatus;
+import ro.app.banking.model.enums.CurrencyType;
+import ro.app.banking.model.enums.TransactionType;
 import ro.app.banking.repository.AccountRepository;
 import ro.app.banking.repository.ClientRepository;
-import ro.app.banking.repository.CurrencyTypeRepository;
 import ro.app.banking.repository.TransactionRepository;
-import ro.app.banking.repository.TransactionTypeRepository;
 
 @Service
 public class AccountService {
@@ -30,19 +28,12 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final ClientRepository clientRepository;
     private final TransactionRepository transactionRepository;
-    private final CurrencyTypeRepository currencyRepository;
-    private final TransactionTypeRepository transactionTypeRepository;
-
     public AccountService(AccountRepository accountRepository,
                           ClientRepository clientRepository,
-                          TransactionRepository transactionRepository,
-                          CurrencyTypeRepository currencyRepository,
-                          TransactionTypeRepository transactionTypeRepository) {
+                          TransactionRepository transactionRepository) {
         this.accountRepository = accountRepository;
         this.clientRepository = clientRepository;
         this.transactionRepository = transactionRepository;
-        this.currencyRepository = currencyRepository;
-        this.transactionTypeRepository = transactionTypeRepository;
     }
 
     private String generateIban(CurrencyType currency) {
@@ -74,8 +65,7 @@ public class AccountService {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
 
-        CurrencyType currency = currencyRepository.findByCodeIgnoreCase(currencyCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Currency not found"));
+        CurrencyType currency = CurrencyType.fromCode(currencyCode);
 
         Account account = new Account();
         account.setClient(client);
@@ -142,8 +132,7 @@ public class AccountService {
 
         account.setBalance(account.getBalance().add(amount));
 
-        TransactionType depositType = transactionTypeRepository.findByCodeIgnoreCase("DEP")
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction type 'DEP' not found"));
+        TransactionType depositType = TransactionType.DEP;
 
         Transaction tx = new Transaction();
         tx.setAccount(account);
@@ -177,8 +166,7 @@ public class AccountService {
 
         account.setBalance(account.getBalance().subtract(amount));
 
-        TransactionType withdrawType = transactionTypeRepository.findByCodeIgnoreCase("RET")
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction type 'RET' not found"));
+        TransactionType withdrawType = TransactionType.RET;
 
         Transaction tx = new Transaction();
         tx.setAccount(account);
@@ -219,8 +207,7 @@ public class AccountService {
             throw new IllegalArgumentException("Insufficient funds");
         }
 
-        TransactionType transferType = transactionTypeRepository.findByCodeIgnoreCase("TRF")
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction type 'TRF' not found"));
+        TransactionType transferType = TransactionType.TRF;
 
         // update balances
         from.setBalance(from.getBalance().subtract(amount));

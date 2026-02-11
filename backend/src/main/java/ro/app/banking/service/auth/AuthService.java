@@ -14,9 +14,11 @@ import ro.app.banking.dto.auth.RegisterRequest;
 import ro.app.banking.dto.auth.TwoFaSetupResponse;
 import ro.app.banking.exception.AuthenticationException;
 import ro.app.banking.exception.ResourceNotFoundException;
-import ro.app.banking.model.Client;
-import ro.app.banking.model.Role;
-import ro.app.banking.model.User;
+import ro.app.banking.model.entity.Client;
+import ro.app.banking.model.entity.User;
+import ro.app.banking.model.enums.Role;
+import ro.app.banking.model.enums.ClientType;
+import ro.app.banking.model.enums.SexType;
 import ro.app.banking.repository.ClientRepository;
 import ro.app.banking.repository.UserRepository;
 import ro.app.banking.security.jwt.JwtService;
@@ -27,7 +29,7 @@ public class AuthService {
     private final ClientRepository clientRepo;
     private final PasswordEncoder encoder;
     private final JwtService jwtService;
-    private TotpService totpService;
+    private final TotpService totpService;
 
     public AuthService(
             UserRepository userRepo,
@@ -49,8 +51,36 @@ public class AuthService {
             throw new IllegalArgumentException("Username/Email already used");
         }
 
-        Client client = clientRepo.findById(req.getClientId())
-                                    .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+        Client client;
+        
+        // If clientId provided, link to existing client
+        if (req.getClientId() != null) {
+            client = clientRepo.findById(req.getClientId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+        } else {
+            // Create new client with provided details
+            if (req.getFirstName() == null || req.getFirstName().isBlank()) {
+                throw new IllegalArgumentException("First name is required");
+            }
+            if (req.getLastName() == null || req.getLastName().isBlank()) {
+                throw new IllegalArgumentException("Last name is required");
+            }
+            if (req.getSexCode() == null || req.getSexCode().isBlank()) {
+                throw new IllegalArgumentException("Sex code is required");
+            }
+            if (req.getClientTypeCode() == null || req.getClientTypeCode().isBlank()) {
+                throw new IllegalArgumentException("Client type code is required");
+            }
+            
+            client = new Client();
+            client.setFirstName(req.getFirstName());
+            client.setLastName(req.getLastName());
+            client.setSex(SexType.fromCode(req.getSexCode()));
+            client.setClientType(ClientType.fromCode(req.getClientTypeCode()));
+            client.setActive(true);
+            client = clientRepo.save(client);
+        }
+        
         try {
             User u = new User();
             u.setClient(client);
@@ -85,7 +115,8 @@ public class AuthService {
                 Map.of(
                     "role", user.getRole().name(),
                     "clientId", clientId,
-                    "2fa", "ok"
+                    "2fa", "ok",
+                    "2fa_verified", false
                 )
             );
 
@@ -170,7 +201,8 @@ public class AuthService {
             Map.of(
                 "role", user.getRole().name(),
                 "clientId", clientId,
-                "2fa", "ok"
+                "2fa", "ok",
+                "2fa_verified", true
             )
         );
 

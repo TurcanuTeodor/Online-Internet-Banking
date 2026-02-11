@@ -1,8 +1,8 @@
 package ro.app.banking.dto.mapper;
 
 import ro.app.banking.dto.ContactInfoDTO;
-import ro.app.banking.model.Client;
-import ro.app.banking.model.ContactInfo;
+import ro.app.banking.model.embedded.ContactInfo;
+import ro.app.banking.model.entity.Client;
 
 public class ContactInfoMapper {
 

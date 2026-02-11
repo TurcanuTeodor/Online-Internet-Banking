@@ -1,8 +1,9 @@
 package ro.app.banking.service;
 
 import org.springframework.stereotype.Service;
-import ro.app.banking.model.Transaction;
-import ro.app.banking.model.ViewTransaction;
+import ro.app.banking.model.entity.Transaction;
+import ro.app.banking.model.view.ViewTransaction;
+import ro.app.banking.model.enums.TransactionType;
 import ro.app.banking.repository.TransactionRepository;
 import ro.app.banking.repository.ViewTransactionRepository;
 
@@ -46,7 +47,8 @@ public class TransactionService {
 
     // 5) Transactions by type (e.g. TRF, DEP, RET)
     public List<Transaction> getTransactionsByType(String code) {
-        return transactionRepository.findByTransactionTypeCode(code);
+        TransactionType type = TransactionType.fromCode(code);
+        return transactionRepository.findByTransactionType(type);
     }
 
     // 6) Daily totals (example of aggregation)

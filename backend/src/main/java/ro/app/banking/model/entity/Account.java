@@ -1,4 +1,4 @@
-package ro.app.banking.model;
+package ro.app.banking.model.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,8 +22,12 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
+import ro.app.banking.model.enums.AccountStatus;
+import ro.app.banking.model.enums.CurrencyType;
 
 @Entity
 @Table(name = "\"ACCOUNT\"")
@@ -40,8 +44,9 @@ public class Account {
     @Column(name = "balance", nullable = false, precision = 15, scale = 2)
     private BigDecimal balance;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "currency_type_id")
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "currency_code", nullable = false, columnDefinition = "CURRENCY_ENUM")
     private CurrencyType currency;
 
     @ManyToOne

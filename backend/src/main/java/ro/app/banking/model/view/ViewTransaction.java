@@ -1,4 +1,4 @@
-package ro.app.banking.model;
+package ro.app.banking.model.view;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

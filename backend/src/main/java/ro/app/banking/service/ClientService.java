@@ -16,13 +16,13 @@ import ro.app.banking.dto.ContactInfoDTO;
 import ro.app.banking.dto.mapper.ClientMapper;
 import ro.app.banking.dto.mapper.ContactInfoMapper;
 import ro.app.banking.exception.ResourceNotFoundException;
-import ro.app.banking.model.Account;
-import ro.app.banking.model.Client;
-import ro.app.banking.model.ClientType;
-import ro.app.banking.model.ContactInfo;
-import ro.app.banking.model.SexType;
-import ro.app.banking.model.Transaction;
-import ro.app.banking.model.ViewClient;
+import ro.app.banking.model.embedded.ContactInfo;
+import ro.app.banking.model.entity.Account;
+import ro.app.banking.model.entity.Client;
+import ro.app.banking.model.entity.Transaction;
+import ro.app.banking.model.enums.ClientType;
+import ro.app.banking.model.enums.SexType;
+import ro.app.banking.model.view.ViewClient;
 import ro.app.banking.repository.AccountRepository;
 import ro.app.banking.repository.ClientRepository;
 import ro.app.banking.repository.ContactInfoRepository;
@@ -63,11 +63,8 @@ public class ClientService {
                     "Client already exists: " + dto.getFirstName() + " " + dto.getLastName());
         }
 
-        ClientType clientType = new ClientType();
-        clientType.setId(dto.getClientTypeId());
-
-        SexType sexType = new SexType();
-        sexType.setId(dto.getSexId());
+        ClientType clientType = ClientType.fromCode(dto.getClientTypeCode());
+        SexType sexType = SexType.fromCode(dto.getSexCode());
 
         Client entity = ClientMapper.toEntity(dto, clientType, sexType);
         @SuppressWarnings("null")

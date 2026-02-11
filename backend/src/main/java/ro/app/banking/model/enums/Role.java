@@ -1,4 +1,4 @@
-package ro.app.banking.model;
+package ro.app.banking.model.enums;
 
 public enum Role {
     USER,
