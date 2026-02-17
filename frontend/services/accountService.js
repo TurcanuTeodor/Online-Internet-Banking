@@ -45,32 +45,6 @@ export const getBalanceByIban = async (iban) => {
 };
 
 /**
- * Deposit money to an account
- * @param {string} iban - Account IBAN
- * @param {number} amount - Deposit amount
- * @returns {Promise} Transaction details
- */
-export const deposit = async (iban, amount) => {
-  const response = await apiClient.post(`/accounts/${iban}/deposit`, {
-    amount,
-  });
-  return response.data;
-};
-
-/**
- * Withdraw money from an account
- * @param {string} iban - Account IBAN
- * @param {number} amount - Withdrawal amount
- * @returns {Promise} Transaction details
- */
-export const withdraw = async (iban, amount) => {
-  const response = await apiClient.post(`/accounts/${iban}/withdraw`, {
-    amount,
-  });
-  return response.data;
-};
-
-/**
  * Transfer money between accounts
  * @param {string} fromIban - Source account IBAN
  * @param {string} toIban - Destination account IBAN

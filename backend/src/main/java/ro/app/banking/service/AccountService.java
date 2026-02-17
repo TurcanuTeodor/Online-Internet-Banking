@@ -3,6 +3,7 @@ package ro.app.banking.service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.math.RoundingMode;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -28,30 +29,19 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final ClientRepository clientRepository;
     private final TransactionRepository transactionRepository;
+    private final IbanService ibanService;
+    private final ExchangeRateService exchangeRateService;
+    
     public AccountService(AccountRepository accountRepository,
                           ClientRepository clientRepository,
-                          TransactionRepository transactionRepository) {
+                          TransactionRepository transactionRepository,
+                          IbanService ibanService,
+                          ExchangeRateService exchangeRateService) {
         this.accountRepository = accountRepository;
         this.clientRepository = clientRepository;
         this.transactionRepository = transactionRepository;
-    }
-
-    private String generateIban(CurrencyType currency) {
-        String currencyCode = currency.getCode().toUpperCase(); // eg: "RO", "EUR", "USD"
-
-        String bankCode = "BANK";
-        String accountNumber = String.format("%010d", (int)(Math.random() * 1_000_000_000));
-
-        // IBAN starts with the currency code
-        String iban = currencyCode + bankCode + accountNumber;
-
-        // it’s unique in the database
-        while (accountRepository.findByIban(iban).isPresent()) {
-            accountNumber = String.format("%010d", (int)(Math.random() * 1_000_000_000));
-            iban = currencyCode + bankCode + accountNumber;
-        }
-
-        return iban;
+        this.ibanService = ibanService;
+        this.exchangeRateService = exchangeRateService;
     }
 
     // 1)Open a new account
@@ -73,8 +63,9 @@ public class AccountService {
         account.setBalance(BigDecimal.ZERO);
         account.setStatus(AccountStatus.ACTIVE);
 
-        // Generate IBAN based on the currency entity
-        account.setIban(generateIban(currency));
+        // Generate unique IBAN using IbanService
+        String iban = ibanService.generateIban(accountRepository::existsByIban);
+        account.setIban(iban);
 
         return accountRepository.save(account);
     }
@@ -119,71 +110,7 @@ public class AccountService {
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
     }
 
-    // 5️) Deposit money into an account
-    @Transactional
-    @CacheEvict(value= "balance", key= "#iban")
-    public Transaction deposit(String iban, BigDecimal amount) {
-        if(amount ==null || amount.compareTo(BigDecimal.ZERO) <= 0){
-            throw new IllegalArgumentException("Amount must be positive");
-        }
-
-        Account account = accountRepository.findByIban(iban)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
-
-        account.setBalance(account.getBalance().add(amount));
-
-        TransactionType depositType = TransactionType.DEP;
-
-        Transaction tx = new Transaction();
-        tx.setAccount(account);
-        tx.setAmount(amount);
-        tx.setOriginalAmount(amount);
-        tx.setOriginalCurrency(account.getCurrency());
-        tx.setSign("+");
-        tx.setTransactionType(depositType);
-        tx.setTransactionDate(LocalDateTime.now());
-        tx.setDetails("Deposit into account " + iban);
-
-        transactionRepository.save(tx);
-        accountRepository.save(account);
-        return tx;
-    }
-
-    // 6️) Withdraw money from an account
-    @Transactional
-    @CacheEvict(value= "balance", key= "#iban")
-    public Transaction withdraw(String iban, BigDecimal amount) {
-        if(amount ==null || amount.compareTo(BigDecimal.ZERO) <= 0){
-            throw new IllegalArgumentException("Amount must be positive");
-        }
-
-        Account account = accountRepository.findByIban(iban)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
-
-        if (account.getBalance().compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Insufficient funds");
-        }
-
-        account.setBalance(account.getBalance().subtract(amount));
-
-        TransactionType withdrawType = TransactionType.RET;
-
-        Transaction tx = new Transaction();
-        tx.setAccount(account);
-        tx.setAmount(amount);
-        tx.setOriginalAmount(amount);
-        tx.setOriginalCurrency(account.getCurrency());
-        tx.setSign("-");
-        tx.setTransactionType(withdrawType);
-        tx.setTransactionDate(LocalDateTime.now());
-        tx.setDetails("Withdrawal from account " + iban);
-
-        transactionRepository.save(tx);
-        accountRepository.save(account);
-        return tx;
-    }
-
-    // 7️) Transfer between two accounts
+    // 5️) Transfer between two accounts
     @Transactional
     @Caching(evict = {
         @CacheEvict(value= "balance", key= "#fromIban"),
@@ -207,18 +134,26 @@ public class AccountService {
             throw new IllegalArgumentException("Insufficient funds");
         }
 
-        TransactionType transferType = TransactionType.TRF;
+        TransactionType transferType = TransactionType.TRANSFER_INTERNAL;
+
+        CurrencyType fromCurrency = from.getCurrency();
+        CurrencyType toCurrency = to.getCurrency();
+        BigDecimal convertedAmount = amount;
+        if (fromCurrency != toCurrency) {
+            BigDecimal rate = exchangeRateService.getRate(fromCurrency, toCurrency);
+            convertedAmount = amount.multiply(rate).setScale(2, RoundingMode.HALF_UP);
+        }
 
         // update balances
         from.setBalance(from.getBalance().subtract(amount));
-        to.setBalance(to.getBalance().add(amount));
+        to.setBalance(to.getBalance().add(convertedAmount));
 
         // debit transaction
         Transaction debit = new Transaction();
         debit.setAccount(from);
         debit.setAmount(amount);
         debit.setOriginalAmount(amount);
-        debit.setOriginalCurrency(from.getCurrency());
+        debit.setOriginalCurrency(fromCurrency);
         debit.setSign("-");
         debit.setTransactionType(transferType);
         debit.setTransactionDate(LocalDateTime.now());
@@ -227,9 +162,9 @@ public class AccountService {
         // credit transaction
         Transaction credit = new Transaction();
         credit.setAccount(to);
-        credit.setAmount(amount);
+        credit.setAmount(convertedAmount);
         credit.setOriginalAmount(amount);
-        credit.setOriginalCurrency(to.getCurrency());
+        credit.setOriginalCurrency(fromCurrency);
         credit.setSign("+");
         credit.setTransactionType(transferType);
         credit.setTransactionDate(LocalDateTime.now());

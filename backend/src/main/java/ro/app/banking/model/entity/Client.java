@@ -3,25 +3,24 @@ package ro.app.banking.model.entity;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-
 import ro.app.banking.model.enums.ClientType;
 import ro.app.banking.model.enums.SexType;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "\"CLIENT\"")
@@ -52,6 +51,9 @@ public class Client {
     @JsonManagedReference("client-accounts")
     @JsonIgnore // prevent serialization cycle and avoid accidentally exposing accounts
     private List<Account> accounts = new ArrayList<>();
+
+    @Column(name = "risk_level", length = 50, nullable = false)
+    private String riskLevel = "LOW";
 
     @Column(name = "active", nullable = false)
     private boolean active = true;
@@ -100,12 +102,12 @@ public class Client {
         this.clientType = clientType;
     }
 
-    public SexType getSex() {
+    public SexType getSexType() {
         return sexType;
     }
 
-    public void setSex(SexType sex) {
-        this.sexType = sex;
+    public void setSexType(SexType sexType) {
+        this.sexType = sexType;
     }
 
     public List<Account> getAccounts() {
@@ -122,6 +124,14 @@ public class Client {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public String getRiskLevel() {
+        return riskLevel;
+    }
+
+    public void setRiskLevel(String riskLevel) {
+        this.riskLevel = riskLevel != null ? riskLevel : "LOW";
     }
 
     // === METODE UTILE

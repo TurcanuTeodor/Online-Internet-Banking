@@ -11,17 +11,20 @@ import io.jsonwebtoken.Claims;
 import ro.app.banking.dto.auth.LoginRequest;
 import ro.app.banking.dto.auth.LoginResponse;
 import ro.app.banking.dto.auth.RegisterRequest;
+import ro.app.banking.dto.auth.RefreshTokenResponse;
 import ro.app.banking.dto.auth.TwoFaSetupResponse;
 import ro.app.banking.exception.AuthenticationException;
 import ro.app.banking.exception.ResourceNotFoundException;
 import ro.app.banking.model.entity.Client;
+import ro.app.banking.model.entity.RefreshToken;
 import ro.app.banking.model.entity.User;
-import ro.app.banking.model.enums.Role;
 import ro.app.banking.model.enums.ClientType;
+import ro.app.banking.model.enums.Role;
 import ro.app.banking.model.enums.SexType;
 import ro.app.banking.repository.ClientRepository;
 import ro.app.banking.repository.UserRepository;
 import ro.app.banking.security.jwt.JwtService;
+import ro.app.banking.security.jwt.RefreshTokenService;
 
 @Service
 public class AuthService {
@@ -29,6 +32,7 @@ public class AuthService {
     private final ClientRepository clientRepo;
     private final PasswordEncoder encoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
     private final TotpService totpService;
 
     public AuthService(
@@ -36,12 +40,14 @@ public class AuthService {
             ClientRepository clientRepo,
             PasswordEncoder encoder,
             JwtService jwtService,
+            RefreshTokenService refreshTokenService,
             TotpService totpService
     ) {
         this.userRepo = userRepo;
         this.clientRepo = clientRepo;
         this.encoder = encoder;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
         this.totpService = totpService;
     }
 
@@ -75,7 +81,7 @@ public class AuthService {
             client = new Client();
             client.setFirstName(req.getFirstName());
             client.setLastName(req.getLastName());
-            client.setSex(SexType.fromCode(req.getSexCode()));
+            client.setSexType(SexType.fromCode(req.getSexCode()));
             client.setClientType(ClientType.fromCode(req.getClientTypeCode()));
             client.setActive(true);
             client = clientRepo.save(client);
@@ -110,6 +116,8 @@ public class AuthService {
 
         //no active 2FA -> issue final JWT
         if(!user.isTwoFactorEnabled()){
+            RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+            
             String token = jwtService.generateToken(
                 user.getUsernameOrEmail(),
                 Map.of(
@@ -120,7 +128,7 @@ public class AuthService {
                 )
             );
 
-            return new LoginResponse(false, token, clientId, user.getRole().name());
+            return new LoginResponse(false, token, refreshToken.getToken(), clientId, user.getRole().name());
         }
 
         //active 2FA -> short temp token, purpose-bound
@@ -133,11 +141,12 @@ public class AuthService {
             )
         );
 
-        return new LoginResponse(true, tempToken, clientId, user.getRole().name());
+        return new LoginResponse(true, tempToken, null, clientId, user.getRole().name());
     }
 
     //---------------2Fa Setup / Confirm / Verify-------------------------------
 
+    @Transactional
     public TwoFaSetupResponse setup2fa(String usernameOrEmail){
         User user = userRepo.findByUsernameOrEmail(usernameOrEmail)
                             .orElseThrow(()-> new ResourceNotFoundException("User not found"));
@@ -152,6 +161,7 @@ public class AuthService {
         return new TwoFaSetupResponse(otpauth, secret);
     }
 
+    @Transactional
     public void confirm2fa(String usernameOrEmail, String code){
         User user = userRepo.findByUsernameOrEmail(usernameOrEmail)
                             .orElseThrow(()-> new ResourceNotFoundException("User not found"));
@@ -206,7 +216,39 @@ public class AuthService {
             )
         );
 
-        return new LoginResponse(false, finalToken, clientId, user.getRole().name());
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+        return new LoginResponse(false, finalToken, refreshToken.getToken(), clientId, user.getRole().name());
+    }
+
+    public RefreshTokenResponse refreshToken(String refreshTokenValue) {
+        RefreshToken refreshToken = refreshTokenService.verifyRefreshToken(refreshTokenValue);
+        User user = refreshToken.getUser();
+        
+        Long clientId = user.getClient() != null ? user.getClient().getId() : null;
+        
+        String newToken = jwtService.generateToken(
+            user.getUsernameOrEmail(),
+            Map.of(
+                "role", user.getRole().name(),
+                "clientId", clientId,
+                "2fa", "ok",
+                "2fa_verified", true
+            )
+        );
+        
+        // Optional: Rotate refresh token
+        refreshTokenService.revokeRefreshToken(refreshTokenValue);
+        RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user);
+        
+        return new RefreshTokenResponse(newToken, newRefreshToken.getToken());
+    }
+
+    public void logout(String refreshTokenValue) {
+        try {
+            refreshTokenService.revokeRefreshToken(refreshTokenValue);
+        } catch (Exception e) {
+            // Log and continue - logout should succeed even if token is invalid
+        }
     }
 
 }

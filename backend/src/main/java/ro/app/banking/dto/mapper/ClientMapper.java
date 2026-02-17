@@ -16,7 +16,7 @@ public class ClientMapper {
         dto.setLastName(e.getLastName());
         dto.setFirstName(e.getFirstName());
         dto.setClientTypeCode(e.getClientType() != null ? e.getClientType().getCode() : null);
-        dto.setSexCode(e.getSex() != null ? e.getSex().getCode() : null);
+        dto.setSexCode(e.getSexType() != null ? e.getSexType().getCode() : null);
         dto.setActive(e.isActive());
         dto.setAccountIds(e.getAccounts() != null
                 ? e.getAccounts().stream().map(Account::getId).collect(Collectors.toList())
@@ -30,7 +30,7 @@ public class ClientMapper {
         e.setLastName(dto.getLastName());
         e.setFirstName(dto.getFirstName());
         e.setClientType(ct);
-        e.setSex(st);
+        e.setSexType(st);
         e.setActive(dto.isActive());
         return e;
     }

@@ -1,19 +1,23 @@
 package ro.app.banking.dto.request;
 
-import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+
 public class TransferRequest {
-    @NotBlank
+    @NotBlank(message = "Source IBAN is required")
+    @Pattern(regexp = "^[A-Z]{2}\\d{2}[A-Z0-9]{1,30}$", message = "Invalid IBAN format")
     private String fromIban;
-
-    @NotBlank
+    
+    @NotBlank(message = "Destination IBAN is required")
+    @Pattern(regexp = "^[A-Z]{2}\\d{2}[A-Z0-9]{1,30}$", message = "Invalid IBAN format")
     private String toIban;
-
-    @NotNull
-    @Digits(integer = 15, fraction = 2)
+    
+    @NotNull(message = "Amount is required")
+    @DecimalMin(value = "0.01", message = "Amount must be positive")
     private BigDecimal amount;
 
     public String getFromIban() { return fromIban; }

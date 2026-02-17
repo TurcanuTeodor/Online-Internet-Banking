@@ -13,6 +13,8 @@ import jakarta.validation.Valid;
 import ro.app.banking.dto.auth.LoginRequest;
 import ro.app.banking.dto.auth.LoginResponse;
 import ro.app.banking.dto.auth.RegisterRequest;
+import ro.app.banking.dto.auth.RefreshTokenRequest;
+import ro.app.banking.dto.auth.RefreshTokenResponse;
 import ro.app.banking.dto.auth.TwoFaConfirmRequest;
 import ro.app.banking.dto.auth.TwoFaSetupResponse;
 import ro.app.banking.dto.auth.TwoFaVerifyRequest;
@@ -59,6 +61,14 @@ public class AuthController {
         return ResponseEntity.ok(authService.verify2fa(req.getTempToken(), req.getCode()));
     }
     
+    @PostMapping("/refresh-token")
+    public ResponseEntity<RefreshTokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest req){
+        return ResponseEntity.ok(authService.refreshToken(req.getRefreshToken()));
+    }
     
-}
-  
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@Valid @RequestBody RefreshTokenRequest req){
+        authService.logout(req.getRefreshToken());
+        return ResponseEntity.ok().build();
+    }    
+}  

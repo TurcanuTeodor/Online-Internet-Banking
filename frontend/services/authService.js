@@ -24,15 +24,64 @@ export const login = async (usernameOrEmail, password) => {
     localStorage.setItem('jwt_token', response.data.token);
   }
   
+  // Store refresh token if provided
+  if (response.data.refreshToken) {
+    localStorage.setItem('refresh_token', response.data.refreshToken);
+  }
+  
   return response.data;
 };
 
 /**
- * Logout user
- * Clears token from localStorage and redirects to login
+ * Refresh the access token using refresh token
+ * @param {string} refreshToken - Refresh token from login
+ * @returns {Promise} RefreshTokenResponse with new token and optional new refresh token
  */
-export const logout = () => {
+export const refreshAccessToken = async (refreshToken = null) => {
+  const token = refreshToken || localStorage.getItem('refresh_token');
+  
+  if (!token) {
+    throw new Error('No refresh token available');
+  }
+  
+  try {
+    const response = await apiClient.post('/auth/refresh-token', { refreshToken: token });
+    
+    // Update stored tokens
+    localStorage.setItem('jwt_token', response.data.token);
+    
+    // If new refresh token provided (rotation), update it
+    if (response.data.refreshToken) {
+      localStorage.setItem('refresh_token', response.data.refreshToken);
+    }
+    
+    return response.data;
+  } catch (error) {
+    // Refresh token is invalid/expired - force logout
+    logout();
+    throw error;
+  }
+};
+
+/**
+ * Logout user
+ * Revokes refresh token and clears local storage
+ */
+export const logout = async () => {
+  const refreshToken = localStorage.getItem('refresh_token');
+  
+  try {
+    if (refreshToken) {
+      // Notify server to revoke refresh token
+      await apiClient.post('/auth/logout', { refreshToken });
+    }
+  } catch (error) {
+    // Continue logout even if API call fails
+    console.warn('Failed to revoke refresh token:', error);
+  }
+  
   localStorage.removeItem('jwt_token');
+  localStorage.removeItem('refresh_token');
   window.location.href = '/login';
 };
 
@@ -69,6 +118,11 @@ export const verify2FA = async (tempToken, code) => {
   
   if (response.data.token) {
     localStorage.setItem('jwt_token', response.data.token);
+  }
+  
+  // Store refresh token if provided
+  if (response.data.refreshToken) {
+    localStorage.setItem('refresh_token', response.data.refreshToken);
   }
   
   return response.data;

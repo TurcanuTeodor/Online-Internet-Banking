@@ -1,6 +1,7 @@
 package ro.app.banking.controller;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -33,7 +34,11 @@ public class TransactionController {
 
     // 2️) Get transactions by IBAN (from real table)
     @GetMapping("/by-iban/{iban}")
-    public List<TransactionDTO> getByIban(@PathVariable @NotBlank String iban) {
+        public List<TransactionDTO> getByIban(
+            @PathVariable
+            @NotBlank(message = "IBAN is required")
+            @Pattern(regexp = "^[A-Z]{2}\\d{2}[A-Z0-9]{1,30}$", message = "Invalid IBAN format")
+            String iban) {
         return transactionService.getTransactionsByAccountIban(iban)
                 .stream()
                 .map(TransactionMapper::toDTO)

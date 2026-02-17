@@ -1,20 +1,26 @@
 package ro.app.banking.controller;
 
-import jakarta.validation.Valid;
-import ro.app.banking.dto.*;
-import ro.app.banking.dto.mapper.*;
-import ro.app.banking.dto.request.*;
-import ro.app.banking.model.entity.Account;
-import ro.app.banking.model.entity.Transaction;
-import ro.app.banking.service.AccountService;
+import java.math.BigDecimal;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
-import java.util.List;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
+import ro.app.banking.dto.AccountDTO;
+import ro.app.banking.dto.mapper.AccountMapper;
+import ro.app.banking.dto.request.OpenAccountRequest;
+import ro.app.banking.dto.request.TransferRequest;
+import ro.app.banking.model.entity.Account;
+import ro.app.banking.service.AccountService;
 
 @RestController
 @RequestMapping("/api/accounts")
@@ -49,25 +55,14 @@ public class AccountController {
 
     // 4) get balance by IBAN
     @GetMapping("/{iban}/balance")
-    public ResponseEntity<BigDecimal> balance(@PathVariable String iban) {
+    public ResponseEntity<BigDecimal> balance(
+        @PathVariable 
+        @Pattern(regexp= "^[A-Z]{2}\\d{2}[A-Z0-9]{1,30}$", message= "Invalid IBAN format")
+        String iban) {
         return ResponseEntity.ok(accountService.getBalanceByIban(iban));
     }
 
-    // 5) deposit
-    @PostMapping("/{iban}/deposit")
-    public ResponseEntity<TransactionDTO> deposit(@PathVariable String iban, @Valid @RequestBody AmountRequest req) {
-        Transaction transaction = accountService.deposit(iban, req.getAmount());
-        return ResponseEntity.ok(TransactionMapper.toDTO(transaction));
-    }
-
-    // 6) withdraw
-    @PostMapping("/{iban}/withdraw")
-    public ResponseEntity<TransactionDTO> withdraw(@PathVariable String iban, @Valid @RequestBody AmountRequest req) {
-        Transaction transaction = accountService.withdraw(iban, req.getAmount());
-        return ResponseEntity.ok(TransactionMapper.toDTO(transaction));
-    }
-
-    // 7) transfer
+    // 5) transfer
      @PostMapping("/transfer")
     public ResponseEntity<Void> transfer(@Valid @RequestBody TransferRequest req) {
         accountService.transfer(req.getFromIban(), req.getToIban(), req.getAmount());

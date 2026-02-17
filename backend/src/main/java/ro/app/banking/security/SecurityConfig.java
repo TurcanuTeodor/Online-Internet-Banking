@@ -30,10 +30,11 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
 
         http.csrf(csrf-> csrf.disable()) //disable Cross-Site Request Forgery(html form and session) bc i use jwt and rest api
-            .authorizeHttpRequests(auth-> auth.requestMatchers("/api/auth/**") 
-                                              .permitAll() //define who can access endpoints without token
-                                              .anyRequest()
-                                              .authenticated() //any other req needs auth w valid JWT
+            .authorizeHttpRequests(auth-> auth
+                .requestMatchers("/api/auth/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
+                .permitAll() //define who can access endpoints without token
+                .anyRequest()
+                .authenticated() //any other req needs auth w valid JWT
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class); //run the jwt filter before the login filter
 

@@ -1,28 +1,27 @@
 package ro.app.banking.model.enums;
 
 public enum TransactionType {
-    DEP("Deposit"),
-    RET("Withdrawal"),
-    TRF("Transfer");
-
-    private final String label;
-
-    TransactionType(String label) {
-        this.label = label;
-    }
+    DEPOSIT,
+    WITHDRAWAL,
+    TRANSFER_INTERNAL,
+    TRANSFER_EXTERNAL;
 
     public String getCode() {
         return name();
     }
 
     public String getLabel() {
-        return label;
+        return name();
     }
 
     public static TransactionType fromCode(String code) {
         if (code == null || code.isBlank()) {
-            throw new IllegalArgumentException("Transaction type code is required");
+            return TRANSFER_INTERNAL;
         }
-        return TransactionType.valueOf(code.trim().toUpperCase());
+        try {
+            return TransactionType.valueOf(code.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return TRANSFER_INTERNAL;
+        }
     }
 }

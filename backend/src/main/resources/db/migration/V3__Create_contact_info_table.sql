@@ -1,17 +1,17 @@
--- V5__Create_contact_info_table.sql
+-- V3__Create_contact_info_table.sql
 
 CREATE TABLE "CONTACT_INFO" (
     id BIGSERIAL PRIMARY KEY,
     client_id BIGINT NOT NULL UNIQUE,
-    email VARCHAR(255),
+    email VARCHAR(100),
     phone VARCHAR(20),
     contact_person VARCHAR(100),
-    website VARCHAR(100),
+    website VARCHAR(255),
     address VARCHAR(255),
     city VARCHAR(100),
     postal_code VARCHAR(20),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
     FOREIGN KEY (client_id) REFERENCES "CLIENT"(id) ON DELETE CASCADE
 );
 

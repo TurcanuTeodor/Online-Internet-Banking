@@ -1,8 +1,12 @@
 package ro.app.banking.dto;
 
-import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public class TransactionDTO {
     private Long id;
@@ -50,7 +54,9 @@ public class TransactionDTO {
     public void setOriginalAmount(BigDecimal originalAmount) { this.originalAmount = originalAmount; }
     public String getOriginalCurrencyCode() { return originalCurrencyCode; }
     public void setOriginalCurrencyCode(String originalCurrencyCode) { this.originalCurrencyCode = originalCurrencyCode; }
-    public String getSign() { return sign; }
+    public String getSign() {
+        return amount.compareTo(BigDecimal.ZERO) >= 0 ? "+" : "-";
+    }
     public void setSign(String sign) { this.sign = sign; }
     public String getDetails() { return details; }
     public void setDetails(String details) { this.details = details; }

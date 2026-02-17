@@ -1,18 +1,34 @@
--- Add sample users (one admin, one regular user)
--- Password for both: "password123" (hashed with BCrypt)
--- Using client_id 2 and 3 (client_id 1 already has a user)
+-- V11__Add_sample_users.sql
+-- Insert sample admin and regular users
 
-INSERT INTO "USER" (client_id, username_or_email, password_hash, role, two_factor_enabled, two_factor_secret)
-SELECT 2, 'admin@cashtactics.com', '$2a$10$N9qo8uLOickgx2ZrVzY6oeOMaAIxJjPL5JvYmDxG3j0hj.r3iFFoO', 'ADMIN', false, NULL
-WHERE NOT EXISTS (
-    SELECT 1 FROM "USER" WHERE client_id = 2 OR username_or_email = 'admin@cashtactics.com'
+-- Admin user (for client_id 1)
+INSERT INTO "USER" (client_id, username_or_email, password_hash, role, two_factor_enabled)
+VALUES (
+    1,
+    'admin@cashtactics.com',
+    -- Password: password
+    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG',
+    'ADMIN',
+    false
 );
 
-INSERT INTO "USER" (client_id, username_or_email, password_hash, role, two_factor_enabled, two_factor_secret)
-SELECT 3, 'user@cashtactics.com', '$2a$10$N9qo8uLOickgx2ZrVzY6oeOMaAIxJjPL5JvYmDxG3j0hj.r3iFFoO', 'USER', false, NULL
-WHERE NOT EXISTS (
-    SELECT 1 FROM "USER" WHERE client_id = 3 OR username_or_email = 'user@cashtactics.com'
+-- Regular user (for client_id 2)
+INSERT INTO "USER" (client_id, username_or_email, password_hash, role, two_factor_enabled)
+VALUES (
+    2,
+    'user@cashtactics.com',
+    -- Password: password
+    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG',
+    'USER',
+    false
 );
 
--- Admin login: admin@cashtactics.com / password123
--- User login: user@cashtactics.com / password123
+-- Additional test users for different clients
+INSERT INTO "USER" (client_id, username_or_email, password_hash, role, two_factor_enabled) VALUES
+(3, 'john.doe@example.com', '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'USER', false),
+(4, 'jane.smith@example.com', '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'USER', false),
+(5, 'michael.johnson@example.com', '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'USER', false),
+(6, 'sarah.williams@example.com', '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'USER', false),
+(7, 'robert.brown@example.com', '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'USER', false),
+(11, 'techstartup@example.com', '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'USER', false),
+(12, 'finance.corp@example.com', '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'USER', false);

@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../services/authService';
-import { LogOut, Wallet, Plus, ArrowUpRight, ArrowDownRight, Send, Eye, EyeOff, Shield } from 'lucide-react';
+import { LogOut, Wallet, Plus, Send, Eye, EyeOff, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import QRCode from 'qrcode';
-import { getAccountsByClient, openAccount, deposit, withdraw, transfer, getBalanceByIban } from '../../services/accountService';
+import { getAccountsByClient, openAccount, transfer, getBalanceByIban } from '../../services/accountService';
 import { getTransactionsByClient } from '../../services/transactionService';
 import { setup2FA, confirm2FA } from '../../services/authService';
 
@@ -15,7 +15,7 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showBalances, setShowBalances] = useState(true);
-  const [activeModal, setActiveModal] = useState(null); // 'openAccount', 'deposit', 'withdraw', 'transfer', '2fa'
+  const [activeModal, setActiveModal] = useState(null); // 'openAccount', 'transfer', '2fa'
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [twoFaSetup, setTwoFaSetup] = useState(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState(null);
@@ -23,8 +23,6 @@ export default function Dashboard() {
   
   // Form states
   const [newAccountCurrency, setNewAccountCurrency] = useState('EUR');
-  const [depositAmount, setDepositAmount] = useState('');
-  const [withdrawAmount, setWithdrawAmount] = useState('');
   const [transferForm, setTransferForm] = useState({ toIban: '', amount: '' });
   const [twoFaCode, setTwoFaCode] = useState('');
   const [error, setError] = useState('');
@@ -83,30 +81,6 @@ export default function Dashboard() {
       fetchData();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to open account');
-    }
-  };
-
-  const handleDeposit = async () => {
-    try {
-      await deposit(selectedAccount.iban, parseFloat(depositAmount));
-      setSuccess(`Deposited ${depositAmount} ${selectedAccount.currencyCode} successfully!`);
-      setActiveModal(null);
-      setDepositAmount('');
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Deposit failed');
-    }
-  };
-
-  const handleWithdraw = async () => {
-    try {
-      await withdraw(selectedAccount.iban, parseFloat(withdrawAmount));
-      setSuccess(`Withdrew ${withdrawAmount} ${selectedAccount.currencyCode} successfully!`);
-      setActiveModal(null);
-      setWithdrawAmount('');
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Withdrawal failed');
     }
   };
 
@@ -263,35 +237,15 @@ export default function Dashboard() {
                       <p className="text-2xl font-bold mb-6">
                         {showBalances ? formatCurrency(account.balance, account.currencyCode) : '••••••'}
                       </p>
-                      <div className="grid grid-cols-3 gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedAccount(account);
-                            setActiveModal('deposit');
-                          }}
-                          className="btn-secondary flex items-center justify-center gap-1 text-xs"
-                        >
-                          <ArrowDownRight className="w-3 h-3" />
-                          Deposit
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedAccount(account);
-                            setActiveModal('withdraw');
-                          }}
-                          className="btn-secondary flex items-center justify-center gap-1 text-xs"
-                        >
-                          <ArrowUpRight className="w-3 h-3" />
-                          Withdraw
-                        </button>
+                      <div className="flex gap-2">
                         <button
                           onClick={() => {
                             setSelectedAccount(account);
                             setActiveModal('transfer');
                           }}
-                          className="btn-secondary flex items-center justify-center gap-1 text-xs"
+                          className="btn-primary w-full flex items-center justify-center gap-2"
                         >
-                          <Send className="w-3 h-3" />
+                          <Send className="w-4 h-4" />
                           Transfer
                         </button>
                       </div>
@@ -324,11 +278,7 @@ export default function Dashboard() {
                         <tr key={tx.id} className="hover:bg-zinc-800/30">
                           <td className="px-6 py-4 text-sm text-zinc-300">{formatDate(tx.transactionDate)}</td>
                           <td className="px-6 py-4">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              tx.transactionTypeName === 'Deposit' ? 'bg-emerald-500/20 text-emerald-400' :
-                              tx.transactionTypeName === 'Withdrawal' ? 'bg-red-500/20 text-red-400' :
-                              'bg-blue-500/20 text-blue-400'
-                            }`}>
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400">
                               {tx.transactionTypeName}
                             </span>
                           </td>
@@ -371,46 +321,6 @@ export default function Dashboard() {
                 <div className="flex gap-3">
                   <button onClick={() => setActiveModal(null)} className="btn-secondary flex-1">Cancel</button>
                   <button onClick={handleOpenAccount} className="btn-primary flex-1">Open Account</button>
-                </div>
-              </>
-            )}
-
-            {activeModal === 'deposit' && selectedAccount && (
-              <>
-                <h3 className="text-xl font-bold mb-4">Deposit to {selectedAccount.iban}</h3>
-                <label className="block text-sm font-medium text-zinc-400 mb-2">Amount ({selectedAccount.currencyCode})</label>
-                <input
-                  type="number"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  className="input-field mb-4"
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                />
-                <div className="flex gap-3">
-                  <button onClick={() => setActiveModal(null)} className="btn-secondary flex-1">Cancel</button>
-                  <button onClick={handleDeposit} className="btn-primary flex-1">Deposit</button>
-                </div>
-              </>
-            )}
-
-            {activeModal === 'withdraw' && selectedAccount && (
-              <>
-                <h3 className="text-xl font-bold mb-4">Withdraw from {selectedAccount.iban}</h3>
-                <label className="block text-sm font-medium text-zinc-400 mb-2">Amount ({selectedAccount.currencyCode})</label>
-                <input
-                  type="number"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  className="input-field mb-4"
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                />
-                <div className="flex gap-3">
-                  <button onClick={() => setActiveModal(null)} className="btn-secondary flex-1">Cancel</button>
-                  <button onClick={handleWithdraw} className="btn-primary flex-1">Withdraw</button>
                 </div>
               </>
             )}
