@@ -1,604 +1,359 @@
-# Architecture Documentation - Refresh Token System
+# System Architecture
 
-## System Architecture Overview
+This document explains how the Online Banking System is structured and how its components work together.
+
+## Overall System Design
+
+The system follows a **layered architecture** with clear separation between frontend, backend, and database:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     FRONTEND (React/JavaScript)                  │
+│                     FRONTEND (React)                             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                   Application Layer                       │   │
-│  │  - Login.jsx, Dashboard.jsx, TwoFactorVerify.jsx         │   │
-│  │  - Makes API calls through apiClient                     │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↓                                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              Service Layer (services/)                    │   │
-│  ├──────────────────────────────────────────────────────────┤   │
-│  │  authService.js (Authentication)                         │   │
-│  │  ├─ register()                                           │   │
-│  │  ├─ login()              [MODIFIED: stores refreshToken]│   │
-│  │  ├─ logout()             [MODIFIED: async + revoke]     │   │
-│  │  ├─ setup2FA()                                          │   │
-│  │  ├─ confirm2FA()                                        │   │
-│  │  ├─ verify2FA()          [MODIFIED: stores refreshToken]│   │
-│  │  └─ refreshAccessToken() [NEW]                          │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              HTTP Client Layer                            │   │
-│  │                                                           │   │
-│  │  apiClient.js (axios instance)                           │   │
-│  │  ├─ Request Interceptor                                 │   │
-│  │  │  └─ Attach: Authorization: Bearer <jwt_token>        │   │
-│  │  │                                                       │   │
-│  │  └─ Response Interceptor [ENHANCED: auto-refresh]       │   │
-│  │     ├─ Detect 401 Unauthorized                          │   │
-│  │     ├─ Lock new requests (isRefreshing = true)          │   │
-│  │     ├─ Queue failed requests                            │   │
-│  │     ├─ POST /api/auth/refresh-token                     │   │
-│  │     ├─ Update localStorage tokens                       │   │
-│  │     ├─ Unlock (isRefreshing = false)                    │   │
-│  │     └─ Retry queued + original request                  │
-│  └──────────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              Storage Layer                                │   │
-│  │                                                           │   │
-│  │  localStorage:                                           │   │
-│  │  ├─ jwt_token: Access token (15 min TTL)               │   │
-│  │  └─ refresh_token: Refresh token (7 day TTL)           │   │
-│  └──────────────────────────────────────────────────────────┘   │
+│  React Pages (Login.jsx, Dashboard.jsx, etc.)                   │
+│                    ↓                                             │
+│  Service Layer (authService.js, apiClient.js)                   │
+│                    ↓                                             │
+│  localStorage (jwt_token, refresh_token)                        │
 │                                                                   │
 └─────────────────────────────────────────────────────────────────┘
-                              ↕ HTTP/HTTPS
-                        (application/json)
-                              ↓
+                       ↕ HTTP/HTTPS (JSON)
 ┌─────────────────────────────────────────────────────────────────┐
-│                  BACKEND (Spring Boot / Java)                    │
+│                  BACKEND (Spring Boot)                           │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │             REST Controller Layer                         │   │
-│  │                                                           │   │
-│  │  AuthController                                          │   │
-│  │  ├─ POST /auth/login               [EXISTING]           │   │
-│  │  ├─ POST /auth/refresh-token       [NEW]                │   │
-│  │  ├─ POST /auth/logout              [NEW]                │   │
-│  │  ├─ POST /auth/2fa/setup           [EXISTING]           │   │
-│  │  ├─ POST /auth/2fa/confirm         [EXISTING]           │   │
-│  │  └─ POST /auth/2fa/verify          [MODIFIED]           │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↓                                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │           Service/Business Logic Layer                    │   │
-│  │                                                           │   │
-│  │  AuthService                                             │   │
-│  │  ├─ register()                     [EXISTING]           │   │
-│  │  ├─ login()                        [MODIFIED]           │   │
-│  │  ├─ verify2fa()                    [MODIFIED]           │   │
-│  │  ├─ refreshToken()                 [NEW]                │   │
-│  │  ├─ logout()                       [NEW]                │   │
-│  │  └─ (delegates to RefreshTokenService)                  │   │
-│  │                                                           │   │
-│  │  RefreshTokenService               [NEW SERVICE]         │   │
-│  │  ├─ createRefreshToken(user)                            │   │
-│  │  ├─ verifyRefreshToken(token)                           │   │
-│  │  ├─ revokeRefreshToken(token)                           │   │
-│  │  ├─ revokeAllUserTokens(user)                           │   │
-│  │  └─ deleteExpiredTokens()                               │   │
-│  │                                                           │   │
-│  │  JwtService                                              │   │
-│  │  ├─ generateToken()                [EXISTING]           │   │
-│  │  ├─ generateTempToken()            [EXISTING]           │   │
-│  │  ├─ generateRefreshToken()         [NEW]                │   │
-│  │  ├─ parseClaims()                  [EXISTING]           │   │
-│  │  └─ isValid()                      [EXISTING]           │   │
-│  │                                                           │   │
-│  │  TotpService                                             │   │
-│  │  ├─ generateSecret()               [EXISTING]           │   │
-│  │  ├─ buildOtpAuthUrl()              [EXISTING]           │   │
-│  │  └─ verifyCode()                   [EXISTING]           │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↓                                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │           Repository/Data Access Layer                    │   │
-│  │                                                           │   │
-│  │  RefreshTokenRepository            [NEW REPOSITORY]      │   │
-│  │  ├─ findByToken(token)                                  │   │
-│  │  ├─ findByUser(user)                                    │   │
-│  │  ├─ findActiveTokensByUser(user)                        │   │
-│  │  └─ deleteByUser(user)                                  │   │
-│  │                                                           │   │
-│  │  UserRepository                                          │   │
-│  │  └─ (existing methods)                                  │   │
-│  │                                                           │   │
-│  │  ClientRepository                                        │   │
-│  │  └─ (existing methods)                                  │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↓                                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              Entity/Domain Model Layer                    │   │
-│  │                                                           │   │
-│  │  RefreshToken                      [NEW ENTITY]          │   │
-│  │  ├─ id: Long (PK)                                       │   │
-│  │  ├─ token: String (unique, JWT)                         │   │
-│  │  ├─ user: User (FK)                                     │   │
-│  │  ├─ createdAt: LocalDateTime                            │   │
-│  │  ├─ expiryDate: LocalDateTime                           │   │
-│  │  ├─ revokedAt: LocalDateTime                            │   │
-│  │  └─ Methods: isExpired(), isRevoked(), isValid()        │   │
-│  │                                                           │   │
-│  │  User                                                     │   │
-│  │  ├─ id: Long (PK)                                       │   │
-│  │  ├─ client: Client (OneToOne)                           │   │
-│  │  ├─ usernameOrEmail: String (unique)                    │   │
-│  │  ├─ passwordHash: String                                │   │
-│  │  ├─ role: Role (ADMIN, USER)                            │   │
-│  │  ├─ twoFactorEnabled: Boolean                           │   │
-│  │  ├─ twoFactorSecret: String                             │   │
-│  │  └─ (1:N with RefreshToken via FK)                      │   │
-│  │                                                           │   │
-│  │  Client                                                  │   │
-│  │  └─ (existing structure)                                │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↓                                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │            Data Transfer Object (DTO) Layer              │   │
-│  │                                                           │   │
-│  │  LoginResponse                                           │   │
-│  │  ├─ token: String                  [EXISTING]           │   │
-│  │  ├─ refreshToken: String           [NEW]                │   │
-│  │  ├─ twoFactorRequired: Boolean      [EXISTING]           │   │
-│  │  ├─ clientId: Long                 [EXISTING]           │   │
-│  │  └─ role: String                   [EXISTING]           │   │
-│  │                                                           │   │
-│  │  RefreshTokenRequest                [NEW DTO]            │   │
-│  │  └─ refreshToken: String                                │   │
-│  │                                                           │   │
-│  │  RefreshTokenResponse               [NEW DTO]            │   │
-│  │  ├─ token: String                                       │   │
-│  │  └─ refreshToken: String (optional)                     │   │
-│  │                                                           │   │
-│  │  TwoFaVerifyRequest                                      │   │
-│  │  ├─ tempToken: String                                   │   │
-│  │  └─ code: String                                        │   │
-│  └──────────────────────────────────────────────────────────┘   │
+│  REST Controllers (AuthController, AccountController, etc.)     │
+│                    ↓                                             │
+│  Service Layer (AuthService, RefreshTokenService, etc.)         │
+│                    ↓                                             │
+│  Repository Layer (JPA Repositories)                            │
+│                    ↓                                             │
+│  Entity/Domain Models (User, RefreshToken, Account, etc.)       │
 │                                                                   │
 └─────────────────────────────────────────────────────────────────┘
-                              ↕ JDBC
-                     (PostgreSQL Driver)
-                              ↓
+                       ↕ JDBC
 ┌─────────────────────────────────────────────────────────────────┐
 │                   DATABASE (PostgreSQL)                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                   │
-│  refresh_tokens table                                           │
-│  ├─ id (SERIAL PRIMARY KEY)                                     │
-│  ├─ token (VARCHAR(2048) UNIQUE)                                │
-│  ├─ user_id (INTEGER FK → users.id)                             │
-│  ├─ created_at (TIMESTAMP DEFAULT NOW)                          │
-│  ├─ expiry_date (TIMESTAMP)                                     │
-│  ├─ revoked_at (TIMESTAMP NULL)                                 │
-│  │                                                               │
-│  └─ Indexes:                                                    │
-│     ├─ idx_refresh_tokens_token        (Fast lookup by token)   │
-│     ├─ idx_refresh_tokens_user_id      (Find user's tokens)     │
-│     └─ idx_refresh_tokens_valid        (Active tokens query)    │
-│                                                                   │
-│  Relationships:                                                  │
-│  └─ FK user_id → users(id) ON DELETE CASCADE                    │
-│                                                                   │
-│  Retention:                                                      │
-│  ├─ Active: revoked_at IS NULL AND expiry_date > NOW            │
-│  ├─ Expired: expiry_date < NOW (can be deleted)                 │
-│  └─ Revoked: revoked_at IS NOT NULL (can be deleted)            │
-│                                                                   │
-├─────────────────────────────────────────────────────────────────┤
-│  Other related tables:                                           │
-│  ├─ users (existing)                                            │
-│  ├─ clients (existing)                                          │
-│  └─ Other tables (unaffected)                                   │
+│  Tables: users, refresh_tokens, accounts, transactions, etc.    │
 │                                                                   │
 └─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Frontend Architecture
+
+### Component Structure
+
+```
+Frontend Components
+├── Pages (React Components)
+│   ├── Login.jsx - User login page
+│   ├── Register.jsx - New user registration
+│   ├── TwoFactorVerify.jsx - 2FA verification
+│   ├── Dashboard.jsx - User dashboard (accounts, transactions)
+│   └── AdminDashboard.jsx - Admin view (all clients/transactions)
+│
+├── Services (API Communication)
+│   ├── authService.js - Authentication (login, logout, 2FA)
+│   ├── apiClient.js - HTTP client with auto-refresh
+│   ├── accountService.js - Account operations
+│   ├── transactionService.js - Transaction operations
+│   └── clientService.js - Client data operations
+│
+└── Storage
+    └── localStorage
+        ├── jwt_token - Access token (15 min lifespan)
+        └── refresh_token - Refresh token (7 day lifespan)
+```
+
+### How Auto-Refresh Works
+
+The `apiClient.js` has a **response interceptor** that automatically handles expired tokens:
+
+1. User makes an API call
+2. If response is **401 Unauthorized** (token expired):
+   - Automatically calls `/api/auth/refresh-token` with refresh token
+   - Gets new access token
+   - Retries the original request
+   - User doesn't notice anything!
+
+---
+
+## Backend Architecture
+
+### Layer Responsibilities
+
+**1. Controller Layer** - Handles HTTP requests
+- Receives JSON requests
+- Validates input
+- Calls service layer
+- Returns JSON responses
+
+**2. Service Layer** - Business logic
+- Implements core functionality
+- Handles transactions
+- Coordinates between different services
+
+**3. Repository Layer** - Database access
+- CRUD operations
+- Custom database queries
+
+**4. Entity Layer** - Data models
+- Represents database tables as Java classes
+- Defines relationships between tables
+
+### Key Services
+
+**AuthService** - Authentication
+- `login()` - Validates credentials, creates tokens
+- `verify2fa()` - Verifies 2FA codes
+- `refreshToken()` - Issues new access token
+- `logout()` - Revokes refresh token
+
+**RefreshTokenService** - Token management
+- `createRefreshToken()` - Generates and stores refresh token
+- `verifyRefreshToken()` - Validates refresh token
+- `revokeRefreshToken()` - Marks token as revoked
+
+**JwtService** - JWT operations
+- `generateToken()` - Creates access token (15 min)
+- `generateRefreshToken()` - Creates refresh token (7 days)
+- `parseClaims()` - Extracts data from token
+- `isValid()` - Validates token signature
+
+---
+
+## Database Schema (Key Tables)
+
+### users
+```sql
+id (PK)
+username_or_email (UNIQUE)
+password_hash
+role (ADMIN or USER)
+two_factor_enabled
+two_factor_secret
+client_id (FK → clients)
+```
+
+### refresh_tokens
+```sql
+id (PK)
+token (UNIQUE) - The JWT refresh token
+user_id (FK → users.id)
+created_at
+expiry_date - When the token expires (7 days from creation)
+revoked_at - NULL if still valid, timestamp if revoked
+```
+
+**Why store refresh tokens in database?**
+- Can revoke tokens when user logs out
+- Can force logout from all devices
+- Can clean up expired tokens
+- Provides audit trail
+
+### accounts
+```sql
+id (PK)
+client_id (FK → clients.id)
+iban (UNIQUE)
+balance
+currency_type_id (FK → currency_type)
+status (ACTIVE, CLOSED, SUSPENDED)
+opened_date
+```
+
+### transactions
+```sql
+id (PK)
+account_id (FK → accounts.id)
+amount
+timestamp
+transaction_type_id (FK → transaction_type)
+recipient_iban
+description
 ```
 
 ---
 
 ## Data Flow Diagrams
 
-### 1. Login Flow with Token Creation
+### 1. Login Flow
 
 ```
-Client Request (Browser)
-  │
-  ├─ POST /api/auth/login
-  │   └─ Body: { usernameOrEmail, password }
-  │
-Frontend
-  │
-  └─ authService.login()
-      │
-      └─ HTTP POST to backend
-         │
-         Backend (AuthController)
-         │
-         └─ POST /api/auth/login handler
-            │
-            └─ AuthService.login()
-               │
-               ├─ UserRepository.findByUsernameOrEmail()
-               │  └─ DB Query: SELECT * FROM users WHERE username_or_email = ?
-               │
-               ├─ PasswordEncoder.matches()
-               │  └─ Verify password
-               │
-               ├─ Generate Access Token
-               │  └─ JwtService.generateToken()
-               │     └─ Create JWT with claims (role, clientId, 2fa status)
-               │
-               ├─ Generate Refresh Token
-               │  └─ RefreshTokenService.createRefreshToken()
-               │     │
-               │     ├─ JwtService.generateRefreshToken()
-               │     │  └─ Create JWT with type: "refresh"
-               │     │
-               │     └─ RefreshTokenRepository.save()
-               │        └─ DB Insert: INSERT INTO refresh_tokens (token, user_id, ...)
-               │
-               └─ Return LoginResponse
-                  └─ { token, refreshToken, clientId, role }
-         │
-         └─ HTTP Response (200 OK)
-            └─ JSON: { token: "...", refreshToken: "...", ... }
-  │
-  └─ Frontend stores tokens
-      ├─ localStorage.jwt_token = response.token
-      └─ localStorage.refresh_token = response.refreshToken
+User enters credentials
+    ↓
+POST /api/auth/login
+    ↓
+Backend validates username/password
+    ↓
+Generate 2 tokens:
+  - Access token (JWT, 15 min) 
+  - Refresh token (JWT, 7 days) → saved to database
+    ↓
+Return: { token, refreshToken, role, clientId }
+    ↓
+Frontend stores both tokens in localStorage
 ```
 
-### 2. API Request with Auto-Refresh On 401
+### 2. Auto-Refresh Flow (When Access Token Expires)
 
 ```
-Client Request (Browser)
-  │
-  ├─ API Call (e.g., GET /api/accounts)
-  │
-Frontend (apiClient)
-  │
-  ├─ Request Interceptor
-  │   └─ Attach Authorization header
-  │      └─ config.headers.Authorization = "Bearer " + localStorage.jwt_token
-  │
-  └─ HTTP GET to backend
-     │
-     Backend
-     │
-     ├─ Check Authorization header
-     │  └─ Extract JWT and verify signature
-     │
-     ├─ Validate JWT claims
-     │  ├─ Check: Not expired?
-     │  ├─ Check: Has required claims?
-     │  └─ Check: Signature valid?
-     │
-     ├─ If valid → Process request
-     │  └─ Return 200 OK with data
-     │
-     └─ If invalid (expired) → Return 401 Unauthorized
-        │
-        Response 401
-        │
-        └─ Frontend
-           │
-           └─ Response Interceptor detects 401
-              │
-              ├─ Check: _retry flag?
-              │  └─ If already retried once, reject
-              │
-              ├─ Set _retry = true
-              │
-              ├─ Check: /auth/ endpoint?
-              │  └─ If auth endpoint, don't refresh (prevent loop)
-              │
-              ├─ Lock new requests
-              │  └─ isRefreshing = true
-              │
-              ├─ Queue this failed request
-              │
-              ├─ Check: Already refreshing?
-              │  ├─ YES → Add to queue, wait for token
-              │  └─ NO → Proceed to refresh
-              │
-              └─ POST /api/auth/refresh-token
-                 │
-                 ├─ Body: { refreshToken: localStorage.refresh_token }
-                 │
-                 Backend
-                 │
-                 └─ POST /auth/refresh-token handler
-                    │
-                    └─ AuthService.refreshToken()
-                       │
-                       └─ RefreshTokenService.verifyRefreshToken()
-                          │
-                          ├─ RefreshTokenRepository.findByToken()
-                          │  └─ DB Query: SELECT * FROM refresh_tokens WHERE token = ?
-                          │
-                          ├─ Check: Token exists?
-                          │  └─ If not → throw InvalidToken
-                          │
-                          ├─ ZJwtService.isValid()
-                          │  └─ Verify JWT signature
-                          │
-                          ├─ Check: Not expired?
-                          │  └─ If isExpired() → throw ExpiredToken
-                          │
-                          ├─ Check: Not revoked?
-                          │  └─ If isRevoked() → throw RevokedToken
-                          │
-                          └─ Return RefreshToken object with User
-                       │
-                       ├─ Generate new Access Token
-                       │  └─ JwtService.generateToken()
-                       │
-                       ├─ Revoke old Refresh Token
-                       │  └─ refreshTokenRepository.save(token.setRevokedAt(NOW))
-                       │
-                       ├─ Create new Refresh Token
-                       │  └─ RefreshTokenService.createRefreshToken()
-                       │
-                       └─ Return RefreshTokenResponse
-                          └─ { token: "new_access", refreshToken: "new_refresh" }
-                 │
-                 Response 200 OK
-                 └─ JSON: { token: "...", refreshToken: "..." }
-              │
-              ├─ Update localStorage
-              │  ├─ localStorage.jwt_token = response.token
-              │  └─ localStorage.refresh_token = response.refreshToken
-              │
-              ├─ Unlock new requests
-              │  └─ isRefreshing = false
-              │
-              ├─ Process queued requests
-              │  └─ Resolve all queued promises with new token
-              │
-              ├─ Update original request header
-              │  └─ originalRequest.headers.Authorization = "Bearer " + newToken
-              │
-              └─ Retry original request
-                 │
-                 Backend (now with valid token)
-                 │
-                 ├─ Process request
-                 └─ Return 200 OK with data
-              │
-              └─ Frontend receives success response
-                 └─ Application continues normally
+User makes API call
+    ↓
+Access token expired → 401 Unauthorized
+    ↓
+apiClient interceptor detects 401
+    ↓
+Automatically calls POST /api/auth/refresh-token
+    ↓
+Backend:
+  - Verifies refresh token signature
+  - Checks database (not revoked, not expired)
+  - Generates new access token
+  - Optionally: revokes old refresh token, generates new one
+    ↓
+Returns: { token, refreshToken }
+    ↓
+Frontend updates localStorage
+    ↓
+Retries original API call with new token
+    ↓
+Success! User never noticed the token expired
 ```
 
 ### 3. Logout Flow
 
 ```
-Client Request (Browser)
-  │
-  ├─ User clicks "Logout" button
-  │
-Frontend
-  │
-  └─ authService.logout()
-      │
-      ├─ Get refreshToken from localStorage
-      │  └─ const refreshToken = localStorage.getItem('refresh_token')
-      │
-      ├─ HTTP POST to backend
-      │  │
-      │  └─ POST /api/auth/logout
-      │      └─ Body: { refreshToken }
-      │
-      Backend
-      │
-      └─ AuthController.logout()
-         │
-         └─ AuthService.logout()
-            │
-            └─ RefreshTokenService.revokeRefreshToken()
-               │
-               ├─ RefreshTokenRepository.findByToken()
-               │  └─ DB Query: SELECT * FROM refresh_tokens WHERE token = ?
-               │
-               ├─ If found
-               │  ├─ token.setRevokedAt(NOW)
-               │  └─ RefreshTokenRepository.save()
-               │     └─ DB Update: UPDATE refresh_tokens SET revoked_at = NOW WHERE id = ?
-               │
-               └─ Return 200 OK
-      │
-      ├─ Frontend clears tokens
-      │  ├─ localStorage.removeItem('jwt_token')
-      │  └─ localStorage.removeItem('refresh_token')
-      │
-      ├─ Redirect to login
-      │   └─ window.location.href = '/login'
-      │
-      └─ User sees login page
+User clicks logout
+    ↓
+POST /api/auth/logout with refresh token
+    ↓
+Backend marks refresh token as revoked in database
+    ↓
+Frontend clears localStorage
+    ↓
+Redirect to login page
 ```
 
 ---
 
-## Configuration Management
+## Security Features
 
+### Token-Based Authentication
+- **Access Token**: Short-lived (15 min), stored in localStorage
+  - Contains user info (role, clientId)
+  - Verified on every API request
+  - Cannot be revoked (but expires quickly)
+
+- **Refresh Token**: Long-lived (7 days), stored in database + localStorage
+  - Can be revoked (logout functionality)
+  - Used to get new access tokens
+  - Tracked in database for security
+
+### Two-Factor Authentication (2FA)
+- Uses TOTP (Time-based One-Time Password)
+- Compatible with Google Authenticator, Authy, etc.
+- User scans QR code during setup
+- Required on every login if enabled
+
+### Password Storage
+- Passwords are hashed using BCrypt
+- Never stored in plain text
+- Salt is automatically generated per password
+
+---
+
+## Key Configuration
+
+### Backend (application.properties)
+```properties
+# JWT Configuration
+app.jwt.secret=your-secret-key-here
+app.jwt.issuer=CashTactics
+app.jwt.expiration-minutes=15       # Access token lifetime
+app.jwt.temp-expiration-minutes=5   # Temporary tokens for 2FA
+app.jwt.refresh-token-days=7        # Refresh token lifetime
+
+# Database
+spring.datasource.url=jdbc:postgresql://localhost:5432/banking
+spring.datasource.username=postgres
+spring.datasource.password=your-password
+
+# Flyway (database migrations)
+spring.flyway.enabled=true
 ```
-Production Environment
-│
-└─ .env.properties (Server)
-   ├─ DB_URL=jdbc:postgresql://prod-db:5432/banking
-   ├─ JWT_SECRET=<strong-random-secret>
-   ├─ JWT_EXPIRATION_MINUTES=15
-   ├─ JWT_REFRESH_TOKEN_DAYS=7
-   └─ SSL_KEYSTORE_PASSWORD=<keystore-password>
+
+### Frontend (apiClient.js)
+```javascript
+const API_BASE_URL = '/api';  // Backend runs on same domain in production
+
+// Tokens stored in localStorage:
+// - jwt_token: Access token
+// - refresh_token: Refresh token
 ```
 
 ---
 
-## Error Handling
+## Why This Architecture?
 
-```
-Potential Errors & Recovery
-│
-├─ 401 Unauthorized (access token expired)
-│  └─ Auto-refresh: POST /auth/refresh-token
-│     ├─ Success → Retry original request
-│     └─ Failure → Logout user
-│
-├─ 401 Unauthorized (refresh token expired/revoked)
-│  └─ Cannot refresh → Logout user, force re-login
-│
-├─ 401 Unauthorized (invalid signature)
-│  └─ Token tampered → Logout user
-│
-├─ 500 Internal Server Error (DB issue)
-│  └─ Refresh endpoint fails → Logout user
-│
-└─ Network Error
-   └─ Cannot reach refresh endpoint → Logout user
-```
+### Separation of Concerns
+- Frontend handles UI/UX
+- Backend handles business logic and data
+- Database handles data persistence
 
----
+### Scalability
+- Frontend can be deployed to CDN
+- Backend can run on multiple servers
+- Database can be replicated
 
-## Performance Characteristics
+### Security
+- JWT tokens can't be tampered with (signed)
+- Refresh tokens can be revoked
+- Passwords are securely hashed
+- 2FA adds extra security layer
 
-### Token Generation
-- Access Token: ~50ms (JWT signing)
-- Refresh Token: ~50ms (JWT signing + DB insert)
-
-### Token Verification
-- Access Token: ~30ms (JWT verify)
-- Refresh Token: ~50ms (JWT verify + DB lookup + validation)
-
-### Database Operations
-- Create refresh token: O(1) INSERT
-- Find refresh token: O(1) SELECT (index on token)
-- Revoke refresh token: O(1) UPDATE (primary key)
-- Active tokens query: O(1) SELECT (composite index)
-
-### Request Queueing
-- Lock overhead: <1ms
-- Queue processing: <100ms for up to 100 requests
-- Memory: ~1KB per queued request
+### Maintainability
+- Clear layer boundaries
+- Each component has single responsibility
+- Easy to test individual parts
+- Well-documented code structure
 
 ---
 
-## Scalability Considerations
+## Common Scenarios
 
-### Horizontal Scaling
-- ✅ Stateless token verification (JWT signature only)
-- ✅ Shared refresh token store (database)
-- ✅ No session affinity required
-- ⚠️ Database becomes bottleneck with 10K+ refresh ops/sec
+### How logging in works:
+1. User enters username/password
+2. Backend validates credentials
+3. Backend creates access + refresh tokens
+4. Frontend stores tokens
+5. User is redirected based on role (admin/user)
 
-### Database Optimization
-```sql
--- Recommended index strategy
-CREATE INDEX idx_refresh_tokens_lookup ON refresh_tokens(token);
-CREATE INDEX idx_refresh_tokens_user_status ON refresh_tokens(user_id, revoked_at, expiry_date);
+### How API calls work:
+1. Frontend attaches access token to request
+2. Backend verifies token
+3. If valid: processes request and returns data
+4. If expired: frontend auto-refreshes and retries
 
--- Partitioning by user_id for very large datasets
-CREATE TABLE refresh_tokens_2024_01 PARTITION OF refresh_tokens
-    FOR VALUES FROM (MINVALUE) TO (1000000);
-```
+### How logging out works:
+1. User clicks logout
+2. Frontend sends refresh token to backend
+3. Backend marks it as revoked in database
+4. Frontend clears all tokens
+5. User redirected to login page
 
-### Cache Layer (Optional)
-```java
-// Redis cache for recently verified tokens
-@Cacheable(value = "refreshTokens", key = "#token.hashCode()", 
-           sync = true, unless = "#result == null")
-public RefreshToken verifyRefreshToken(String token) {
-    // ... verification logic
-}
-```
-
----
-
-## Security Considerations
-
-```
-Security Layers
-│
-├─ Transport Layer
-│  └─ HTTPS/TLS 1.3
-│     ├─ Tokens encrypted in transit
-│     └─ Man-in-middle prevention
-│
-├─ Storage Layer
-│  ├─ Access Token
-│  │  └─ localStorage (vulnerable to XSS)
-│  │     → Can be mitigated with Content Security Policy
-│  │
-│  └─ Refresh Token
-│     ├─ localStorage (vulnerable to XSS)
-│     └─ Database (secure, revocable)
-│
-├─ Token Generation
-│  ├─ Strong secret (min 32 chars, random)
-│  ├─ HMAC-SHA256 signing
-│  └─ Unique issuer/audience claims
-│
-├─ Token Validation
-│  ├─ Signature verification
-│  ├─ Expiration check
-│  ├─ State check (revoked_at)
-│  └─ Database validation
-│
-├─ Token Rotation
-│  └─ Old refresh token revoked immediately
-│     ├─ Prevents token reuse if stolen
-│     └─ Forces attacker to refresh, revealing compromise
-│
-└─ Rate Limiting (Recommended)
-   └─ Limit refresh attempts per user/IP
-      ├─ Prevent brute force on refresh token
-      └─ Detect unusual activity
-```
+### How 2FA works:
+1. User enables 2FA in settings
+2. Backend generates secret and QR code
+3. User scans with authenticator app
+4. On login: user must enter 6-digit code
+5. Backend verifies code matches
 
 ---
 
-## Monitoring & Metrics
-
-```
-Key Metrics to Track
-│
-├─ Token Operations
-│  ├─ Tokens created per hour
-│  ├─ Tokens refreshed per hour
-│  ├─ Tokens revoked per hour
-│  ├─ Failed refresh attempts
-│  └─ Average refresh operation time
-│
-├─ Database Performance
-│  ├─ Query execution times
-│  ├─ Index usage
-│  ├─ Row count in refresh_tokens table
-│  └─ Disk space usage
-│
-├─ Security Events
-│  ├─ Failed token verifications
-│  ├─ Expired token usage attempts
-│  ├─ Revoked token usage attempts
-│  └─ Suspicious patterns (multiple IPs, etc.)
-│
-└─ User Experience
-   ├─ Auto-refresh success rate
-   ├─ Request queue depth
-   ├─ Average time to refresh
-   └─ Session persistence rate
-```
-
----
-
-This architecture ensures:
-- ✅ Secure token management
-- ✅ Seamless user experience
-- ✅ Scalable token handling
-- ✅ Easy monitoring and maintenance
-- ✅ Clear separation of concerns
+This architecture provides a solid foundation for a secure, maintainable online banking system suitable for learning and demonstration purposes.

@@ -1,74 +1,139 @@
-# Online Internet Banking — Backend (Spring Boot)
+# Online Internet Banking System
+
+A full-stack online banking application built as a college project, demonstrating modern web development practices with Spring Boot backend and React frontend.
+
+## 🚀 Quick Start
+
+**Pre-created Test Accounts:**
+- **Admin:** `admin@cashtactics.com` / `password123`
+- **User:** `user@cashtactics.com` / `password123`
+
+**Start Backend:**
+```bash
+cd backend
+./mvnw spring-boot:run
+# Runs on https://localhost:8443
+```
+
+**Start Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+# Runs on http://localhost:5173
+```
+
+**Access:** Open http://localhost:5173 and login with the accounts above.
+
+**📚 Detailed Documentation:** See [backend/explanations/](backend/explanations/) for comprehensive guides on architecture, implementation, testing, and database schema.
+
+---
 
 ## Table of Contents
 
 - Project Overview
+- Technology Stack
 - Architecture & Components
-- Security (JWT + 2FA + HTTPS)
+- Security (JWT + Refresh Tokens + 2FA)
 - Database & Migrations (Flyway)
 - Running & Configuration
-- API Endpoints & Examples (incl. Auth)
+- API Endpoints & Examples
+- Frontend
 - Validation & Error Handling
-- Caching
 
 ---
 
 ## Project Overview
 
-- REST backend with layered architecture (controller → service → repository → DB)
-- Persistent data in PostgreSQL using JPA/Hibernate
-- Authentication with JWT and optional 2FA (Google Authenticator compatible)
-- Flyway manages schema and seed data (V1…V13)
-- HTTPS enabled on port 8443 (self-signed keystore for dev) and HTTP on 8080
+This is a **college project** demonstrating a secure online banking system with:
 
-## Architecture & Components
+- **Backend:** REST API with Spring Boot, JWT authentication, 2FA support
+- **Frontend:** React with modern hooks, Axios for API calls, TailwindCSS
+- **Database:** PostgreSQL with Flyway migrations, all reference data as ENUMs
+- **Security:** JWT with refresh tokens (auto-renewal), optional 2FA, HTTPS
+- **Features:** Account management, money transfers, transaction history, fraud detection, AI categorization, admin dashboard
 
-- Controllers: expose REST endpoints for auth, clients, accounts, transactions
-- Services: business rules (open/close accounts, deposit/withdraw/transfer, validations)
-- Repositories: Spring Data JPA for DB access
-- Models (Entities): map to tables and views
-- DTOs + Mappers: clean payloads between API and entities
-- Exception handling: consistent JSON errors via `GlobalExceptionHandler`
+## Technology Stack
 
-Important classes (examples):
-- `AccountService`: IBAN generation, balance updates, transaction logging
-- `AuthService`: register, login, 2FA setup/confirm/verify
-- `JwtAuthenticationFilter`: validates JWT and enforces 2FA claim for protected routes
-- `SecurityConfig`: Spring Security configuration
+**Backend:**
+- Java 17, Spring Boot 3
+- Spring Security, Spring Data JPA
+- PostgreSQL 16 with Flyway migrations
+- JWT authentication with TOTP (2FA)
+- Caffeine caching
 
-## Security (JWT + 2FA + HTTPS)
+**Frontend:**
+- React 18 with Vite
+- Axios (HTTP client with auto-refresh)
+- TailwindCSS
+- React Router
 
-- Login returns either a final JWT (no 2FA) or a short temp token (when 2FA is enabled)
-- 2FA flow: setup (generate secret + QR) → confirm → verify; then tokens include `2fa=ok`
-- `JwtAuthenticationFilter` checks signature, expiration, issuer, and requires `2fa=ok` for access if user has 2FA enabled
-- Passwords are hashed; user roles use a PostgreSQL ENUM (`ROLE_ENUM`)
-- HTTPS on 8443 with a PKCS12 keystore (for local dev, self‑signed)
+## Architecture & CRefresh Tokens + 2FA)
+
+**JWT Authentication:**
+- **Access Token:** Short-lived (15 minutes), used for API requests
+- **Refresh Token:** Long-lived (7 days), stored in database, used to renew access tokens
+- **Auto-Refresh:** Frontend automatically renews expired access tokens using refresh token
+- **Token Rotation:** Old refresh tokens are revoked when new ones are issued
+- Login returns both tokens; access tokens cannot be revoked but expire quickly
+
+**Two-Factor Authentication (2FA):**
+- Optional TOTP-based 2FA (Google Authenticator compatible)
+- Flow: setup (generate secret + QR code) → confirm → verify with code
+- When 2FA is enabled, login returns temp token → user enters 6-digit code → gets final tokens
+- Tokens include `2fa=ok` claim when 2FA verification is complete
+
+**Additional Security:**
+- Passwords hashed with BCrypt
+- User roles stored as PostgreSQL ENUM (`ROLE_ENUM`)
+- HTTPS on port 8443 (self-signed certificate for development)
+- Refresh tokens stored in database for revocation capability
 
 ## Database & Migrations (Flyway)
 
 Flyway versioned migrations live in `src/main/resources/db/migration`:
 
-- V1: PostgreSQL enums → `ROLE_ENUM`, `ACCOUNT_STATUS_ENUM`
-- V2: `CURRENCY_TYPE`, `TRANSACTION_TYPE` (columns: `id`, `code`, `name`, timestamps)
-  - Seed codes are short: `EUR`, `USD`, `RON`, `GBP` and `DEP` (Deposit), `RET` (Withdrawal), `TRF` (Transfer)
-- V3: `SEX_TYPE`, `CLIENT_TYPE` (both have `code` + `name`; seeds: `M/F/O`, `PF/PJ`)
-- V4: `CLIENT` (first_name, last_name, `client_type_id`, `sex_type_id`, `active`, audit)
-- V5: `CONTACT_INFO` (email, phone, contact_person, website, address, city, postal_code)
-- V6: `USER` (Postgres enum column `role ROLE_ENUM`)
-- V7: `ACCOUNT` (status `ACCOUNT_STATUS_ENUM`, `currency_type_id` FK)
-- V8: `TRANSACTION` (`transaction_type_id`, `original_currency_type_id`, amount/original_amount)
-- V9: read‑only views → `VIEW_CLIENT`, `VIEW_ACCOUNT`, `VIEW_TRANSACTION`
-- V10: seed sample data (25 clients, 50 accounts, 50 transactions)
-- V11: add sample users (admin + regular user)
-- V12: convert lookup tables to Postgres enums (ClientType, SexType, CurrencyType, TransactionType)
-- V13: fix sample user password hashes
+- **V1:** Create PostgreSQL ENUMs
+  - `ROLE_ENUM` (USER, ADMIN)
+  - `ACCOUNT_STATUS_ENUM` (ACTIVE, CLOSED, SUSPENDED)  
+  - `TRANSACTION_TYPE_ENUM` (DEPOSIT, WITHDRAWAL, TRANSFER_INTERNAL, TRANSFER_EXTERNAL)
+  - `TRANSACTION_CATEGORY_ENUM` (FOOD, GROCERIES, TRANSPORT, SHOPPING, ENTERTAINMENT, etc.)
+  - `CLIENT_TYPE_ENUM` (PF, PJ)
+  - `SEX_TYPE_ENUM` (M, F, O)
+  - `CURRENCY_ENUM` (EUR, USD, RON, GBP)
 
-Entity highlights:
-- `User.role` and `Account.status` are mapped to Postgres enums using `@Enumerated(EnumType.STRING)` + `@JdbcTypeCode(SqlTypes.NAMED_ENUM)`
-- Lookup entities removed in favor of Java enums in `model.enums`
-- View entities (`ViewClient`, `ViewAccount`, `ViewTransaction`) map to SQL views with aliased columns
+- **V2:** `CLIENT` table (first_name, last_name, client_type, sex_type, risk_level, active)
+- **V3:** `CONTACT_INFO` table (email, phone, address, city, postal_code)
+- **V4:** `USER` table (username_or_email, password_hash, role, 2FA fields)
+- **V5:** `ACCOUNT` table (iban, balance, currency_code, status)
+- **V6:** `TRANSACTION` table (amount, type, category, merchant, risk_score, flagged)
+- **V7:** `CATEGORY_RULE` table (keyword-to-category mappings for AI categorization)
+- **V8:** Fraud detection tables (`FRAUD_SCORE`, `FRAUD_ALERT`)
+- **V9:** Read-only views (`VIEW_CLIENT`, `VIEW_ACCOUNT`, `VIEW_TRANSACTION`, `VIEW_FRAUD_DASHBOARD`)
+- **V10:** Seed sample data (25 clients, 50 accounts, 50 transactions)
+- **V11:** Add sample users with BCrypt hashed passwords
+- **V12:** Create additional indexes for performance optimization
+- **V13:** `REFRESH_TOKENS` table for refresh token storage
 
-Table naming: tables and views are quoted uppercase (e.g., `"ACCOUNT"`). In `application.properties` I set `spring.jpa.properties.hibernate.globally_quoted_identifiers=true` so Hibernate matches the quoted names.
+**Entity Highlights:**
+- All reference data uses PostgreSQL ENUMs (not lookup tables)
+- `User.role`, `Account.status`, `Transaction.transaction_type`, etc. are mapped using `@Enumerated(EnumType.STRING)` + `@JdbcTypeCode(SqlTypes.NAMED_ENUM)`
+- Java enums in `model.enums` match PostgreSQL ENUMs exactly
+- View entities (`ViewClient`, `ViewAccount`, `ViewTransaction`, `ViewFraudDashboard`) map to SQL views
+- Tables are quoted uppercase (e.g., `"ACCOUNT"`); `globally_quoted_identifiers=true` in config
+
+**Fraud Detection Features:**
+- Transaction risk scoring with component analysis (amount, time, category, frequency, device)
+- Automatic flagging of suspicious transactions
+- Fraud alerts with review workflow (PENDING, REVIEWED, CONFIRMED, FALSE_POSITIVE)
+- AI-powered transaction categorization using keyword rules
+
+**Caching (Caffeine):**
+- **Exchange Rates:** Currency conversion rates fetched from ECB (European Central Bank) are cached for 10 minutes to reduce external API calls
+- **Account Balances:** Account balance queries are cached with key `iban` to optimize frequent balance checks
+- **Accounts by Client:** Client account lists are cached with key `clientId` to improve performance
+- Cache configuration: `maximumSize=500, expireAfterAccess=10m` (500 entries max, 10-minute TTL)
+- See `@Cacheable` annotations in `ExchangeRateService` and `AccountService`
 
 ## Running & Configuration
 
@@ -83,6 +148,7 @@ spring.config.import=optional:file:.env.properties
 spring.datasource.url=${DB_URL}
 spring.datasource.username=${DB_USERNAME}
 spring.datasource.password=${DB_PASSWORD}
+spring.datasource.driver-class-name=org.postgresql.Driver
 
 # JPA / Hibernate
 spring.jpa.hibernate.ddl-auto=validate
@@ -103,11 +169,35 @@ server.ssl.key-store=classpath:keystore.p12
 server.ssl.key-store-password=${SSL_KEYSTORE_PASSWORD}
 server.ssl.key-store-type=PKCS12
 server.ssl.key-alias=tomcat
+server.ssl.enabled-protocols=TLSv1.3, TLSv1.2
 server.port=${SERVER_PORT:8443}
+
+# HikariCP Connection Pool
+spring.datasource.hikari.maximum-pool-size=10
+spring.datasource.hikari.minimum-idle=5
+spring.datasource.hikari.idle-timeout=30000
+spring.datasource.hikari.max-lifetime=1800000
+spring.datasource.hikari.connection-timeout=30000
+
+# Caffeine Cache (for exchange rates)
+spring.cache.type=caffeine
+spring.cache.caffeine.spec=maximumSize=500,expireAfterAccess=10m
+
+# Exchange Rates (ECB)
+app.fx.ecb-url=https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml
+
+# JWT Configuration
+app.jwt.secret=${JWT_SECRET}
+app.jwt.expiration-minutes=${JWT_EXPIRATION_MINUTES}
+app.jwt.temp-expiration-minutes=${JWT_TEMP_EXPIRATION_MINUTES}
+app.jwt.issuer=${JWT_ISSUER}
+app.jwt.refresh-token-days=${JWT_REFRESH_TOKEN_DAYS}
+
+# 2FA Configuration
+app.2fa.app-name=${TOTP_APP_NAME}
 ```
 
-Run with Maven wrapper:
-
+**Start the backend:**
 ```bash
 ./mvnw spring-boot:run
 ```
@@ -123,28 +213,28 @@ Auth (2FA-capable)
 - `POST /api/auth/2fa/confirm` → enable 2FA
 - `POST /api/auth/2fa/verify` → exchange temp token + TOTP for final JWT
 
-Clients
-- `POST /api/clients` → create
+**Clients:**
+- `POST /api/clients` → create client
 - `PUT /api/clients/{id}/contact` → update contact info
-- `GET /api/clients/view` → list from view (read‑only)
+- `GET /api/clients/view` → list all clients (admin only, from VIEW_CLIENT)
 
-Accounts
-- `POST /api/accounts/open` → open account (default status ACTIVE)
-- `POST /api/accounts/{iban}/deposit`
-- `POST /api/accounts/{iban}/withdraw`
-- `POST /api/accounts/transfer`
-- `GET /api/accounts/by-client/{clientId}`
-- `GET /api/accounts/{iban}/balance`
+**Accounts:**
+- `POST /api/accounts/open` → open new account (default status ACTIVE)
+- `POST /api/accounts/{iban}/deposit` → deposit money
+- `POST /api/accounts/{iban}/withdraw` → withdraw money
+- `POST /api/accounts/transfer` → transfer between accounts
+- `GET /api/accounts/by-client/{clientId}` → get client's accounts
+- `GET /api/accounts/{iban}/balance` → get account balance
 
-Transactions
-- `GET /api/transactions/view-all`
-- `GET /api/transactions/by-iban/{iban}`
-- `GET /api/transactions/by-client/{clientId}`
-- `GET /api/transactions/by-type/{code}`
-- `GET /api/transactions/between?from=YYYY-MM-DD&to=YYYY-MM-DD`
-- `GET /api/transactions/daily-totals`
+**Transactions:**
+- `GET /api/transactions/view-all` → all transactions (admin only)
+- `GET /api/transactions/by-iban/{iban}` → transactions for an account
+- `GET /api/transactions/by-client/{clientId}` → client's transactions
+- `GET /api/transactions/by-type/{type}` → filter by transaction type
+- `GET /api/transactions/between?from=YYYY-MM-DD&to=YYYY-MM-DD` → date range
+- `GET /api/transactions/daily-totals` → aggregated daily totals
 
-Example: register → login → 2FA
+**Example: register → login → 2FA**
 
 ```json
 // Register
@@ -165,11 +255,12 @@ POST /api/auth/login
 // 2FA verify (use code from authenticator app)
 POST /api/auth/2fa/verify
 {
+  "tempToken": "temp_token_from_login",
   "code": "123456"
 }
 ```
 
-Example: transfer
+**Example: transfer money**
 
 ```json
 POST /api/accounts/transfer
@@ -180,7 +271,47 @@ POST /api/accounts/transfer
 }
 ```
 
-Transaction types use short codes: `DEP`, `RET`, `TRF`.
+**Transaction Types:**
+- `DEPOSIT` - Money added to account
+- `WITHDRAWAL` - Money removed from account
+- `TRANSFER_INTERNAL` - Between accounts in the system
+- `TRANSFER_EXTERNAL` - To external bank accounts
+
+**Transaction Categories:**
+AI-powered categorization: FOOD, GROCERIES, TRANSPORT, SHOPPING, ENTERTAINMENT, HEALTH, TRAVEL, SUBSCRIPTIONS, INCOME, OTHERS
+
+## Frontend
+
+**Location:** `frontend/`
+
+**Tech Stack:** React 18, Vite, TailwindCSS, Axios, React Router
+
+**Key Features:**
+- **Auto-Refresh:** `apiClient.js` automatically renews expired access tokens
+- **Protected Routes:** Role-based routing (admin vs user dashboards)
+- **2FA Support:** QR code display and code verification
+- **Responsive Design:** TailwindCSS utilities
+
+**Pages:**
+- `/login` - User login
+- `/register` - New user registration
+- `/dashboard` - User dashboard (accounts, transactions)
+- `/admin` - Admin dashboard (all clients, all transactions)
+- `/2fa-verify` - Two-factor authentication code entry
+
+**Services:**
+- `authService.js` - Login, logout, register, 2FA, token refresh
+- `apiClient.js` - Axios instance with request/response interceptors
+- `accountService.js` - Account operations
+- `transactionService.js` - Transaction operations
+
+**Starting the Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Access at: http://localhost:5173
 
 ## Validation & Error Handling
 
@@ -199,24 +330,22 @@ Transaction types use short codes: `DEP`, `RET`, `TRF`.
 
 Auth errors use a dedicated exception type and respond with 401.
 
-## Caching
-
-- Caffeine cache for quick reads (e.g., account balances, accounts by client)
-- Simple TTL configuration in `application.properties`
-
 ## Troubleshooting
 
-Quoted identifiers
-- Tables are created quoted/uppercase (e.g., `"ACCOUNT"`). I enabled `globally_quoted_identifiers` so Hibernate matches them.
+**Quoted identifiers:**
+- Tables are created quoted/uppercase (e.g., `"ACCOUNT"`)
+- `globally_quoted_identifiers=true` in config ensures Hibernate matches them
 
-PostgreSQL enums
-- `User.role` and `Account.status` are true database enums (not varchar). I used `@JdbcTypeCode(SqlTypes.NAMED_ENUM)` so Hibernate binds correctly.
+**PostgreSQL enums:**
+- `User.role`, `Account.status`, etc. are true database ENUMs (not varchar)
+- Use `@JdbcTypeCode(SqlTypes.NAMED_ENUM)` for proper Hibernate binding
 
-Flyway reruns
-- Flyway runs only new migrations. If I change an old migration, it won’t re‑apply unless I reset the DB or create a new version (e.g., V12 or V13) with `ALTER TABLE` statements.
+**Flyway migrations:**
+- Flyway runs only new migrations
+- To change schema, create a new migration (e.g., V14) with `ALTER TABLE` statements
+- Never modify existing migration files after they've run
 
-Drop database with active sessions (psql):
-
+**Drop database with active sessions:**
 ```sql
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
@@ -225,17 +354,71 @@ WHERE datname = 'banking' AND pid <> pg_backend_pid();
 DROP DATABASE banking;
 ```
 
-Seed data
-- V10 inserts 25 clients, 50 accounts (some with multiple currencies), and 50 transactions. Rerun by resetting the DB or adding a new seed migration.
+## Project Structure
+
+```
+Online-Internet-Banking/
+├── backend/                    # Spring Boot backend
+│   ├── src/main/java/         # Java source code
+│   ├── src/main/resources/    # Application properties, migrations
+│   ├── explanations/          # 📚 Detailed documentation
+│   │   ├── README.md          # Documentation index
+│   │   ├── QUICK_START.md     # Getting started guide
+│   │   ├── ARCHITECTURE.md    # System architecture
+│   │   ├── IMPLEMENTATION_GUIDE.md  # Implementation details
+│   │   ├── TESTING_GUIDE.md   # Testing instructions
+│   │   └── DATABASE.md        # Database schema
+│   └── pom.xml                # Maven dependencies
+├── frontend/                   # React frontend
+│   ├── src/                   # React components and pages
+│   ├── services/              # API client services
+│   └── package.json           # npm dependencies
+└── README.md                   # This file
+```
+
+## Detailed Documentation
+
+For in-depth information, see the documentation in [backend/explanations/](backend/explanations/):
+
+- **[QUICK_START.md](backend/explanations/QUICK_START.md)** - How to run the application
+- **[ARCHITECTURE.md](backend/explanations/ARCHITECTURE.md)** - System design and architecture
+- **[IMPLEMENTATION_GUIDE.md](backend/explanations/IMPLEMENTATION_GUIDE.md)** - Code implementation details
+- **[TESTING_GUIDE.md](backend/explanations/TESTING_GUIDE.md)** - Testing guide with examples
+- **[DATABASE.md](backend/explanations/DATABASE.md)** - Database schema and migrations
+
+## Complete Setup Checklist
+
+**Prerequisites:**
+- Java 17+
+- Node.js 16+
+- PostgreSQL 16
+- Maven
+
+**Backend Setup:**
+1. Create PostgreSQL database: `CREATE DATABASE banking;`
+2. Create `.env.properties` in project root:
+   ```properties
+   DB_URL=jdbc:postgresql://localhost:5432/banking
+   DB_USERNAME=postgres
+   DB_PASSWORD=your_password
+   SSL_KEYSTORE_PASSWORD=changeit
+   SERVER_PORT=8443
+   ```
+3. Start backend: `cd backend && ./mvnw spring-boot:run`
+4. Flyway migrations run automatically on startup
+
+**Frontend Setup:**
+1. Install dependencies: `cd frontend && npm install`
+2. Start dev server: `npm run dev`
+3. Access at http://localhost:5174
+
+**Testing:**
+- Login with `user@cashtactics.com` / `password123`
+- Or login as admin: `admin@cashtactics.com` / `password123`
+- Import Postman collection from `backend/src/main/resources/postman/postman_collection.json`
+
+The backend API is at `https://localhost:8443/api/**` and requires JWT for most requests (except auth endpoints).
 
 ---
 
-## Quick Start Checklist
-
-1. Create `.env.properties` with `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `SSL_KEYSTORE_PASSWORD`, `SERVER_PORT`
-2. Create the PostgreSQL database
-3. Run `./mvnw spring-boot:run`
-4. Flyway applies migrations automatically; check logs for `Flyway: successfully validated` (or reset the DB if needed)
-5. Import the Postman collection from `postman_collection.json` and test endpoints
-
-The API is at `https://localhost:8443/api/**` and requires JWT for most requests (except auth endpoints).
+**Note:** This is a college project demonstrating full-stack development, security best practices, and modern web technologies. It includes features like JWT refresh tokens, two-factor authentication, role-based access control and a responsive React frontend. Fraud detection and AI-powered transaction categorization functionalities are work in progress.
