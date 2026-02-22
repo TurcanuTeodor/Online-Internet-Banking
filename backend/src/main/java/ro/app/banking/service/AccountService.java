@@ -12,7 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.validation.constraints.NotNull;
-import ro.app.banking.exception.ResourceNotFoundException;
+import ro.app.banking.exception.BusinessRuleViolationException;
+import ro.app.banking.exception.*;
 import ro.app.banking.model.entity.Account;
 import ro.app.banking.model.entity.Client;
 import ro.app.banking.model.entity.Transaction;
@@ -85,11 +86,11 @@ public class AccountService {
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
         if (AccountStatus.CLOSED.equals(account.getStatus())) {
-            throw new IllegalStateException("Account already closed");
+            throw new BusinessRuleViolationException("Account already closed");
         }
 
         if (account.getBalance().compareTo(BigDecimal.ZERO) != 0) {
-            throw new IllegalStateException("Account balance must be zero before closing");
+            throw new BusinessRuleViolationException("Account balance must be zero before closing");
         }
 
         account.setStatus(AccountStatus.CLOSED);
@@ -131,7 +132,7 @@ public class AccountService {
                 .orElseThrow(() -> new ResourceNotFoundException("Destination account not found"));
 
         if (from.getBalance().compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Insufficient funds");
+            throw new InsufficientFundsException("Insufficient funds");
         }
 
         TransactionType transferType = TransactionType.TRANSFER_INTERNAL;
