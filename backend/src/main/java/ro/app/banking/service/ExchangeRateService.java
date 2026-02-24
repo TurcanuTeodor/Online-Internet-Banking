@@ -9,8 +9,10 @@ import java.util.Map;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -18,6 +20,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
 import ro.app.banking.model.enums.CurrencyType;
+import ro.app.banking.exception.BusinessRuleViolationException;
 
 @Service
 public class ExchangeRateService {
@@ -25,8 +28,8 @@ public class ExchangeRateService {
 	private final RestTemplate restTemplate;
 	private final String ecbUrl;
 
-	public ExchangeRateService(@Value("${app.fx.ecb-url}") String ecbUrl) {
-		this.restTemplate = new RestTemplate();
+	public ExchangeRateService(RestTemplate restTemplate, @Value("${app.fx.ecb-url}") String ecbUrl) { //# issue 1
+		this.restTemplate = restTemplate; //primit ca parametru (injected)
 		this.ecbUrl = ecbUrl;
 	}
 
@@ -50,8 +53,28 @@ public class ExchangeRateService {
 		return toRate.divide(fromRate, 6, RoundingMode.HALF_UP);
 	}
 
+	/**
+	 * Sterge manual toate ratele de schimb din cache.
+	 * Util pentru: apelare manuala din admin panel, debugging, sau testing.
+	 * 
+	 * Nota: Cache-ul expira automat dupa 24h prin CacheConfig,
+	 * aceasta metoda este doar pentru clear-uri manuale sau ad-hoc.
+	 */
+	@CacheEvict(value = "exchangeRates", allEntries = true)
+	public void clearExchangeRatesCache() {
+		// Cache-ul este sters automat de catre Spring prin @CacheEvict
+	}
+
+	// in metoda spune explicit parserului XML sa nu proceseze entitati externe
 	private Map<CurrencyType, BigDecimal> fetchRates() {
-		String xml = restTemplate.getForObject(ecbUrl, String.class);
+		String xml;
+		try {
+			xml = restTemplate.getForObject(ecbUrl, String.class);
+		} catch (RestClientException e) {
+			throw new BusinessRuleViolationException("Could not retrieve the exchange rate: external service unavailable");
+		}
+
+		// Validare raspuns
 		if (xml == null || xml.isBlank()) {
 			throw new IllegalStateException("ECB rates response is empty");
 		}
@@ -63,9 +86,13 @@ public class ExchangeRateService {
 		rates.put(CurrencyType.EUR, BigDecimal.ONE);
 
 		try {
-			Document doc = DocumentBuilderFactory.newInstance()
-					.newDocumentBuilder()
-					.parse(new InputSource(new StringReader(xml)));
+			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+			//previne atacuri XXE
+			factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true); //interzice declaratii tip DOCTYPE
+			factory.setFeature("http://xml.org/sax/features/external-general-entities", false); //dezactiveaza includerea entitatilor externe generale
+			factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false); // dezactiveaza entitatile externe de tip parametru
+			
+			Document doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
 
 			NodeList cubes = doc.getElementsByTagName("Cube");
 			for (int i = 0; i < cubes.getLength(); i++) {
@@ -77,7 +104,7 @@ public class ExchangeRateService {
 						CurrencyType type = CurrencyType.fromCode(currency);
 						rates.put(type, new BigDecimal(rate));
 					} catch (IllegalArgumentException ex) {
-						continue;
+						continue; //silent skip unsupported currencies
 					}
 				}
 			}

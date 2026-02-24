@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import { jwtDecode } from 'jwt-decode';
 
 /**
  * Register a new user
@@ -19,9 +20,11 @@ export const register = async (userData) => {
 export const login = async (usernameOrEmail, password) => {
   const response = await apiClient.post('/auth/login', { usernameOrEmail, password });
   
-  // If 2FA is required, tempToken is returned instead of token
-  if (response.data.token) {
+  // Only persist token when 2FA is complete (or not required)
+  if (response.data.token && !response.data.twoFactorRequired) {
     localStorage.setItem('jwt_token', response.data.token);
+  } else {
+    localStorage.removeItem('jwt_token');
   }
   
   // Store refresh token if provided
@@ -133,5 +136,17 @@ export const verify2FA = async (tempToken, code) => {
  * @returns {boolean} Authentication status
  */
 export const isAuthenticated = () => {
-  return !!localStorage.getItem('jwt_token');
+  const token = localStorage.getItem('jwt_token');
+  if (!token) {
+    return false;
+  }
+
+  try {
+    const decoded = jwtDecode(token);
+    const isExpired = typeof decoded.exp === 'number' && Date.now() >= decoded.exp * 1000;
+    const hasValidated2fa = decoded['2fa'] === 'ok';
+    return !isExpired && hasValidated2fa;
+  } catch (error) {
+    return false;
+  }
 };

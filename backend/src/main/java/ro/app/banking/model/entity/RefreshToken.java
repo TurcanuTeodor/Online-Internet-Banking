@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "refresh_tokens")
+@Table(name = "REFRESH_TOKENS")
 public class RefreshToken {
     
     @Id
@@ -18,13 +18,13 @@ public class RefreshToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
     
-    @Column(nullable = false)
+    @Column(name = "expiry_date", nullable = false)
     private LocalDateTime expiryDate;
     
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     
-    @Column
+    @Column(name = "revoked_at")
     private LocalDateTime revokedAt;
     
     public RefreshToken() {}

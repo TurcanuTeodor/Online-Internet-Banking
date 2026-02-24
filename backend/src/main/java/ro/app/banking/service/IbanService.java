@@ -70,8 +70,9 @@ public class IbanService {
     }
 
     private String generateAccountNumber(){
-        long number= Math.abs(random.nextLong())%
-            (long)Math.pow(10, ACCOUNT_NUMBER_LENGTH);
+        long randomValue = random.nextLong();
+        if (randomValue == Long.MIN_VALUE) { randomValue = 0; } // Evita crash-ul
+        long number = Math.abs(randomValue) % 10_000_000_000_000_000L;
 
         return String.format("%016d", number);
     }

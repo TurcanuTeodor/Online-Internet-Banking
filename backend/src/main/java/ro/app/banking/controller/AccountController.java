@@ -69,4 +69,17 @@ public class AccountController {
         return ResponseEntity.noContent().build();
     }
 
+    // 6) Get all accounts from view (admin)
+    @GetMapping("/view")
+    public ResponseEntity<List<?>> viewAll() {
+        return ResponseEntity.ok(accountService.getAllViewAccounts());
+    }
+
+    // 7) Freeze account (set status to SUSPENDED)
+    @PostMapping("/{accountId}/freeze")
+    public ResponseEntity<AccountDTO> freeze(@PathVariable Long accountId) {
+        Account account = accountService.freezeAccount(accountId);
+        return ResponseEntity.ok(AccountMapper.toDTO(account));
+    }
+
 }

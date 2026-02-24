@@ -53,6 +53,8 @@ public class ViewAccount {
     public String getClientLastName() { return clientLastName; }
     public String getClientFirstName() { return clientFirstName; }
     public String getStatus() { return status; }
+    public String getAccountStatusName() { return status; }
+    public BigDecimal getBalance() { return accountBalance; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

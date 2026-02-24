@@ -6,6 +6,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 
 @Entity
 @Immutable
@@ -27,19 +28,39 @@ public class ViewClient {
     @Column(name = "client_active")
     private Boolean active;
 
+    @Column(name = "client_created_at")
+    private LocalDateTime createdAt;
+
     @Column(name = "phone")
     private String phone;
 
     @Column(name = "email")
     private String email;
 
+    @Column(name = "address")
+    private String address;
+
+    @Column(name = "city")
+    private String city;
+
+    @Column(name = "postal_code")
+    private String postalCode;
+
+    @Column(name = "username_email")
+    private String usernameEmail;
+
     public Long getClientId() { return clientId; }
     public String getClientLastName() { return clientLastName; }
     public String getClientFirstName() { return clientFirstName; }
     public String getClientTypeName() { return clientTypeName; }
     public Boolean getActive() { return active; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
     public String getPhone() { return phone; }
     public String getEmail() { return email; }
+    public String getAddress() { return address; }
+    public String getCity() { return city; }
+    public String getPostalCode() { return postalCode; }
+    public String getUsernameEmail() { return usernameEmail; }
 
     @Override
     public String toString() {
@@ -49,8 +70,13 @@ public class ViewClient {
                 ", clientFirstName='" + clientFirstName + '\'' +
                 ", clientTypeName='" + clientTypeName + '\'' +
                 ", active=" + active +
+                ", createdAt=" + createdAt +
                 ", phone='" + phone + '\'' +
                 ", email='" + email + '\'' +
+                ", address='" + address + '\'' +
+                ", city='" + city + '\'' +
+                ", postalCode='" + postalCode + '\'' +
+                ", usernameEmail='" + usernameEmail + '\'' +
                 '}';
     }
 }

@@ -5,8 +5,8 @@ A full-stack online banking application built as a college project, demonstratin
 ## 🚀 Quick Start
 
 **Pre-created Test Accounts:**
-- **Admin:** `admin@cashtactics.com` / `password123`
-- **User:** `user@cashtactics.com` / `password123`
+- **Admin:** `admin@cashtactics.com` / `password`
+- **User:** `user@cashtactics.com` / `password`
 
 **Start Backend:**
 ```bash
@@ -413,8 +413,8 @@ For in-depth information, see the documentation in [backend/explanations/](backe
 3. Access at http://localhost:5174
 
 **Testing:**
-- Login with `user@cashtactics.com` / `password123`
-- Or login as admin: `admin@cashtactics.com` / `password123`
+- Login with `user@cashtactics.com` / `password`
+- Or login as admin: `admin@cashtactics.com` / `password`
 - Import Postman collection from `backend/src/main/resources/postman/postman_collection.json`
 
 The backend API is at `https://localhost:8443/api/**` and requires JWT for most requests (except auth endpoints).

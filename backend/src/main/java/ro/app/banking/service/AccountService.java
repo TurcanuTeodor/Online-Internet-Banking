@@ -20,9 +20,7 @@ import ro.app.banking.model.entity.Transaction;
 import ro.app.banking.model.enums.AccountStatus;
 import ro.app.banking.model.enums.CurrencyType;
 import ro.app.banking.model.enums.TransactionType;
-import ro.app.banking.repository.AccountRepository;
-import ro.app.banking.repository.ClientRepository;
-import ro.app.banking.repository.TransactionRepository;
+import ro.app.banking.repository.*;
 
 @Service
 public class AccountService {
@@ -32,17 +30,20 @@ public class AccountService {
     private final TransactionRepository transactionRepository;
     private final IbanService ibanService;
     private final ExchangeRateService exchangeRateService;
+    private final ViewAccountRepository viewAccountRepository;
     
     public AccountService(AccountRepository accountRepository,
                           ClientRepository clientRepository,
                           TransactionRepository transactionRepository,
                           IbanService ibanService,
-                          ExchangeRateService exchangeRateService) {
+                          ExchangeRateService exchangeRateService,
+                          ViewAccountRepository viewAccountRepository) {
         this.accountRepository = accountRepository;
         this.clientRepository = clientRepository;
         this.transactionRepository = transactionRepository;
         this.ibanService = ibanService;
         this.exchangeRateService = exchangeRateService;
+        this.viewAccountRepository = viewAccountRepository;
     }
 
     // 1)Open a new account
@@ -115,7 +116,8 @@ public class AccountService {
     @Transactional
     @Caching(evict = {
         @CacheEvict(value= "balance", key= "#fromIban"),
-        @CacheEvict(value= "balance", key= "#toIban")
+        @CacheEvict(value= "balance", key= "#toIban"),
+        @CacheEvict(value= "accountsByClient", allEntries = true)
     })
     public void transfer(String fromIban, String toIban, BigDecimal amount) {
         if(amount ==null || amount.compareTo(BigDecimal.ZERO) <= 0){
@@ -152,6 +154,7 @@ public class AccountService {
         // debit transaction
         Transaction debit = new Transaction();
         debit.setAccount(from);
+        debit.setDestinationAccount(to);
         debit.setAmount(amount);
         debit.setOriginalAmount(amount);
         debit.setOriginalCurrency(fromCurrency);
@@ -163,6 +166,7 @@ public class AccountService {
         // credit transaction
         Transaction credit = new Transaction();
         credit.setAccount(to);
+        credit.setDestinationAccount(from);
         credit.setAmount(convertedAmount);
         credit.setOriginalAmount(amount);
         credit.setOriginalCurrency(fromCurrency);
@@ -175,5 +179,36 @@ public class AccountService {
         transactionRepository.save(credit);
         accountRepository.save(from);
         accountRepository.save(to);
+    }
+
+    // 6) Get all accounts from VIEW_ACCOUNT (admin)
+    public List<?> getAllViewAccounts() {
+        return viewAccountRepository.findAll();
+    }
+
+    // 7) Freeze an account (set status to SUSPENDED)
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value= "accountsByClient", key= "#result.client.id"),
+            @CacheEvict(value= "balance", key= "#result.iban")
+    })
+    public Account freezeAccount(@NotNull Long id) {
+        if(id==null){
+            throw new IllegalArgumentException("Account ID cannot be null");
+        }
+
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+
+        if (AccountStatus.SUSPENDED.equals(account.getStatus())) {
+            throw new BusinessRuleViolationException("Account already frozen");
+        }
+
+        if (AccountStatus.CLOSED.equals(account.getStatus())) {
+            throw new BusinessRuleViolationException("Cannot freeze a closed account");
+        }
+
+        account.setStatus(AccountStatus.SUSPENDED);
+        return accountRepository.save(account);
     }
 }

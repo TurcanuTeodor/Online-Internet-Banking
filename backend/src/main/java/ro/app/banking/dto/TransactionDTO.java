@@ -29,6 +29,8 @@ public class TransactionDTO {
 
     private String originalCurrencyCode;
 
+    private String currencyCode;
+
     @NotBlank
     private String sign; 
 
@@ -54,8 +56,10 @@ public class TransactionDTO {
     public void setOriginalAmount(BigDecimal originalAmount) { this.originalAmount = originalAmount; }
     public String getOriginalCurrencyCode() { return originalCurrencyCode; }
     public void setOriginalCurrencyCode(String originalCurrencyCode) { this.originalCurrencyCode = originalCurrencyCode; }
+    public String getCurrencyCode() { return currencyCode; }
+    public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
     public String getSign() {
-        return amount.compareTo(BigDecimal.ZERO) >= 0 ? "+" : "-";
+        return sign;
     }
     public void setSign(String sign) { this.sign = sign; }
     public String getDetails() { return details; }

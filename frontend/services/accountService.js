@@ -59,3 +59,22 @@ export const transfer = async (fromIban, toIban, amount) => {
   });
   return response.data;
 };
+
+/**
+ * Get all accounts from view (read-only)
+ * @returns {Promise} List of all accounts
+ */
+export const getAllAccountsFromView = async () => {
+  const response = await apiClient.get('/accounts/view');
+  return response.data;
+};
+
+/**
+ * Freeze an account (set status to SUSPENDED)
+ * @param {number} accountId - Account ID
+ * @returns {Promise} Frozen account details
+ */
+export const freezeAccount = async (accountId) => {
+  const response = await apiClient.post(`/accounts/${accountId}/freeze`);
+  return response.data;
+};

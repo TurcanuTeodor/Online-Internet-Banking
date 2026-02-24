@@ -17,6 +17,9 @@ public class TransactionMapper {
         dto.setAmount(e.getAmount());
         dto.setOriginalAmount(e.getOriginalAmount());
         dto.setOriginalCurrencyCode(e.getOriginalCurrency() != null ? e.getOriginalCurrency().getCode() : null);
+        dto.setCurrencyCode(e.getAccount() != null && e.getAccount().getCurrency() != null
+            ? e.getAccount().getCurrency().getCode()
+            : null);
         dto.setSign(e.getSign());
         dto.setDetails(e.getDetails());
         dto.setTransactionDate(e.getTransactionDate());

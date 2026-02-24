@@ -226,13 +226,15 @@ public class AuthService {
         
         Long clientId = user.getClient() != null ? user.getClient().getId() : null;
         
+        boolean twoFaVerified = user.isTwoFactorEnabled();
+
         String newToken = jwtService.generateToken(
             user.getUsernameOrEmail(),
             Map.of(
                 "role", user.getRole().name(),
                 "clientId", clientId,
                 "2fa", "ok",
-                "2fa_verified", true
+                "2fa_verified", twoFaVerified
             )
         );
         
