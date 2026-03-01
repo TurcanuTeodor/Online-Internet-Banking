@@ -1,0 +1,23 @@
+package ro.app.auth.repository;
+
+import ro.app.auth.model.entity.RefreshToken;
+import ro.app.auth.model.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+import java.util.List;
+
+@Repository
+public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
+    
+    Optional<RefreshToken> findByToken(String token);
+    
+    List<RefreshToken> findByUser(User user);
+    
+    @Query("SELECT rt FROM RefreshToken rt WHERE rt.user = :user AND rt.revokedAt IS NULL AND rt.expiryDate > CURRENT_TIMESTAMP")
+    List<RefreshToken> findActiveTokensByUser(User user);
+    
+    long deleteByUser(User user);
+}

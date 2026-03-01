@@ -15,6 +15,7 @@ This is a college project demonstrating a full-stack online banking application 
 - **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** - Implementation details for all features
 - **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - How to test the application
 - **[DATABASE.md](DATABASE.md)** - Database schema and migrations
+- **[SECURITY_KEYS_AND_ALGORITHMS.md](SECURITY_KEYS_AND_ALGORITHMS.md)** - Keys, tokens, encryption/hashing algorithms
 
 ## 🎯 Project Features
 

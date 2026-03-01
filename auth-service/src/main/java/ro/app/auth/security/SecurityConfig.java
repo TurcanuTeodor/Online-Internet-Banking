@@ -1,4 +1,4 @@
-package ro.app.banking.security;
+package ro.app.auth.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import ro.app.banking.security.jwt.JwtAuthenticationFilter;
+import ro.app.auth.security.jwt.JwtAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -31,7 +31,7 @@ public class SecurityConfig {
 
         http.csrf(csrf-> csrf.disable()) //disable Cross-Site Request Forgery(html form and session) bc i use jwt and rest api
             .authorizeHttpRequests(auth-> auth
-                .requestMatchers("/api/auth/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
+                .requestMatchers("/api/auth/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/health", "/v3/api-docs/**")
                 .permitAll() 
                 .anyRequest()
                 .authenticated() //any other req needs auth w valid JWT
