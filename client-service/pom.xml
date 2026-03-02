@@ -13,10 +13,10 @@
     </parent>
 
     <groupId>ro.app</groupId>
-    <artifactId>user-service</artifactId>
+    <artifactId>client-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
-    <name>User Service</name>
+    <name>Client Service</name>
     <description>Client profiles, personal data, contact info management</description>
 
     <properties>
@@ -85,6 +85,16 @@
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
+        <!-- ==================== CACHING ==================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- ==================== OBSERVABILITY ==================== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -134,7 +144,7 @@
                     <user>${DB_USERNAME}</user>
                     <password>${DB_PASSWORD}</password>
                     <schemas>
-                        <schema>users</schema>
+                        <schema>clients</schema>
                     </schemas>
                     <locations>
                         <location>filesystem:src/main/resources/db/migration</location>
