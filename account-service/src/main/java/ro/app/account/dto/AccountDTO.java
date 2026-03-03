@@ -1,0 +1,61 @@
+package ro.app.account.dto;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import jakarta.validation.constraints.*;
+
+public class AccountDTO {
+
+    private Long id;
+
+    @NotBlank
+    @Size(max = 34)
+    private String iban;
+
+    @NotNull
+    @Digits(integer = 15, fraction = 2)
+    private BigDecimal balance = BigDecimal.ZERO;
+
+    @NotBlank
+    private String currencyCode;
+
+    @NotNull
+    private Long clientId;
+
+    @NotBlank
+    private String status = "ACTIVE";
+
+    @NotNull
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
+
+    // Distributed: no transactionIds — transaction-service owns transactions
+
+    // === GETTERS / SETTERS ===
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getIban() { return iban; }
+    public void setIban(String iban) { this.iban = iban; }
+
+    public BigDecimal getBalance() { return balance; }
+    public void setBalance(BigDecimal balance) { this.balance = balance; }
+
+    public String getCurrencyCode() { return currencyCode; }
+    public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
+
+    public Long getClientId() { return clientId; }
+    public void setClientId(Long clientId) { this.clientId = clientId; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+}
