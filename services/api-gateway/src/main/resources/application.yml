@@ -1,0 +1,40 @@
+server:
+  port: 8443
+  ssl:
+    key-store: classpath:keystore.p12
+    key-store-password: ${SSL_PASSWORD}
+    key-store-type: PKCS12
+    key-alias: gateway
+
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: optional:file:.env.properties
+
+# JWT
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: CashTactics
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway
+
+# Resilience4j circuit breaker defaults
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 5s
