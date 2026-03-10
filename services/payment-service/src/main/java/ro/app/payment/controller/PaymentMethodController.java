@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,41 +12,56 @@ import jakarta.validation.Valid;
 import ro.app.payment.dto.PaymentMethodDTO;
 import ro.app.payment.dto.request.AttachPaymentMethodRequest;
 import ro.app.payment.service.PaymentMethodService;
+import ro.app.payment.security.JwtPrincipal;
+import ro.app.payment.security.OwnershipChecker;
 
 @RestController
 @RequestMapping("/api/payment-methods")
 @Validated
 public class PaymentMethodController {
-
+    
     private final PaymentMethodService paymentMethodService;
+    private final OwnershipChecker ownershipChecker;
 
-    public PaymentMethodController(PaymentMethodService paymentMethodService) {
+    public PaymentMethodController(PaymentMethodService paymentMethodService, OwnershipChecker ownershipChecker) {
         this.paymentMethodService = paymentMethodService;
+        this.ownershipChecker = ownershipChecker;
     }
 
-    // Attach a new card (from Stripe token)
+    // Attach card — ownership check pe clientId din request
     @PostMapping
-    public ResponseEntity<PaymentMethodDTO> attach(@Valid @RequestBody AttachPaymentMethodRequest request) {
+    public ResponseEntity<PaymentMethodDTO> attach(
+            @Valid @RequestBody AttachPaymentMethodRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        ownershipChecker.checkOwnership(principal, request.getClientId());
         PaymentMethodDTO result = paymentMethodService.attachPaymentMethod(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
-    // Get all cards for a client
+    // Get cards for client — ownership check pe clientId din path
     @GetMapping("/by-client/{clientId}")
-    public List<PaymentMethodDTO> getByClient(@PathVariable Long clientId) {
+    public List<PaymentMethodDTO> getByClient(
+            @PathVariable Long clientId,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        ownershipChecker.checkOwnership(principal, clientId);
         return paymentMethodService.getByClient(clientId);
     }
 
-    // Delete a card
+    // Delete card — nu e nevoie de ownership check, se validează pe id
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         paymentMethodService.deletePaymentMethod(id);
         return ResponseEntity.noContent().build();
     }
 
-    // Set a card as default
+    // Set default — ownership check pe clientId din request
     @PutMapping("/{id}/set-default")
-    public PaymentMethodDTO setDefault(@PathVariable Long id, @RequestParam Long clientId) {
+    public PaymentMethodDTO setDefault(
+            @PathVariable Long id,
+            @RequestParam Long clientId,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        ownershipChecker.checkOwnership(principal, clientId);
         return paymentMethodService.setDefault(clientId, id);
     }
+
 }

@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,6 +12,8 @@ import jakarta.validation.Valid;
 import ro.app.payment.dto.PaymentDTO;
 import ro.app.payment.dto.request.CreatePaymentRequest;
 import ro.app.payment.service.PaymentService;
+import ro.app.payment.security.JwtPrincipal;
+import ro.app.payment.security.OwnershipChecker;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -18,33 +21,49 @@ import ro.app.payment.service.PaymentService;
 public class PaymentController {
     
     private final PaymentService paymentService;
+    private final OwnershipChecker ownershipChecker;
 
-    public PaymentController(PaymentService paymentService){
+    public PaymentController(PaymentService paymentService, OwnershipChecker ownershipChecker){
         this.paymentService = paymentService;
+        this.ownershipChecker = ownershipChecker;
     }
 
-    //Create a new payment => Stripe payment intent
+    // Create payment — ownership check pe clientId din request
     @PostMapping
-    public ResponseEntity<PaymentDTO> createPayment(@Valid @RequestBody CreatePaymentRequest request) {
+    public ResponseEntity<PaymentDTO> createPayment(
+            @Valid @RequestBody CreatePaymentRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        ownershipChecker.checkOwnership(principal, request.getClientId());
         PaymentDTO result = paymentService.createPayment(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
    
-    // Get payment by ID
+    // Get payment by ID — ownership check pe clientId din payment
     @GetMapping("/{id}")
-    public PaymentDTO getById(@PathVariable Long id) {
-        return paymentService.getById(id);
+    public PaymentDTO getById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        PaymentDTO payment = paymentService.getById(id);
+        ownershipChecker.checkOwnership(principal, payment.getClientId());
+        return payment;
     }
 
-    // Refund a payment
+   // Refund — ownership check pe clientId din payment
     @PostMapping("/{id}/refund")
-    public PaymentDTO refundPayment(@PathVariable Long id) {
+    public PaymentDTO refundPayment(
+            @PathVariable Long id,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        PaymentDTO payment = paymentService.getById(id);
+        ownershipChecker.checkOwnership(principal, payment.getClientId());
         return paymentService.refundPayment(id);
     }
 
-    // Get all payments for a client
+    // Get all payments for a client — ownership check pe clientId din path
     @GetMapping("/by-client/{clientId}")
-    public List<PaymentDTO> getByClient(@PathVariable Long clientId) {
+    public List<PaymentDTO> getByClient(
+            @PathVariable Long clientId,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        ownershipChecker.checkOwnership(principal, clientId);
         return paymentService.getPaymentsByClient(clientId);
     }
 

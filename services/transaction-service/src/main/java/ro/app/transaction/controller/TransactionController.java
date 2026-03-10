@@ -8,6 +8,7 @@ import java.util.Map;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +17,8 @@ import ro.app.transaction.dto.TransactionDTO;
 import ro.app.transaction.dto.mapper.TransactionMapper;
 import ro.app.transaction.model.entity.Transaction;
 import ro.app.transaction.model.view.ViewTransaction;
+import ro.app.transaction.security.JwtPrincipal;
+import ro.app.transaction.security.OwnershipChecker;
 import ro.app.transaction.service.TransactionService;
 
 @RestController
@@ -23,41 +26,54 @@ import ro.app.transaction.service.TransactionService;
 @Validated
 public class TransactionController {
 
+    private final OwnershipChecker ownershipChecker;
     private final TransactionService transactionService;
 
-    public TransactionController(TransactionService transactionService) {
+    public TransactionController(TransactionService transactionService, OwnershipChecker ownershipChecker) {
         this.transactionService = transactionService;
+        this.ownershipChecker = ownershipChecker;
     }
 
-    // 1) Get all transactions from view (read-only)
+    // 1) Get all transactions from view (read-only) 
     @GetMapping("/view-all")
     public List<ViewTransaction> getAllFromView() {
         return transactionService.getAllView();
     }
 
-    // 2) Get transactions by account ID
+    // 2) Get transactions by account ID - ownership check
     @GetMapping("/by-account/{accountId}")
-    public List<TransactionDTO> getByAccountId(@PathVariable Long accountId) {
+    public List<TransactionDTO> getByAccountId(
+            @PathVariable Long accountId,
+            @RequestParam Long clientId,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        ownershipChecker.checkOwnership(principal, clientId);
         return transactionService.getTransactionsByAccountId(accountId)
                 .stream()
                 .map(TransactionMapper::toDTO)
                 .toList();
     }
 
-    // 3) Get transactions for multiple accounts (for a client's accounts)
+    // 3) Get transactions for multiple accounts (for a client's accounts) - ownership check
     @GetMapping("/by-accounts")
-    public List<TransactionDTO> getByAccountIds(@RequestParam List<Long> accountIds) {
+    public List<TransactionDTO> getByAccountIds(
+            @RequestParam List<Long> accountIds,
+            @RequestParam Long clientId,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        ownershipChecker.checkOwnership(principal, clientId);
         return transactionService.getTransactionsByAccountIds(accountIds)
                 .stream()
                 .map(TransactionMapper::toDTO)
                 .toList();
     }
 
-    // 4) Get transactions between two dates
+    // 4) Get transactions between dates - ownership check
     @GetMapping("/between")
     public List<TransactionDTO> getBetweenDates(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam Long clientId,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        ownershipChecker.checkOwnership(principal, clientId);
         return transactionService.getTransactionsBetweenDates(from, to)
                 .stream()
                 .map(TransactionMapper::toDTO)

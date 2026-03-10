@@ -32,6 +32,9 @@ import ro.app.account.model.enums.CurrencyType;
 import ro.app.account.repository.AccountRepository;
 import ro.app.account.repository.ViewAccountRepository;
 
+import ro.app.account.security.JwtPrincipal;
+import ro.app.account.security.OwnershipChecker;
+
 @Service
 public class AccountService {
 
@@ -42,17 +45,20 @@ public class AccountService {
     private final ExchangeRateService exchangeRateService;
     private final ViewAccountRepository viewAccountRepository;
     private final RestTemplate restTemplate;
+    private final OwnershipChecker ownershipChecker;
 
     public AccountService(AccountRepository accountRepository,
                           IbanService ibanService,
                           ExchangeRateService exchangeRateService,
                           ViewAccountRepository viewAccountRepository,
-                          RestTemplate restTemplate) {
+                          RestTemplate restTemplate,
+                          OwnershipChecker ownershipChecker) {
         this.accountRepository = accountRepository;
         this.ibanService = ibanService;
         this.exchangeRateService = exchangeRateService;
         this.viewAccountRepository = viewAccountRepository;
         this.restTemplate = restTemplate;
+        this.ownershipChecker = ownershipChecker;
     }
 
     // Distributed: no ClientRepository — clientId accepted as-is
@@ -115,11 +121,11 @@ public class AccountService {
 
     // 4) Get balance by IBAN
     @Cacheable(value = "balance", key = "#iban")
-    public BigDecimal getBalanceByIban(String iban) {
-        return accountRepository.findByIban(iban)
-                .map(Account::getBalance)
+    public BigDecimal getBalanceByIban(String iban, JwtPrincipal principal) {
+        Account account = accountRepository.findByIban(iban)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
-    }
+        ownershipChecker.checkOwnership(principal, account.getClientId());
+        return account.getBalance();    }
 
     // 5) Transfer between two accounts (balance update only)
     // Distributed: transaction records are created by transaction-service, not here
@@ -129,7 +135,7 @@ public class AccountService {
         @CacheEvict(value = "balance", key = "#toIban"),
         @CacheEvict(value = "accountsByClient", allEntries = true)
     })
-    public void transfer(String fromIban, String toIban, BigDecimal amount) {
+     public void transfer(String fromIban, String toIban, BigDecimal amount, JwtPrincipal principal) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be positive");
         }
@@ -140,9 +146,11 @@ public class AccountService {
 
         Account from = accountRepository.findByIban(fromIban)
                 .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
+        ownershipChecker.checkOwnership(principal, from.getClientId());
+
         Account to = accountRepository.findByIban(toIban)
                 .orElseThrow(() -> new ResourceNotFoundException("Destination account not found"));
-
+                
         if (from.getBalance().compareTo(amount) < 0) {
             throw new InsufficientFundsException("Insufficient funds");
         }

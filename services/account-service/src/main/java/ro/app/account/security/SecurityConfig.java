@@ -2,6 +2,7 @@ package ro.app.account.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -24,6 +25,15 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
+                //ADMIN only endpoints
+                .requestMatchers(HttpMethod.GET, "/api/accounts/view").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/accounts/*/freeze").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/accounts/*/close").hasRole("ADMIN")
+                //ADMIN & USER endpoints
+                .requestMatchers(HttpMethod.GET, "/api/accounts/by-client/*").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.GET, "/api/accounts/*/balance").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.POST, "/api/accounts/open").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.POST, "/api/accounts/transfer").hasAnyRole("ADMIN", "USER")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

@@ -25,6 +25,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/api/payments/webhook").permitAll() // Stripe webhook — no JWT, uses Stripe-Signature
+                // All payment endpoints — both roles (users manage own payments)
+                .anyRequest().hasAnyRole("ADMIN", "USER")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

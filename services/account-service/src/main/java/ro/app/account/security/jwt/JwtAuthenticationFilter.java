@@ -15,6 +15,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import ro.app.account.security.JwtPrincipal;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -49,14 +50,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             String subject = claims.getSubject(); // username/email
             String role = claims.get("role", String.class);
+            Long clientId = claims.get("clientId", Long.class);
 
             List<SimpleGrantedAuthority> authorities = List.of(
                     new SimpleGrantedAuthority("ROLE_" + (role != null ? role : "USER"))
             );
 
-            // No DB lookup — principal is the username string from JWT
+            JwtPrincipal principal = new JwtPrincipal(subject, clientId, role);
             UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(subject, null, authorities);
+                    new UsernamePasswordAuthenticationToken(principal, null, authorities);
 
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authToken);

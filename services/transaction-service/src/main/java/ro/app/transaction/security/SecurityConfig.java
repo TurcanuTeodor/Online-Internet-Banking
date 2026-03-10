@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import ro.app.transaction.security.jwt.JwtAuthenticationFilter;
@@ -24,6 +25,17 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
+                // ADMIN only endpoints
+                .requestMatchers(HttpMethod.GET, "/api/transactions/view-all").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/transactions/flagged").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/transactions/daily-totals").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/transactions/by-type/*").hasRole("ADMIN")
+                // ADMIN & USER endpoints
+                .requestMatchers(HttpMethod.GET, "/api/transactions/by-account/*").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.GET, "/api/transactions/by-accounts").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.GET, "/api/transactions/between").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.GET, "/api/transactions/*").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.POST, "/api/transactions").hasAnyRole("ADMIN", "USER")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
