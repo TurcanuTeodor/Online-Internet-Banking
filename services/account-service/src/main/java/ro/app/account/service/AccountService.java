@@ -2,14 +2,26 @@ package ro.app.account.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
 import ro.app.account.exception.BusinessRuleViolationException;
 import ro.app.account.exception.InsufficientFundsException;
@@ -23,19 +35,24 @@ import ro.app.account.repository.ViewAccountRepository;
 @Service
 public class AccountService {
 
+    private static final Logger log = LoggerFactory.getLogger(AccountService.class);
+
     private final AccountRepository accountRepository;
     private final IbanService ibanService;
     private final ExchangeRateService exchangeRateService;
     private final ViewAccountRepository viewAccountRepository;
+    private final RestTemplate restTemplate;
 
     public AccountService(AccountRepository accountRepository,
                           IbanService ibanService,
                           ExchangeRateService exchangeRateService,
-                          ViewAccountRepository viewAccountRepository) {
+                          ViewAccountRepository viewAccountRepository,
+                          RestTemplate restTemplate) {
         this.accountRepository = accountRepository;
         this.ibanService = ibanService;
         this.exchangeRateService = exchangeRateService;
         this.viewAccountRepository = viewAccountRepository;
+        this.restTemplate = restTemplate;
     }
 
     // Distributed: no ClientRepository — clientId accepted as-is
@@ -146,8 +163,55 @@ public class AccountService {
         accountRepository.save(from);
         accountRepository.save(to);
 
-        // Note: Transaction records (debit/credit) are created by transaction-service
-        // via REST call or event-driven pattern in a later phase.
+        // Create transaction records in transaction-service
+        try {
+            String txUrl = "http://localhost:8084/api/transactions";
+            LocalDateTime now = LocalDateTime.now();
+
+            // Forward the JWT token from the incoming request
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs != null) {
+                HttpServletRequest request = attrs.getRequest();
+                String authHeader = request.getHeader("Authorization");
+                if (authHeader != null) {
+                    headers.set("Authorization", authHeader);
+                }
+            }
+
+            // Debit record (source account)
+            Map<String, Object> debit = new HashMap<>();
+            debit.put("accountId", from.getId());
+            debit.put("destinationAccountId", to.getId());
+            debit.put("transactionTypeCode", "TRANSFER_INTERNAL");
+            debit.put("categoryCode", "OTHERS");
+            debit.put("amount", amount);
+            debit.put("originalAmount", amount);
+            debit.put("originalCurrencyCode", fromCurrency.getCode());
+            debit.put("sign", "-");
+            debit.put("details", "Transfer to " + toIban);
+            debit.put("transactionDate", now.toString());
+
+            // Credit record (destination account)
+            Map<String, Object> credit = new HashMap<>();
+            credit.put("accountId", to.getId());
+            credit.put("destinationAccountId", from.getId());
+            credit.put("transactionTypeCode", "TRANSFER_INTERNAL");
+            credit.put("categoryCode", "OTHERS");
+            credit.put("amount", convertedAmount);
+            credit.put("originalAmount", amount);
+            credit.put("originalCurrencyCode", fromCurrency.getCode());
+            credit.put("sign", "+");
+            credit.put("details", "Transfer from " + fromIban);
+            credit.put("transactionDate", now.toString());
+
+            restTemplate.postForObject(txUrl, new HttpEntity<>(debit, headers), Map.class);
+            restTemplate.postForObject(txUrl, new HttpEntity<>(credit, headers), Map.class);
+
+        } catch (Exception e) {
+            log.warn("Failed to create transaction records in transaction-service: {}", e.getMessage());
+        }
     }
 
     // 6) Get all accounts from VIEW_ACCOUNT (admin)
