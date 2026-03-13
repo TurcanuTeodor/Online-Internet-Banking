@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
@@ -30,18 +31,25 @@ public class ClientService {
     private final ClientRepository clientRepository;
     private final ViewClientRepository viewClientRepository;
     private final ContactInfoRepository contactInfoRepository;
+    private final EncryptionService encryptionService;
+
+
+    @Value("${encryption.key}")
+    private String encryptionKey;
 
     public ClientService(ClientRepository clientRepository,
                          ViewClientRepository viewClientRepository,
-                         ContactInfoRepository contactInfoRepository) {
+                         ContactInfoRepository contactInfoRepository,
+                         EncryptionService encryptionService) {
         this.clientRepository = clientRepository;
         this.viewClientRepository = viewClientRepository;
         this.contactInfoRepository = contactInfoRepository;
+        this.encryptionService = encryptionService;
     }
 
     // --1 Create client
     @Transactional
-    public ClientDTO createClient(ClientDTO dto) {
+    public ClientDTO createClient(ClientDTO dto) throws Exception {
         boolean exists = clientRepository
                 .findByLastNameContainingIgnoreCase(dto.getLastName())
                 .stream()
@@ -56,8 +64,12 @@ public class ClientService {
         SexType sexType = SexType.fromCode(dto.getSexCode());
 
         Client entity = ClientMapper.toEntity(dto, clientType, sexType);
+
+        entity.setFirstName(encryptionService.encrypt(entity.getFirstName(), encryptionKey));
+        entity.setLastName(encryptionService.encrypt(entity.getLastName(), encryptionKey));
+
         final Client saved = clientRepository.save(entity);
-        return ClientMapper.toDTO(saved);
+        return ClientMapper.toDTO(saved, encryptionService, encryptionKey);
     }
 
     // --2 Find clients by name
@@ -66,7 +78,7 @@ public class ClientService {
         return clientRepository
                 .findByLastNameContainingIgnoreCaseOrFirstNameContainingIgnoreCase(name, name)
                 .stream()
-                .map(ClientMapper::toDTO)
+                .map(c -> ClientMapper.toDTO(c, encryptionService, encryptionKey))
                 .collect(Collectors.toList());
     }
 
@@ -80,11 +92,11 @@ public class ClientService {
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID " + clientId));
 
         ContactInfo contactInfo = Optional.ofNullable(contactInfoRepository.findByClientId(clientId))
-                .map(existing -> ContactInfoMapper.updateEntity(existing, dto))
-                .orElseGet(() -> ContactInfoMapper.toEntity(dto, client));
+                .map(existing -> ContactInfoMapper.updateEntity(existing, dto, encryptionService, encryptionKey))
+                .orElseGet(() -> ContactInfoMapper.toEntity(dto, client, encryptionService, encryptionKey));
 
         final ContactInfo saved = contactInfoRepository.save(contactInfo);
-        return ContactInfoMapper.toDTO(saved);
+        return ContactInfoMapper.toDTO(saved, encryptionService, encryptionKey);
     }
 
     // --4 Get client summary (client data only — accounts/transactions come from other services)
@@ -96,10 +108,9 @@ public class ClientService {
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
 
         ContactInfoDTO contactInfo = ContactInfoMapper.toDTO(
-                contactInfoRepository.findByClientId(clientId));
-
+                contactInfoRepository.findByClientId(clientId), encryptionService, encryptionKey);
         Map<String, Object> summary = new HashMap<>();
-        summary.put("client", ClientMapper.toDTO(client));
+        summary.put("client", ClientMapper.toDTO(client, encryptionService, encryptionKey));
         summary.put("contactInfo", contactInfo);
         return summary;
     }
