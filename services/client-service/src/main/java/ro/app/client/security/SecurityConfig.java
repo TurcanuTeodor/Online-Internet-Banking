@@ -24,16 +24,18 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/**").permitAll()
-                //ADMIN only endpoints
-                .requestMatchers(HttpMethod.POST, "/api/clients").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/clients/*").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/clients/view").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/search").hasRole("ADMIN")
-                //ADMIN & USER endpoints
-                .requestMatchers(HttpMethod.GET, "/api/clients/*/summary").hasAnyRole("ADMIN", "USER")
-                .requestMatchers(HttpMethod.PUT, "/api/clients/*/contact").hasAnyRole("ADMIN","USER")
-                .anyRequest().authenticated()
+                    .requestMatchers("/actuator/**").permitAll()
+                    // ADMIN only
+                    .requestMatchers(HttpMethod.POST, "/api/clients").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/clients/*").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/clients/view").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/search").hasRole("ADMIN")
+                    // ADMIN & USER
+                    .requestMatchers(HttpMethod.GET, "/api/clients/*/summary").hasAnyRole("ADMIN", "USER")
+                    .requestMatchers(HttpMethod.PUT, "/api/clients/*/contact").hasAnyRole("ADMIN", "USER")
+                    // GDPR — ownership check în controller
+                    .requestMatchers("/api/gdpr/**").hasAnyRole("ADMIN", "USER")
+                    .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

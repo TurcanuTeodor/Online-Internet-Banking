@@ -38,3 +38,9 @@ resilience4j:
     configs:
       default:
         timeout-duration: 5s
+
+# Logging configuration
+logging:
+  level:
+    AUDIT: INFO
+    ro.app.gateway: INFO
