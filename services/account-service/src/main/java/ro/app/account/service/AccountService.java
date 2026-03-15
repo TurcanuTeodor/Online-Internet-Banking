@@ -9,6 +9,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -46,6 +47,10 @@ public class AccountService {
     private final ViewAccountRepository viewAccountRepository;
     private final RestTemplate restTemplate;
     private final OwnershipChecker ownershipChecker;
+
+    @Value("${app.services.transaction.url}")
+    private String transactionServiceUrl;
+
 
     public AccountService(AccountRepository accountRepository,
                           IbanService ibanService,
@@ -173,7 +178,7 @@ public class AccountService {
 
         // Create transaction records in transaction-service
         try {
-            String txUrl = "http://localhost:8084/api/transactions";
+            String txUrl = transactionServiceUrl + "/api/transactions";
             LocalDateTime now = LocalDateTime.now();
 
             // Forward the JWT token from the incoming request

@@ -88,13 +88,7 @@ public class RefreshTokenService {
     @Scheduled(fixedDelay = 3600000) // Run every 1 hour
     @Transactional
     public void deleteExpiredTokens() {
-        LocalDateTime now = LocalDateTime.now();
-        long deleted = refreshTokenRepository.findAll().stream()
-                .filter(token -> token.getExpiryDate().isBefore(now))
-                .peek(refreshTokenRepository::delete)
-                .count();
-        if (deleted > 0) {
-            log.info("Deleted {} expired refresh tokens", deleted);
-        }
+        refreshTokenRepository.deleteAllExpiredBefore(LocalDateTime.now());
+        log.info("Expired refresh tokens cleanup completed at");
     }
 }

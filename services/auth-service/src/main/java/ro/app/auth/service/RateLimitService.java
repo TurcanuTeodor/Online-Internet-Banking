@@ -5,7 +5,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -18,10 +17,7 @@ public class RateLimitService {
     
     private static final Logger log = LoggerFactory.getLogger(RateLimitService.class);
     private static final int MAX_FAILED_ATTEMPTS = 5;
-    private static final Duration RESET_DURATION = Duration.ofMinutes(1);
     
-    // Bucket4j token buckets per IP
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
     // Track failed attempts per IP
     private final Map<String, Integer> failedAttempts = new ConcurrentHashMap<>();
     
