@@ -1,17 +1,14 @@
 package ro.app.client.model.view;
 
 import org.hibernate.annotations.Immutable;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Immutable
 @Table(name = "\"VIEW_CLIENT\"")
 public class ViewClient {
+
     @Id
     @Column(name = "client_id")
     private Long clientId;
@@ -31,47 +28,32 @@ public class ViewClient {
     @Column(name = "client_created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "phone")
-    private String phone;
+    // Aceste câmpuri sunt criptate AES-256 în DB — NU expune direct în response
+    @Column(name = "email_encrypted")
+    private String emailEncrypted;
 
-    @Column(name = "email")
-    private String email;
+    @Column(name = "phone_encrypted")
+    private String phoneEncrypted;
 
-    @Column(name = "address")
-    private String address;
+    @Column(name = "address_encrypted")
+    private String addressEncrypted;
 
-    @Column(name = "city")
-    private String city;
+    @Column(name = "city_encrypted")
+    private String cityEncrypted;
 
-    @Column(name = "postal_code")
-    private String postalCode;
+    @Column(name = "postal_code_encrypted")
+    private String postalCodeEncrypted;
 
+    // Getters
     public Long getClientId() { return clientId; }
     public String getClientLastName() { return clientLastName; }
     public String getClientFirstName() { return clientFirstName; }
     public String getClientTypeName() { return clientTypeName; }
     public Boolean getActive() { return active; }
     public LocalDateTime getCreatedAt() { return createdAt; }
-    public String getPhone() { return phone; }
-    public String getEmail() { return email; }
-    public String getAddress() { return address; }
-    public String getCity() { return city; }
-    public String getPostalCode() { return postalCode; }
-
-    @Override
-    public String toString() {
-        return "ViewClient{" +
-                "clientId=" + clientId +
-                ", clientLastName='" + clientLastName + '\'' +
-                ", clientFirstName='" + clientFirstName + '\'' +
-                ", clientTypeName='" + clientTypeName + '\'' +
-                ", active=" + active +
-                ", createdAt=" + createdAt +
-                ", phone='" + phone + '\'' +
-                ", email='" + email + '\'' +
-                ", address='" + address + '\'' +
-                ", city='" + city + '\'' +
-                ", postalCode='" + postalCode + '\'' +
-                '}';
-    }
+    public String getEmailEncrypted() { return emailEncrypted; }
+    public String getPhoneEncrypted() { return phoneEncrypted; }
+    public String getAddressEncrypted() { return addressEncrypted; }
+    public String getCityEncrypted() { return cityEncrypted; }
+    public String getPostalCodeEncrypted() { return postalCodeEncrypted; }
 }

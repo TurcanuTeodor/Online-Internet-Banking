@@ -9,10 +9,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import ro.app.auth.dto.*;
-
 import ro.app.auth.service.AuthService;
+import ro.app.auth.service.RateLimitService;
 
 
 @RestController
@@ -21,9 +22,11 @@ import ro.app.auth.service.AuthService;
 public class AuthController {
     
     private final AuthService authService;
+    private final RateLimitService rateLimitService;
 
-    public AuthController(AuthService authService){
-        this.authService= authService;
+    public AuthController(AuthService authService, RateLimitService rateLimitService){
+        this.authService = authService;
+        this.rateLimitService = rateLimitService;
     }
 
     @PostMapping("/register")
@@ -33,8 +36,17 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest req){
-        return ResponseEntity.ok(authService.login(req));
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest req, HttpServletRequest httpReq){
+        String clientIp = httpReq.getRemoteAddr();
+        rateLimitService.validateLoginAttempt(clientIp);
+        try {
+            LoginResponse response = authService.login(req);
+            rateLimitService.recordSuccessfulAttempt(clientIp);
+            return ResponseEntity.ok(response);
+        } catch (Exception ex) {
+            rateLimitService.recordFailedAttempt(clientIp);
+            throw ex;
+        }
     }
 
     //---------------user needs to be logged in to activate 2fa-----------------

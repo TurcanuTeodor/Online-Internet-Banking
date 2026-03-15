@@ -5,6 +5,7 @@ import ro.app.auth.model.entity.User;
 import ro.app.auth.repository.RefreshTokenRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,10 +81,20 @@ public class RefreshTokenService {
         log.info("All refresh tokens revoked for user: {}", user.getUsernameOrEmail());
     }
     
+    /**
+     * Automatically clean up expired refresh tokens every hour.
+     * Scheduled task to prevent accumulation of expired tokens in DB.
+     */
+    @Scheduled(fixedDelay = 3600000) // Run every 1 hour
+    @Transactional
     public void deleteExpiredTokens() {
-        refreshTokenRepository.findAll().stream()
-                .filter(RefreshToken::isExpired)
-                .forEach(refreshTokenRepository::delete);
-        log.info("Expired refresh tokens deleted");
+        LocalDateTime now = LocalDateTime.now();
+        long deleted = refreshTokenRepository.findAll().stream()
+                .filter(token -> token.getExpiryDate().isBefore(now))
+                .peek(refreshTokenRepository::delete)
+                .count();
+        if (deleted > 0) {
+            log.info("Deleted {} expired refresh tokens", deleted);
+        }
     }
 }

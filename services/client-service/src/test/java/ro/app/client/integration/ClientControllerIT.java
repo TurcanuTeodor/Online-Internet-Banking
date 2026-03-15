@@ -42,9 +42,9 @@ class ClientControllerIT {
     }
 
     @Test
-    void readOnlyEndpointAccessibleForAll() throws Exception {
+    void viewEndpointAccessibleForAdmin() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.get("/api/clients/view")
-                .header("Authorization", JWT_CLIENT))
+                .header("Authorization", JWT_ADMIN))
                 .andExpect(status().isOk());
     }
 }

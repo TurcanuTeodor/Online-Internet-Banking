@@ -3,12 +3,13 @@ package ro.app.client.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ro.app.client.dto.ClientDTO;
 import ro.app.client.dto.ContactInfoDTO;
+import ro.app.client.dto.ViewClientDTO;
 import ro.app.client.security.JwtPrincipal;
 import ro.app.client.service.ClientService;
 import ro.app.client.security.OwnershipChecker;
@@ -69,11 +70,10 @@ public class ClientController {
         return ResponseEntity.noContent().build();
     }
 
-    // 6) View read-only clients
+    // 6) View read-only clients (ADMIN only — protejat în SecurityConfig)
     @GetMapping("/view")
-    public ResponseEntity<List<?>> viewAll() {
+    public ResponseEntity<List<ViewClientDTO>> viewAll() {
         return ResponseEntity.ok(clientService.getAllViewClients());
     }
-
    
 }

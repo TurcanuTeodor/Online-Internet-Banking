@@ -13,6 +13,7 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import ro.app.client.dto.ClientDTO;
 import ro.app.client.dto.ContactInfoDTO;
+import ro.app.client.dto.ViewClientDTO;
 import ro.app.client.dto.mapper.ClientMapper;
 import ro.app.client.dto.mapper.ContactInfoMapper;
 import ro.app.client.exception.ResourceNotFoundException;
@@ -32,7 +33,6 @@ public class ClientService {
     private final ViewClientRepository viewClientRepository;
     private final ContactInfoRepository contactInfoRepository;
     private final EncryptionService encryptionService;
-
 
     @Value("${encryption.key}")
     private String encryptionKey;
@@ -131,8 +131,34 @@ public class ClientService {
         clientRepository.save(client);
     }
 
-    // --6 View clients (read-only)
-    public List<ViewClient> getAllViewClients() {
-        return viewClientRepository.findAll();
+    // --6 View clients (decripteaza inainte de a returna)
+    public List<ViewClientDTO> getAllViewClients() {
+        return viewClientRepository.findAll()
+                .stream()
+                .map(v -> {
+                    ViewClientDTO dto = new ViewClientDTO();
+                    dto.setClientId(v.getClientId());
+                    dto.setFirstName(v.getClientFirstName());
+                    dto.setLastName(v.getClientLastName());
+                    dto.setClientType(v.getClientTypeName());
+                    dto.setActive(v.getActive());
+                    dto.setCreatedAt(v.getCreatedAt());
+                    try {
+                        dto.setEmail(encryptionService.decrypt(v.getEmailEncrypted(), encryptionKey));
+                        dto.setPhone(encryptionService.decrypt(v.getPhoneEncrypted(), encryptionKey));
+                        dto.setAddress(encryptionService.decrypt(v.getAddressEncrypted(), encryptionKey));
+                        dto.setCity(encryptionService.decrypt(v.getCityEncrypted(), encryptionKey));
+                        dto.setPostalCode(encryptionService.decrypt(v.getPostalCodeEncrypted(), encryptionKey));
+                    } catch (Exception e) {
+                        // date necriptate (seed dev) — returnează ca atare
+                        dto.setEmail(v.getEmailEncrypted());
+                        dto.setPhone(v.getPhoneEncrypted());
+                        dto.setAddress(v.getAddressEncrypted());
+                        dto.setCity(v.getCityEncrypted());
+                        dto.setPostalCode(v.getPostalCodeEncrypted());
+                    }
+                    return dto;
+                })
+                .toList();
     }
 }
