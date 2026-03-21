@@ -31,7 +31,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/accounts/*/close").hasRole("ADMIN")
                 //ADMIN & USER endpoints
                 .requestMatchers(HttpMethod.GET, "/api/accounts/by-client/*").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.GET, "/api/accounts/by-id/*").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.GET, "/api/accounts/by-iban/*").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.GET, "/api/accounts/*/balance").hasAnyRole("ADMIN", "USER")
+                // Internal Stripe settlement (payment-service → shared secret header)
+                .requestMatchers(HttpMethod.POST, "/api/internal/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/accounts/open").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.POST, "/api/accounts/transfer").hasAnyRole("ADMIN", "USER")
                 .anyRequest().authenticated()

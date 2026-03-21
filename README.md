@@ -56,7 +56,7 @@ This is a **college project** demonstrating a secure online banking system with:
 ## Technology Stack
 
 **Backend:**
-- Java 17, Spring Boot 3
+- Java 21, Spring Boot 3
 - Spring Security, Spring Data JPA
 - PostgreSQL 16 with Flyway migrations
 - JWT authentication with TOTP (2FA)
@@ -137,7 +137,7 @@ Flyway versioned migrations live in `src/main/resources/db/migration`:
 
 ## Running & Configuration
 
-Environment: Java 17+ (runs fine on newer JDKs), Maven, PostgreSQL.
+Environment: Java 21, Maven, PostgreSQL.
 
 Configure in `src/main/resources/application.properties` (values are loaded from `.env.properties`):
 
@@ -389,7 +389,7 @@ For in-depth information, see the documentation in [backend/explanations/](backe
 ## Complete Setup Checklist
 
 **Prerequisites:**
-- Java 17+
+- Java 21+
 - Node.js 16+
 - PostgreSQL 16
 - Maven

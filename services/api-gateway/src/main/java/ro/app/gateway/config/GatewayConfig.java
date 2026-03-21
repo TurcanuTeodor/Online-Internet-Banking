@@ -63,6 +63,11 @@ public class GatewayConfig {
                         )
                         .uri("http://localhost:8084"))
 
+                // Stripe webhook — no JWT (Stripe-Signature only); must be registered before /api/payments/**
+                .route("payment-webhook", r -> r
+                        .path("/api/payments/webhook")
+                        .uri("http://localhost:8085"))
+
                 // PAYMENTS — protejat cu JWT
                 .route("payment-service", r -> r
                         .path("/api/payments/**", "/api/payment-methods/**")

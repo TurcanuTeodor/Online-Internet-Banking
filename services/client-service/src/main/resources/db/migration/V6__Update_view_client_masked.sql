@@ -2,6 +2,7 @@
 -- VIEW_CLIENT: datele de contact sunt criptate in DB (AES-256).
 -- VIEW-ul expune doar campurile non-sensitive in clar.
 -- Decriptarea se face in aplicatie (ClientService) la nevoie.
+DROP VIEW IF EXISTS "VIEW_CLIENT";
 
 CREATE OR REPLACE VIEW "VIEW_CLIENT" AS
 SELECT

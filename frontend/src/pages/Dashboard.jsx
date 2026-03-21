@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../services/authService';
-import { LogOut, Wallet, Plus, Send, Eye, EyeOff, Shield, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LogOut, Wallet, Plus, Send, Eye, EyeOff, Shield, Filter, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import QRCode from 'qrcode';
 import { getAccountsByClient, openAccount, transfer, getBalanceByIban } from '../../services/accountService';
 import { getTransactionsByClient } from '../../services/transactionService';
 import { setup2FA, confirm2FA } from '../../services/authService';
+import TopUpModal from '../components/TopUpModal';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -41,6 +42,7 @@ export default function Dashboard() {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [topUpAccount, setTopUpAccount] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
@@ -334,17 +336,27 @@ export default function Dashboard() {
                       <p className="text-2xl font-bold mb-6">
                         {showBalances ? formatCurrency(account.balance, account.currencyCode) : '••••••'}
                       </p>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <button
                           onClick={() => {
                             setSelectedAccount(account);
                             setActiveModal('transfer');
                           }}
-                          className="btn-primary w-full flex items-center justify-center gap-2"
+                          className="btn-primary flex-1 flex items-center justify-center gap-2"
                         >
                           <Send className="w-4 h-4" />
                           Transfer
                         </button>
+                        {account.status === 'ACTIVE' && (account.currencyCode === 'EUR' || account.currencyCode === 'RON') && (
+                          <button
+                            type="button"
+                            onClick={() => setTopUpAccount(account)}
+                            className="btn-secondary flex-1 flex items-center justify-center gap-2 border-emerald-500/30 text-emerald-300"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            Top up
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -595,6 +607,17 @@ export default function Dashboard() {
       </div>
 
       {/* Modals */}
+      {topUpAccount && (
+        <TopUpModal
+          account={topUpAccount}
+          onClose={() => setTopUpAccount(null)}
+          onSuccess={() => {
+            setSuccess('Top-up submitted. Balance updates when Stripe confirms the payment (usually a few seconds).');
+            fetchData();
+          }}
+        />
+      )}
+
       {activeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setActiveModal(null)}>
           <div className="glass rounded-2xl p-6 max-w-md w-full animate-fade-in" onClick={(e) => e.stopPropagation()}>

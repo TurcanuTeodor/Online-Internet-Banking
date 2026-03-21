@@ -16,6 +16,7 @@ This is a college project demonstrating a full-stack online banking application 
 - **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - How to test the application
 - **[DATABASE.md](DATABASE.md)** - Database schema, migrations, schema-per-service
 - **[SECURITY_KEYS_AND_ALGORITHMS.md](SECURITY_KEYS_AND_ALGORITHMS.md)** - Keys, tokens, encryption/hashing algorithms
+- **[STRIPE_TOP_UP_SEQUENCE.md](STRIPE_TOP_UP_SEQUENCE.md)** - Thesis-oriented sequence diagram: Stripe card top-up (Browser → Gateway → services)
 
 ## Project Features
 
@@ -48,7 +49,7 @@ This is a college project demonstrating a full-stack online banking application 
 ## Technology Stack
 
 ### Backend (Microservices)
-- **Java 17** with **Spring Boot 3.3**
+- **Java 21** with **Spring Boot 3.3**
 - **Spring Cloud Gateway** (API Gateway, reactive/Netty)
 - **PostgreSQL 17** with Flyway migrations
 - **Spring Security** + **JWT** (jjwt 0.12.5)

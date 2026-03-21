@@ -6,12 +6,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import ro.app.transaction.dto.TransactionDTO;
 import ro.app.transaction.dto.mapper.TransactionMapper;
@@ -61,6 +63,35 @@ public class TransactionController {
             @AuthenticationPrincipal JwtPrincipal principal) {
         ownershipChecker.checkOwnership(principal, clientId);
         return transactionService.getTransactionsByAccountIds(accountIds)
+                .stream()
+                .map(TransactionMapper::toDTO)
+                .toList();
+    }
+
+    // 3b) All transactions for a client — resolves account IDs via account-service, then {@code findByAccountIdIn}
+    @GetMapping("/by-client/{clientId}")
+    public List<TransactionDTO> getByClient(
+            @PathVariable Long clientId,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            HttpServletRequest request) {
+        ownershipChecker.checkOwnership(principal, clientId);
+        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+        return transactionService.getTransactionsForClientViaAccounts(clientId, authorization)
+                .stream()
+                .map(TransactionMapper::toDTO)
+                .toList();
+    }
+
+    // 3c) Transactions for one account resolved by IBAN — account-service returns account + clientId; ownership checked here
+    @GetMapping("/by-iban/{iban}")
+    public List<TransactionDTO> getByIban(
+            @PathVariable String iban,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            HttpServletRequest request) {
+        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+        var account = transactionService.getAccountSummaryForIban(iban, authorization);
+        ownershipChecker.checkOwnership(principal, account.getClientId());
+        return transactionService.getTransactionsByAccountId(account.getId())
                 .stream()
                 .map(TransactionMapper::toDTO)
                 .toList();

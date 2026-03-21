@@ -66,6 +66,24 @@ public class AccountController {
         return ResponseEntity.ok(accounts.stream().map(AccountMapper::toDTO).toList());
     }
 
+    // 3b) get single account by id (for payment top-up: currency + ownership via account.clientId)
+    @GetMapping("/by-id/{accountId}")
+    public ResponseEntity<AccountDTO> byId(
+            @PathVariable Long accountId,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        AccountDTO dto = accountService.getAccountDtoForPrincipal(accountId, principal);
+        return ResponseEntity.ok(dto);
+    }
+
+    // 3c) get account by IBAN (full DTO — used by transaction-service for /transactions/by-iban)
+    // Path accepts any casing; service normalizes to uppercase for lookup
+    @GetMapping("/by-iban/{iban}")
+    public ResponseEntity<AccountDTO> byIban(
+            @PathVariable String iban,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        return ResponseEntity.ok(accountService.getAccountDtoByIban(iban, principal));
+    }
+
     // 4) get balance by IBAN
     @GetMapping("/{iban}/balance")
     public ResponseEntity<BigDecimal> balance(

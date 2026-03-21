@@ -1,29 +1,35 @@
 package ro.app.transaction.service;
 
-import org.springframework.stereotype.Service;
-
-import ro.app.transaction.model.entity.Transaction;
-import ro.app.transaction.model.enums.TransactionType;
-import ro.app.transaction.model.view.ViewTransaction;
-import ro.app.transaction.repository.TransactionRepository;
-import ro.app.transaction.repository.ViewTransactionRepository;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.stereotype.Service;
+
+import ro.app.transaction.client.AccountRestClient;
+import ro.app.transaction.dto.client.ExternalAccountDto;
+import ro.app.transaction.model.entity.Transaction;
+import ro.app.transaction.model.enums.TransactionType;
+import ro.app.transaction.model.view.ViewTransaction;
+import ro.app.transaction.repository.TransactionRepository;
+import ro.app.transaction.repository.ViewTransactionRepository;
+
 @Service
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final ViewTransactionRepository viewTransactionRepository;
+    private final AccountRestClient accountRestClient;
 
-    public TransactionService(TransactionRepository transactionRepository,
-                              ViewTransactionRepository viewTransactionRepository) {
+    public TransactionService(
+            TransactionRepository transactionRepository,
+            ViewTransactionRepository viewTransactionRepository,
+            AccountRestClient accountRestClient) {
         this.transactionRepository = transactionRepository;
         this.viewTransactionRepository = viewTransactionRepository;
+        this.accountRestClient = accountRestClient;
     }
 
     // 1) View-only list (from VIEW_TRANSACTION)
@@ -42,6 +48,25 @@ public class TransactionService {
             return List.of();
         }
         return transactionRepository.findByAccountIdIn(accountIds);
+    }
+
+    /**
+     * All transactions for every account belonging to a client (via account-service + {@link TransactionRepository#findByAccountIdIn}).
+     */
+    public List<Transaction> getTransactionsForClientViaAccounts(Long clientId, String authorizationHeader) {
+        List<ExternalAccountDto> accounts = accountRestClient.getAccountsByClient(clientId, authorizationHeader);
+        if (accounts.isEmpty()) {
+            return List.of();
+        }
+        List<Long> accountIds = accounts.stream().map(ExternalAccountDto::getId).toList();
+        return transactionRepository.findByAccountIdIn(accountIds);
+    }
+
+    /**
+     * Resolves account metadata by IBAN (account-service enforces JWT; transaction-controller adds {@code OwnershipChecker}).
+     */
+    public ExternalAccountDto getAccountSummaryForIban(String iban, String authorizationHeader) {
+        return accountRestClient.getAccountByIban(iban, authorizationHeader);
     }
 
     // 4) Transactions between dates

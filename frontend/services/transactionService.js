@@ -15,7 +15,8 @@ export const getAllTransactionsFromView = async () => {
  * @returns {Promise} List of transactions
  */
 export const getTransactionsByIban = async (iban) => {
-  const response = await apiClient.get(`/transactions/by-iban/${iban}`);
+  const encoded = encodeURIComponent(String(iban).trim());
+  const response = await apiClient.get(`/transactions/by-iban/${encoded}`);
   return response.data;
 };
 

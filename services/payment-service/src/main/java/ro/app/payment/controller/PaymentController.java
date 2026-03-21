@@ -2,15 +2,19 @@ package ro.app.payment.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import ro.app.payment.dto.PaymentDTO;
 import ro.app.payment.dto.request.CreatePaymentRequest;
+import ro.app.payment.dto.request.CreateTopUpIntentRequest;
+import ro.app.payment.dto.response.TopUpIntentResponse;
 import ro.app.payment.service.PaymentService;
 import ro.app.payment.security.JwtPrincipal;
 import ro.app.payment.security.OwnershipChecker;
@@ -26,6 +30,19 @@ public class PaymentController {
     public PaymentController(PaymentService paymentService, OwnershipChecker ownershipChecker){
         this.paymentService = paymentService;
         this.ownershipChecker = ownershipChecker;
+    }
+
+    /**
+     * One-time card top-up: returns Stripe {@code clientSecret} for {@code confirmCardPayment} with Elements.
+     */
+    @PostMapping("/top-up/intent")
+    public ResponseEntity<TopUpIntentResponse> createTopUpIntent(
+            @Valid @RequestBody CreateTopUpIntentRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            HttpServletRequest httpRequest) {
+        String authorization = httpRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        TopUpIntentResponse body = paymentService.createTopUpIntent(request, principal, authorization);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     // Create payment — ownership check pe clientId din request

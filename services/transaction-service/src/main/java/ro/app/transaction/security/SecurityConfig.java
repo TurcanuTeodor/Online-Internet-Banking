@@ -25,6 +25,8 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
+                // Internal deposit from account-service (shared secret header)
+                .requestMatchers("/api/internal/**").permitAll()
                 // ADMIN only endpoints
                 .requestMatchers(HttpMethod.GET, "/api/transactions/view-all").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/transactions/flagged").hasRole("ADMIN")
@@ -33,6 +35,8 @@ public class SecurityConfig {
                 // ADMIN & USER endpoints
                 .requestMatchers(HttpMethod.GET, "/api/transactions/by-account/*").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.GET, "/api/transactions/by-accounts").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.GET, "/api/transactions/by-client/*").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.GET, "/api/transactions/by-iban/*").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.GET, "/api/transactions/between").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.GET, "/api/transactions/*").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.POST, "/api/transactions").hasAnyRole("ADMIN", "USER")

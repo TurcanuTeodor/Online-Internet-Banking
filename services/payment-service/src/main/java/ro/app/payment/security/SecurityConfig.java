@@ -32,6 +32,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/payment-methods/all").hasRole("ADMIN")
 
                 // ADMIN & USER — operații pe propriile date (ownership check în controller)
+                .requestMatchers(HttpMethod.POST, "/api/payments/top-up/intent").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.POST, "/api/payments").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.GET, "/api/payments/{id}").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.POST, "/api/payments/*/refund").hasAnyRole("ADMIN", "USER")

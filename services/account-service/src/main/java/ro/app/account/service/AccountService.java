@@ -24,9 +24,13 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
+import ro.app.account.dto.AccountDTO;
+import ro.app.account.dto.mapper.AccountMapper;
+import ro.app.account.dto.request.StripeTopUpApplyRequest;
 import ro.app.account.exception.BusinessRuleViolationException;
 import ro.app.account.exception.InsufficientFundsException;
 import ro.app.account.exception.ResourceNotFoundException;
+import ro.app.account.internal.InternalApiHeaders;
 import ro.app.account.model.entity.Account;
 import ro.app.account.model.enums.AccountStatus;
 import ro.app.account.model.enums.CurrencyType;
@@ -50,6 +54,9 @@ public class AccountService {
 
     @Value("${app.services.transaction.url}")
     private String transactionServiceUrl;
+
+    @Value("${app.internal.api-secret}")
+    private String internalApiSecret;
 
 
     public AccountService(AccountRepository accountRepository,
@@ -122,6 +129,82 @@ public class AccountService {
     @Cacheable(value = "accountsByClient", key = "#clientId")
     public List<Account> getAccountsByClient(Long clientId) {
         return accountRepository.findByClientId(clientId);
+    }
+
+    /**
+     * Single account by id for authenticated user (or admin). Used by payment top-up flow.
+     */
+    public AccountDTO getAccountDtoForPrincipal(Long accountId, JwtPrincipal principal) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+        ownershipChecker.checkOwnership(principal, account.getClientId());
+        return AccountMapper.toDTO(account);
+    }
+
+    /**
+     * Account by IBAN for authenticated user (or admin). Used by transaction-service for statement-by-IBAN.
+     */
+    public AccountDTO getAccountDtoByIban(String iban, JwtPrincipal principal) {
+        String normalized = iban != null ? iban.trim().toUpperCase() : "";
+        Account account = accountRepository.findByIban(normalized)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+        ownershipChecker.checkOwnership(principal, account.getClientId());
+        return AccountMapper.toDTO(account);
+    }
+
+    /**
+     * Apply Stripe card top-up: credit balance + record DEPOSIT in transaction-service (internal HTTP).
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "balance", key = "#result.iban"),
+            @CacheEvict(value = "accountsByClient", key = "#result.clientId")
+    })
+    public Account applyStripeTopUpCredit(StripeTopUpApplyRequest req) {
+        Account account = accountRepository.findById(req.getAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+
+        if (!AccountStatus.ACTIVE.equals(account.getStatus())) {
+            throw new BusinessRuleViolationException("Account must be ACTIVE for top-up");
+        }
+        if (!account.getCurrency().getCode().equalsIgnoreCase(req.getCurrencyCode())) {
+            throw new BusinessRuleViolationException("Currency mismatch between payment and account");
+        }
+
+        BigDecimal amount = req.getAmount().setScale(2, RoundingMode.HALF_UP);
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessRuleViolationException("Top-up amount must be positive");
+        }
+
+        account.setBalance(account.getBalance().add(amount));
+        accountRepository.save(account);
+
+        postInternalStripeDeposit(account, amount, req.getStripePaymentIntentId());
+        return account;
+    }
+
+    private void postInternalStripeDeposit(Account account, BigDecimal amount, String stripePaymentIntentId) {
+        String url = transactionServiceUrl + "/api/internal/transactions/deposit";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set(InternalApiHeaders.SECRET, internalApiSecret);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("accountId", account.getId());
+        body.put("destinationAccountId", null);
+        body.put("transactionTypeCode", "DEPOSIT");
+        body.put("categoryCode", "INCOME");
+        body.put("amount", amount);
+        body.put("originalAmount", amount);
+        body.put("originalCurrencyCode", account.getCurrency().getCode());
+        body.put("sign", "+");
+        body.put("merchant", "Stripe");
+        body.put("details", "Card top-up (" + stripePaymentIntentId + ")");
+        body.put("transactionDate", LocalDateTime.now().toString());
+        body.put("riskScore", BigDecimal.ZERO);
+        body.put("flagged", false);
+
+        restTemplate.postForObject(url, new HttpEntity<>(body, headers), Map.class);
     }
 
     // 4) Get balance by IBAN
