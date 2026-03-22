@@ -2,106 +2,57 @@ package ro.app.payment.service;
 
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import com.stripe.exception.StripeException;
-
 import ro.app.payment.dto.PaymentMethodDTO;
-import ro.app.payment.dto.mapper.PaymentMethodMapper;
 import ro.app.payment.dto.request.AttachPaymentMethodRequest;
-import ro.app.payment.exception.PaymentFailedException;
-import ro.app.payment.exception.ResourceNotFoundException;
 import ro.app.payment.model.entity.PaymentMethod;
-import ro.app.payment.repository.PaymentMethodRepository;
+import ro.app.payment.security.JwtPrincipal;
+import ro.app.payment.security.OwnershipChecker;
+import ro.app.payment.service.method.attachment.PaymentMethodAttachmentService;
+import ro.app.payment.service.method.management.PaymentMethodManagementService;
+import ro.app.payment.service.method.query.PaymentMethodQueryService;
 
+/**
+ * Facade for saved payment methods. Delegates to {@code method.attachment}, {@code method.query}, {@code method.management}.
+ */
 @Service
 public class PaymentMethodService {
-    
-    private static final Logger log = LoggerFactory.getLogger(PaymentMethodService.class);
-    private final PaymentMethodRepository paymentMethodRepository;
 
-    public PaymentMethodService(PaymentMethodRepository paymentMethodRepository) {
-        this.paymentMethodRepository = paymentMethodRepository;
+    private final PaymentMethodAttachmentService attachmentService;
+    private final PaymentMethodQueryService queryService;
+    private final PaymentMethodManagementService managementService;
+    private final OwnershipChecker ownershipChecker;
+
+    public PaymentMethodService(
+            PaymentMethodAttachmentService attachmentService,
+            PaymentMethodQueryService queryService,
+            PaymentMethodManagementService managementService,
+            OwnershipChecker ownershipChecker) {
+        this.attachmentService = attachmentService;
+        this.queryService = queryService;
+        this.managementService = managementService;
+        this.ownershipChecker = ownershipChecker;
     }
 
-    //---Attch a payment method -> retrieve card details from Stripe , save locally ----
-    public PaymentMethodDTO attachPaymentMethod(AttachPaymentMethodRequest req){
-        try{
-            //Retrieve card details from Stripe 
-            com.stripe.model.PaymentMethod stripePm= 
-                com.stripe.model.PaymentMethod.retrieve(req.getStripePaymentMethodId());
-
-            PaymentMethod entity = new PaymentMethod();
-            entity.setClientId(req.getClientId());
-            entity.setStripePaymentMethodId(req.getStripePaymentMethodId());
-
-            //Exact card details from Stripe response
-            if(stripePm.getCard() != null){
-                entity.setCardBrand(stripePm.getCard().getBrand());
-                entity.setCardLast4(stripePm.getCard().getLast4());
-                entity.setExpiryMonth(stripePm.getCard().getExpMonth().intValue());
-                entity.setExpiryYear(stripePm.getCard().getExpYear().intValue());
-            }
-
-            //1st card for this client becomes deafault
-            boolean hasExisting = !paymentMethodRepository
-                .findByClientIdOrderByCreatedAtDesc(req.getClientId()).isEmpty();
-            entity.setIsDefault(!hasExisting);
-
-            entity= paymentMethodRepository.save(entity);
-            return PaymentMethodMapper.toDTO(entity);
-
-        } catch (StripeException e) {
-            log.error("Failed to retrieve payment method from Stripe: {}", e.getMessage());
-            throw new PaymentFailedException("Failed to attach payment method: " + e.getMessage(), e);
-        }
+    public PaymentMethodDTO attachPaymentMethod(AttachPaymentMethodRequest req) {
+        return attachmentService.attachPaymentMethod(req);
     }
 
-    //----Get ALL for a client---
-    public List<PaymentMethodDTO> getByClient(Long clientId){
-        return paymentMethodRepository.findByClientIdOrderByCreatedAtDesc(clientId)
-            .stream()
-            .map(PaymentMethodMapper::toDTO)
-            .toList();
+    public List<PaymentMethodDTO> getByClient(Long clientId) {
+        return queryService.getByClient(clientId);
     }
 
-    //---Delete a payment method----
-    public void deletePaymentMethod(Long id){
-        PaymentMethod entity = paymentMethodRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment method not found with id: " + id));
-    
-        try{
-            //detach from Stripe
-            com.stripe.model.PaymentMethod stripePm=
-                com.stripe.model.PaymentMethod.retrieve(entity.getStripePaymentMethodId());
-            stripePm.detach();
-
-        }catch(StripeException e) {
-            log.warn("Failed to detach payment method from Stripe (may already be detached): {}", e.getMessage());
-        }
-
-        paymentMethodRepository.delete(entity);
+    /**
+     * Deletes a saved card after verifying the caller owns the underlying client.
+     */
+    public void deletePaymentMethod(Long id, JwtPrincipal principal) {
+        PaymentMethod pm = queryService.requireById(id);
+        ownershipChecker.checkOwnership(principal, pm.getClientId());
+        managementService.deletePaymentMethod(pm);
     }
 
-    //---Set a payment method as default----
     public PaymentMethodDTO setDefault(Long clientId, Long paymentMethodId) {
-        // Remove default from all client's cards
-        List<PaymentMethod> allCards = paymentMethodRepository.findByClientIdOrderByCreatedAtDesc(clientId);
-        for (PaymentMethod card : allCards) {
-            if (card.getIsDefault()) {
-                card.setIsDefault(false);
-                paymentMethodRepository.save(card);
-            }
-        }
-
-        // Set new default
-        PaymentMethod target = paymentMethodRepository.findById(paymentMethodId)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment method not found with id: " + paymentMethodId));
-
-        target.setIsDefault(true);
-        target = paymentMethodRepository.save(target);
-        return PaymentMethodMapper.toDTO(target);
+        return managementService.setDefault(clientId, paymentMethodId);
     }
 }

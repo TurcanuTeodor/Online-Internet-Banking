@@ -47,10 +47,12 @@ public class PaymentMethodController {
         return paymentMethodService.getByClient(clientId);
     }
 
-    // Delete card — nu e nevoie de ownership check, se validează pe id
+    // Delete card — ownership via clientId on stored PaymentMethod
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        paymentMethodService.deletePaymentMethod(id);
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        paymentMethodService.deletePaymentMethod(id, principal);
         return ResponseEntity.noContent().build();
     }
 
