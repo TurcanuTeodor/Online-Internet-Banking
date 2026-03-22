@@ -62,6 +62,10 @@ public class AuthService {
         User user = userRepo.findByUsernameOrEmail(req.getUsernameOrEmail())
                 .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
 
+        if (!user.isEnabled()) {
+            throw new AuthenticationException("Account disabled");
+        }
+
         if (!encoder.matches(req.getPassword(), user.getPasswordHash())) {
             throw new AuthenticationException("Invalid credentials");
         }

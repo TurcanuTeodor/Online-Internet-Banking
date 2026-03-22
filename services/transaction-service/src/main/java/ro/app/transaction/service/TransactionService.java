@@ -71,4 +71,8 @@ public class TransactionService {
     public Transaction save(Transaction transaction) {
         return transactionQueryService.save(transaction);
     }
+
+    public int anonymizeDetailsForAccountIds(List<Long> accountIds, String replacement) {
+        return transactionQueryService.anonymizeDetailsForAccountIds(accountIds, replacement);
+    }
 }

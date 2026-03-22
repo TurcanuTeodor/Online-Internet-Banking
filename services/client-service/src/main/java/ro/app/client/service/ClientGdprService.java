@@ -1,10 +1,14 @@
 package ro.app.client.service;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.validation.constraints.NotNull;
+import ro.app.client.client.GdprDownstreamRestClient;
 import ro.app.client.dto.gdpr.ClientExportDTO;
+import ro.app.client.exception.BusinessRuleViolationException;
 import ro.app.client.exception.ResourceNotFoundException;
 import ro.app.client.model.entity.Client;
 import ro.app.client.model.entity.ContactInfo;
@@ -12,7 +16,7 @@ import ro.app.client.repository.ClientRepository;
 import ro.app.client.repository.ContactInfoRepository;
 
 /**
- * GDPR export — decrypts client and contact data for portability / access requests.
+ * GDPR export and right-to-erasure orchestration.
  */
 @Service
 public class ClientGdprService {
@@ -21,16 +25,42 @@ public class ClientGdprService {
     private final ContactInfoRepository contactInfoRepository;
     private final EncryptionService encryptionService;
     private final String encryptionKey;
+    private final GdprDownstreamRestClient gdprDownstreamRestClient;
+    private final ClientGdprErasurePersistenceService clientGdprErasurePersistenceService;
 
     public ClientGdprService(
             ClientRepository clientRepository,
             ContactInfoRepository contactInfoRepository,
             EncryptionService encryptionService,
-            @Value("${encryption.key}") String encryptionKey) {
+            @Value("${encryption.key}") String encryptionKey,
+            GdprDownstreamRestClient gdprDownstreamRestClient,
+            ClientGdprErasurePersistenceService clientGdprErasurePersistenceService) {
         this.clientRepository = clientRepository;
         this.contactInfoRepository = contactInfoRepository;
         this.encryptionService = encryptionService;
         this.encryptionKey = encryptionKey;
+        this.gdprDownstreamRestClient = gdprDownstreamRestClient;
+        this.clientGdprErasurePersistenceService = clientGdprErasurePersistenceService;
+    }
+
+    /**
+     * GDPR Art. 17 — orchestrates auth revocation, transaction anonymization, account closure, local anonymization.
+     */
+    public void performRightToErasure(@NotNull Long clientId) {
+        if (clientId == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+        if (!client.isActive()) {
+            throw new BusinessRuleViolationException("Client is already inactive; erasure was applied or account was closed.");
+        }
+
+        gdprDownstreamRestClient.deactivateAuthUser(clientId);
+        List<Long> accountIds = gdprDownstreamRestClient.fetchAccountIdsForClient(clientId);
+        gdprDownstreamRestClient.anonymizeTransactionDetails(accountIds);
+        gdprDownstreamRestClient.closeAllAccounts(clientId);
+        clientGdprErasurePersistenceService.applyLocalErasure(clientId);
     }
 
     public ClientExportDTO exportClientData(@NotNull Long clientId) {

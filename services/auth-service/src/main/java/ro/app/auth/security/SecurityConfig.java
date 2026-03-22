@@ -32,7 +32,8 @@ public class SecurityConfig {
         http.csrf(csrf-> csrf.disable()) //disable Cross-Site Request Forgery(html form and session) bc i use jwt and rest api
             .authorizeHttpRequests(auth-> auth
                 .requestMatchers("/api/auth/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/health", "/v3/api-docs/**")
-                .permitAll() 
+                .permitAll()
+                .requestMatchers("/api/internal/**").permitAll()
                 .anyRequest()
                 .authenticated() //any other req needs auth w valid JWT
             )

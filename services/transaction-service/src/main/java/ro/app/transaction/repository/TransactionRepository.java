@@ -3,6 +3,7 @@ package ro.app.transaction.repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -38,4 +39,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     // Flagged transactions
     List<Transaction> findByFlaggedTrueOrderByTransactionDateDesc();
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Transaction t SET t.details = :replacement WHERE t.accountId IN :accountIds")
+    int anonymizeDetailsForAccountIds(
+            @Param("replacement") String replacement,
+            @Param("accountIds") List<Long> accountIds);
 }

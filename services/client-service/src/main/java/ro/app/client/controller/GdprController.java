@@ -3,7 +3,11 @@ package ro.app.client.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import ro.app.client.dto.gdpr.ClientExportDTO;
 import ro.app.client.security.JwtPrincipal;
@@ -31,5 +35,15 @@ public class GdprController {
             @AuthenticationPrincipal JwtPrincipal principal) {
         ownershipChecker.checkOwnership(principal, id);
         return ResponseEntity.ok(clientGdprService.exportClientData(id));
+    }
+
+    // GDPR Art. 17 — Right to erasure (ADMIN or owner)
+    @DeleteMapping("/{id}/delete")
+    public ResponseEntity<Void> deleteClientData(
+            @PathVariable Long id,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        ownershipChecker.checkOwnership(principal, id);
+        clientGdprService.performRightToErasure(id);
+        return ResponseEntity.noContent().build();
     }
 }

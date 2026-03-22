@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import ro.app.transaction.model.entity.Transaction;
 import ro.app.transaction.model.enums.TransactionType;
@@ -76,5 +77,16 @@ public class TransactionQueryService {
 
     public Transaction save(Transaction transaction) {
         return transactionRepository.save(transaction);
+    }
+
+    /**
+     * GDPR: replace transaction narrative for all rows tied to the given accounts.
+     */
+    @Transactional
+    public int anonymizeDetailsForAccountIds(List<Long> accountIds, String replacement) {
+        if (accountIds == null || accountIds.isEmpty()) {
+            return 0;
+        }
+        return transactionRepository.anonymizeDetailsForAccountIds(replacement, accountIds);
     }
 }

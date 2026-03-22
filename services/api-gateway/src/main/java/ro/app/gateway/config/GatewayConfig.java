@@ -41,6 +41,17 @@ public class GatewayConfig {
                         )
                         .uri("http://localhost:8082"))
 
+                // GDPR (client-service) — protejat cu JWT
+                .route("client-gdpr", r -> r
+                        .path("/api/gdpr/**")
+                        .filters(f -> f
+                                .filter(jwtAuthFilter.apply(new JwtAuthFilter.Config()))
+                                .circuitBreaker(cb -> cb
+                                        .setName("clientGdprCB")
+                                        .setFallbackUri("forward:/fallback/service"))
+                        )
+                        .uri("http://localhost:8082"))
+
                 // ACCOUNTS — protejat cu JWT
                 .route("account-service", r -> r
                         .path("/api/accounts/**")
