@@ -11,3 +11,33 @@ export async function createTopUpIntent(accountId, amount) {
   });
   return data;
 }
+
+export async function getPaymentMethodsByClient(clientId) {
+  const { data } = await apiClient.get(`/payment-methods/by-client/${clientId}`);
+  return data;
+}
+
+/**
+ * @param {number} clientId
+ * @param {string} stripePaymentMethodId - from stripe.createPaymentMethod (pm_...)
+ */
+export async function attachPaymentMethod(clientId, stripePaymentMethodId) {
+  const { data } = await apiClient.post('/payment-methods', {
+    clientId,
+    stripePaymentMethodId,
+  });
+  return data;
+}
+
+export async function deletePaymentMethod(paymentMethodId) {
+  await apiClient.delete(`/payment-methods/${paymentMethodId}`);
+}
+
+export async function setDefaultPaymentMethod(clientId, paymentMethodId) {
+  const { data } = await apiClient.put(
+    `/payment-methods/${paymentMethodId}/set-default`,
+    null,
+    { params: { clientId } }
+  );
+  return data;
+}

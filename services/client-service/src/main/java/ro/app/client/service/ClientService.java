@@ -131,6 +131,22 @@ public class ClientService {
         clientRepository.save(client);
     }
 
+    /**
+     * Admin suspend — idempotent soft-disable (same as delete but allows already-inactive client).
+     */
+    @Transactional
+    public void suspendClient(@NotNull Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+        if (client.isActive()) {
+            client.setActive(false);
+            clientRepository.save(client);
+        }
+    }
+
     // --6 View clients (decripteaza inainte de a returna)
     public List<ViewClientDTO> getAllViewClients() {
         return viewClientRepository.findAll()

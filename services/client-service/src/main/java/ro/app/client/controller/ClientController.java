@@ -69,6 +69,13 @@ public class ClientController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Admin: suspend client (active=false). Idempotent if already inactive. */
+    @PutMapping("/{id}/suspend")
+    public ResponseEntity<Void> suspend(@PathVariable Long id) {
+        clientService.suspendClient(id);
+        return ResponseEntity.noContent().build();
+    }
+
     // 6) View read-only clients (ADMIN only — protejat în SecurityConfig)
     @GetMapping("/view")
     public ResponseEntity<List<ViewClientDTO>> viewAll() {

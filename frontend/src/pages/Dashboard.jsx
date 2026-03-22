@@ -8,6 +8,7 @@ import { getAccountsByClient, openAccount, transfer, getBalanceByIban } from '..
 import { getTransactionsByClient } from '../../services/transactionService';
 import { setup2FA, confirm2FA } from '../../services/authService';
 import TopUpModal from '../components/TopUpModal';
+import CardsPaymentsTab from '../components/CardsPaymentsTab';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -43,6 +44,7 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [topUpAccount, setTopUpAccount] = useState(null);
+  const [mainTab, setMainTab] = useState('home');
 
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
@@ -280,11 +282,38 @@ export default function Dashboard() {
           </div>
         )}
 
+        {clientId && !loading && (
+          <div className="flex flex-wrap gap-2 mb-8">
+            <button
+              type="button"
+              onClick={() => setMainTab('home')}
+              className={mainTab === 'home' ? 'btn-primary' : 'btn-secondary'}
+            >
+              Conturi & Tranzacții
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('payments')}
+              className={mainTab === 'payments' ? 'btn-primary' : 'btn-secondary'}
+            >
+              Carduri & Plăți
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="glass rounded-2xl p-12 text-center">
             <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-zinc-400">Loading your accounts...</p>
           </div>
+        ) : mainTab === 'payments' && clientId ? (
+          <CardsPaymentsTab
+            clientId={clientId}
+            accounts={accounts}
+            transactions={transactions}
+            onRefresh={fetchData}
+            onOpenTopUp={setTopUpAccount}
+          />
         ) : (
           <>
             {/* Accounts Section */}

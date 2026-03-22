@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../../services/authService';
-import { getAllClientsFromView } from '../../../services/clientService';
+import { getAllClientsFromView, suspendClient } from '../../../services/clientService';
 import { getAllTransactionsFromView } from '../../../services/transactionService';
 import { getAllAccountsFromView } from '../../../services/accountService';
 import { LogOut, Users, TrendingUp, Shield, Loader2, Wallet } from 'lucide-react';
@@ -130,9 +130,9 @@ export default function AdminDashboard() {
   };
 
   const confirmSuspend = async () => {
+    if (!clientToSuspend?.clientId) return;
     try {
-      // TODO: Call API to suspend client
-      console.log('Suspending client:', clientToSuspend.clientId);
+      await suspendClient(clientToSuspend.clientId);
       setShowSuspendModal(false);
       setClientToSuspend(null);
       fetchData();

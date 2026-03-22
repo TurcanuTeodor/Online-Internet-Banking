@@ -28,6 +28,7 @@ public class SecurityConfig {
                     // ADMIN only
                     .requestMatchers(HttpMethod.POST, "/api/clients").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/api/clients/*").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/api/clients/*/suspend").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/clients/view").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/search").hasRole("ADMIN")
                     // ADMIN & USER

@@ -54,6 +54,14 @@ export const deleteClient = async (clientId) => {
 };
 
 /**
+ * Admin: suspend client (sets active=false). Idempotent if already inactive.
+ * @param {number} clientId
+ */
+export const suspendClient = async (clientId) => {
+  await apiClient.put(`/clients/${clientId}/suspend`);
+};
+
+/**
  * Get all clients from view (read-only)
  * @returns {Promise} List of all clients
  */
