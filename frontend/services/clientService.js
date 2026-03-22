@@ -11,6 +11,21 @@ export const createClient = async (clientData) => {
 };
 
 /**
+ * Public sign-up: create client profile (no admin JWT). Returns client with id — use id as clientId for auth register.
+ * @param {{ firstName: string, lastName: string, sexCode: string, clientTypeCode: string }} profile
+ */
+export const signUpClientProfile = async (profile) => {
+  const response = await apiClient.post('/clients/sign-up', {
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    sexCode: profile.sexCode,
+    clientTypeCode: profile.clientTypeCode,
+    active: true,
+  });
+  return response.data;
+};
+
+/**
  * Search clients by name
  * @param {string} name - Search query for client name
  * @returns {Promise} List of matching clients

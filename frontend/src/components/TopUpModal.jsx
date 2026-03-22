@@ -3,6 +3,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { X, CreditCard, Loader2 } from 'lucide-react';
 import { createTopUpIntent } from '../../services/paymentService';
+import { stripeElementsAppearance } from '../lib/stripeAppearance';
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
@@ -56,7 +57,7 @@ function TopUpPaymentForm({ clientSecret, currencyCode, amountLabel, onSuccess, 
       <p className="text-sm text-zinc-400">
         Amount: <span className="text-white font-semibold">{amountLabel}</span> ({currencyCode})
       </p>
-      <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+      <div className="p-4 rounded-xl border border-gray-700 bg-gray-800/50">
         <CardElement options={cardStyle} />
       </div>
       <p className="text-xs text-zinc-500">
@@ -173,7 +174,7 @@ export default function TopUpModal({ account, onClose, onSuccess }) {
             stripe={stripePromise}
             options={{
               clientSecret: intent.clientSecret,
-              appearance: { theme: 'night', variables: { colorPrimary: '#34d399' } },
+              appearance: stripeElementsAppearance,
             }}
           >
             <TopUpPaymentForm

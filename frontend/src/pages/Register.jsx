@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../../services/authService';
+import { signUpClientProfile } from '../../services/clientService';
 import { UserPlus, Loader2, Lock } from 'lucide-react';
 
 export default function Register() {
@@ -36,7 +37,18 @@ export default function Register() {
     setError('');
 
     try {
+      const client = await signUpClientProfile({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        sexCode: formData.sexCode,
+        clientTypeCode: formData.clientTypeCode,
+      });
+      if (!client?.id) {
+        setError('Could not create client profile. Try again.');
+        return;
+      }
       await register({
+        clientId: client.id,
         firstName: formData.firstName,
         lastName: formData.lastName,
         sexCode: formData.sexCode,

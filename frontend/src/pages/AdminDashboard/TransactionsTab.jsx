@@ -1,6 +1,56 @@
 import { Filter } from 'lucide-react';
 import PaginationControls from './PaginationControls';
 
+function transactionTypeOf(tx) {
+  return tx.transactionType ?? tx.transactionTypeName ?? '—';
+}
+
+function signOf(tx) {
+  return tx.sign ?? tx.transactionSign ?? '';
+}
+
+function amountOf(tx) {
+  const v = tx.amount ?? tx.transactionAmount;
+  if (v === null || v === undefined || v === '') return null;
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function currencyOf(tx) {
+  return tx.originalCurrency ?? tx.currencyCode ?? 'EUR';
+}
+
+function formatRiskScore(tx) {
+  const raw = tx.riskScore;
+  if (raw === null || raw === undefined || raw === '') return '—';
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return '—';
+  const pct = n > 1 ? n : n * 100;
+  return `${pct.toFixed(1)}%`;
+}
+
+function riskScoreColor(tx) {
+  const raw = tx.riskScore;
+  if (raw === null || raw === undefined || raw === '') return 'text-zinc-500';
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return 'text-zinc-500';
+  const pct = n > 1 ? n : n * 100;
+  if (pct > 70) return 'text-red-400';
+  if (pct > 40) return 'text-amber-400';
+  return 'text-emerald-400';
+}
+
+function transactionTypeBadgeClass(typeName) {
+  const t = (typeName || '').toLowerCase();
+  if (t.includes('transfer')) return 'bg-sky-500/15 text-sky-300 border border-sky-500/30';
+  if (t.includes('deposit') || t.includes('top') || t.includes('credit'))
+    return 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+  if (t.includes('withdraw') || t.includes('debit') || t.includes('payment'))
+    return 'bg-rose-500/15 text-rose-300 border border-rose-500/30';
+  if (t.includes('fee')) return 'bg-orange-500/15 text-orange-300 border border-orange-500/30';
+  return 'bg-violet-500/15 text-violet-300 border border-violet-500/30';
+}
+
 export default function TransactionsTab({
   transactions,
   filters,
@@ -10,7 +60,7 @@ export default function TransactionsTab({
   onToggleFilters,
 }) {
   const getTransactionTypes = () => {
-    const types = new Set(transactions.map(tx => tx.transactionTypeName));
+    const types = new Set(transactions.map((tx) => transactionTypeOf(tx)).filter((x) => x && x !== '—'));
     return Array.from(types).sort();
   };
 
@@ -18,29 +68,37 @@ export default function TransactionsTab({
     let filtered = [...transactions];
 
     if (filters.type !== 'all') {
-      filtered = filtered.filter(tx => tx.transactionTypeName === filters.type);
+      filtered = filtered.filter((tx) => transactionTypeOf(tx) === filters.type);
     }
 
     if (filters.sign !== 'all') {
-      filtered = filtered.filter(tx => tx.transactionSign === filters.sign);
+      filtered = filtered.filter((tx) => signOf(tx) === filters.sign);
     }
 
     if (filters.dateFrom) {
       const fromDate = new Date(filters.dateFrom);
       fromDate.setHours(0, 0, 0, 0);
-      filtered = filtered.filter(tx => new Date(tx.transactionDate) >= fromDate);
+      filtered = filtered.filter((tx) => new Date(tx.transactionDate) >= fromDate);
     }
     if (filters.dateTo) {
       const toDate = new Date(filters.dateTo);
       toDate.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(tx => new Date(tx.transactionDate) <= toDate);
+      filtered = filtered.filter((tx) => new Date(tx.transactionDate) <= toDate);
     }
 
     if (filters.minAmount !== '') {
-      filtered = filtered.filter(tx => tx.transactionAmount >= parseFloat(filters.minAmount));
+      const min = parseFloat(filters.minAmount);
+      filtered = filtered.filter((tx) => {
+        const a = amountOf(tx);
+        return a !== null && a >= min;
+      });
     }
     if (filters.maxAmount !== '') {
-      filtered = filtered.filter(tx => tx.transactionAmount <= parseFloat(filters.maxAmount));
+      const max = parseFloat(filters.maxAmount);
+      filtered = filtered.filter((tx) => {
+        const a = amountOf(tx);
+        return a !== null && a <= max;
+      });
     }
 
     return filtered;
@@ -55,11 +113,8 @@ export default function TransactionsTab({
 
   return (
     <div>
-      {/* Filter Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <h2 className="text-xl font-bold">
-          Transactions ({filteredTransactions.length})
-        </h2>
+        <h2 className="text-xl font-bold">Transactions ({filteredTransactions.length})</h2>
         <button
           onClick={onToggleFilters}
           className={`btn-secondary flex items-center justify-center gap-2 ${showFilters ? 'bg-emerald-500/20 border-emerald-500/30' : ''}`}
@@ -69,26 +124,27 @@ export default function TransactionsTab({
         </button>
       </div>
 
-      {/* Filters */}
       {showFilters && (
         <div className="glass rounded-2xl p-6 mb-4 animate-fade-in">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-2">Transaction Type</label>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Transaction type</label>
               <select
                 value={filters.type}
                 onChange={(e) => onFilterChange('type', e.target.value)}
                 className="input-field"
               >
-                <option value="all">All Types</option>
-                {getTransactionTypes().map(type => (
-                  <option key={type} value={type}>{type}</option>
+                <option value="all">All types</option>
+                {getTransactionTypes().map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-2">Transaction Sign</label>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Sign</label>
               <select
                 value={filters.sign}
                 onChange={(e) => onFilterChange('sign', e.target.value)}
@@ -101,7 +157,7 @@ export default function TransactionsTab({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-2">Date From</label>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Date from</label>
               <input
                 type="date"
                 value={filters.dateFrom}
@@ -109,12 +165,12 @@ export default function TransactionsTab({
                 className="input-field"
               />
               {filters.dateFrom && !filters.dateTo && (
-                <p className="text-xs text-amber-400 mt-1">⚠️ Please select "Date To"</p>
+                <p className="text-xs text-amber-400 mt-1">Select &quot;Date to&quot; to complete the range</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-2">Date To</label>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Date to</label>
               <input
                 type="date"
                 value={filters.dateTo}
@@ -122,12 +178,12 @@ export default function TransactionsTab({
                 className="input-field"
               />
               {!filters.dateFrom && filters.dateTo && (
-                <p className="text-xs text-amber-400 mt-1">⚠️ Please select "Date From"</p>
+                <p className="text-xs text-amber-400 mt-1">Select &quot;Date from&quot; to complete the range</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-2">Min Amount</label>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Min amount</label>
               <input
                 type="number"
                 value={filters.minAmount}
@@ -140,7 +196,7 @@ export default function TransactionsTab({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-2">Max Amount</label>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Max amount</label>
               <input
                 type="number"
                 value={filters.maxAmount}
@@ -158,21 +214,23 @@ export default function TransactionsTab({
               Found {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
             </p>
             <button onClick={onResetFilters} className="btn-secondary text-sm">
-              Reset Filters
+              Reset filters
             </button>
           </div>
         </div>
       )}
 
-      {/* Table */}
       {filteredTransactions.length === 0 ? (
         <div className="glass rounded-2xl p-12 text-center">
           <p className="text-zinc-400">No transactions match your filters</p>
-          {(filters.type !== 'all' || filters.sign !== 'all' || 
-            filters.dateFrom || filters.dateTo || 
-            filters.minAmount || filters.maxAmount) && (
+          {(filters.type !== 'all' ||
+            filters.sign !== 'all' ||
+            filters.dateFrom ||
+            filters.dateTo ||
+            filters.minAmount ||
+            filters.maxAmount) && (
             <button onClick={onResetFilters} className="btn-secondary mt-4">
-              Reset Filters
+              Reset filters
             </button>
           )}
         </div>
@@ -184,83 +242,57 @@ export default function TransactionsTab({
                 <thead className="bg-zinc-800/50">
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">ID</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Date & Time</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Sender</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Receiver</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Date &amp; time</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Account ID</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Destination account ID</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Type</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Amount</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Fraud Score</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Risk score</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800">
                   {paginatedTransactions.map((tx) => {
-                    const fraudScoreValue = tx.fraudScore === null || tx.fraudScore === undefined
-                      ? null
-                      : parseFloat(tx.fraudScore);
-                    const fraudPercent = fraudScoreValue === null
-                      ? null
-                      : (fraudScoreValue > 1 ? fraudScoreValue : fraudScoreValue * 100);
-                    const fraudColor = fraudPercent === null
-                      ? 'text-zinc-500'
-                      : fraudPercent > 70
-                        ? 'text-red-400'
-                        : fraudPercent > 40
-                          ? 'text-amber-400'
-                          : 'text-emerald-400';
+                    const typeLabel = transactionTypeOf(tx);
+                    const amt = amountOf(tx);
+                    const cur = currencyOf(tx);
+                    const sg = signOf(tx);
+                    const destId = tx.destinationAccountId;
 
-                    const typeLower = (tx.transactionTypeName || '').toLowerCase();
-                    const isTransfer = typeLower.includes('transfer');
-                    const receiverName = (tx.destFirstName && tx.destLastName)
-                      ? `${tx.destFirstName} ${tx.destLastName}`
-                      : tx.destIban
-                        ? 'External'
-                        : `(${tx.transactionTypeName || 'N/A'})`;
-                    const receiverIban = isTransfer ? (tx.destIban || 'External') : '';
-                    
                     return (
                       <tr key={tx.transactionId} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="px-6 py-4 text-sm text-zinc-400">{tx.transactionId}</td>
+                        <td className="px-6 py-4 text-sm font-mono text-zinc-400">{tx.transactionId}</td>
                         <td className="px-6 py-4 text-sm text-zinc-400">
-                          {new Date(tx.transactionDate).toLocaleString('en-GB', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {tx.transactionDate
+                            ? new Date(tx.transactionDate).toLocaleString('en-GB', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '—'}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-mono text-zinc-300">
+                          {tx.accountId != null ? tx.accountId : '—'}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-mono text-zinc-400">
+                          {destId != null ? destId : '—'}
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          <div>
-                            <p className="font-medium">
-                              {tx.sourceFirstName && tx.sourceLastName 
-                                ? `${tx.sourceFirstName} ${tx.sourceLastName}` 
-                                : 'N/A'}
-                            </p>
-                            <p className="text-xs text-zinc-500 font-mono">{tx.sourceIban}</p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <div>
-                            <p className="font-medium">
-                              {receiverName}
-                            </p>
-                            <p className="text-xs text-zinc-500 font-mono">{receiverIban}</p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">
-                            {tx.transactionTypeName}
+                          <span
+                            className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${transactionTypeBadgeClass(typeLabel)}`}
+                          >
+                            {typeLabel}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm font-medium">
-                          <span className={tx.transactionSign === '+' ? 'text-emerald-400' : 'text-red-400'}>
-                            {tx.transactionSign === '+' ? '+' : '-'}{tx.transactionAmount} {tx.currencyCode}
+                          <span className={sg === '+' ? 'text-emerald-400' : 'text-red-400'}>
+                            {sg === '+' ? '+' : sg === '-' ? '-' : ''}
+                            {amt !== null ? amt.toFixed(2) : '—'} {cur}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          <span className={`font-semibold ${fraudColor}`}>
-                            {fraudPercent === null ? 'N/A' : `${fraudPercent.toFixed(1)}%`}
-                          </span>
+                          <span className={`font-semibold ${riskScoreColor(tx)}`}>{formatRiskScore(tx)}</span>
                         </td>
                       </tr>
                     );
@@ -270,7 +302,6 @@ export default function TransactionsTab({
             </div>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <PaginationControls
               currentPage={filters.page}

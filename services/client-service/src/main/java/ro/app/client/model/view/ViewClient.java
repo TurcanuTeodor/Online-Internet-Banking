@@ -22,6 +22,9 @@ public class ViewClient {
     @Column(name = "client_type_name")
     private String clientTypeName;
 
+    @Column(name = "risk_level")
+    private String riskLevel;
+
     @Column(name = "client_active")
     private Boolean active;
 
@@ -49,6 +52,7 @@ public class ViewClient {
     public String getClientLastName() { return clientLastName; }
     public String getClientFirstName() { return clientFirstName; }
     public String getClientTypeName() { return clientTypeName; }
+    public String getRiskLevel() { return riskLevel; }
     public Boolean getActive() { return active; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public String getEmailEncrypted() { return emailEncrypted; }

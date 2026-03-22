@@ -34,7 +34,8 @@ export default function AccountStatementModal({ account, onClose }) {
               Account Statement
             </h2>
             <p className="text-sm text-zinc-400 mt-1">
-              IBAN: {account.accountIban} • {account.clientFirstName} {account.clientLastName}
+              IBAN: <span className="font-mono text-zinc-300">{account.accountIban}</span> • Client ID:{' '}
+              <span className="font-mono">{account.clientId ?? '—'}</span>
             </p>
           </div>
           <button
@@ -50,7 +51,12 @@ export default function AccountStatementModal({ account, onClose }) {
           <div className="glass rounded-xl p-4">
             <label className="text-sm text-zinc-400">Current Balance</label>
             <p className="text-2xl font-bold text-emerald-400">
-              {parseFloat(account.balance || account.accountBalance).toFixed(2)} {account.currencyCode}
+              {(() => {
+                const raw = account.accountBalance ?? account.balance;
+                const n = parseFloat(raw);
+                return Number.isFinite(n) ? n.toFixed(2) : '—';
+              })()}{' '}
+              {account.currencyCode}
             </p>
           </div>
           <div className="glass rounded-xl p-4">
@@ -95,24 +101,32 @@ export default function AccountStatementModal({ account, onClose }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800">
-                    {transactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="px-4 py-3 text-sm text-zinc-400">
-                          {new Date(tx.transactionDate).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">
-                            {tx.transactionTypeName}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          <span className={tx.sign === '+' ? 'text-emerald-400' : 'text-red-400'}>
-                            {tx.sign === '+' ? '+' : '-'}{tx.amount} {tx.currencyCode}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-zinc-400">{tx.details || 'N/A'}</td>
-                      </tr>
-                    ))}
+                    {transactions.map((tx) => {
+                      const tid = tx.transactionId ?? tx.id;
+                      const typeLabel = tx.transactionTypeName ?? tx.transactionType ?? '—';
+                      const amt = tx.amount ?? tx.transactionAmount;
+                      const cur = tx.currencyCode ?? tx.originalCurrency ?? '';
+                      const sg = tx.sign ?? tx.transactionSign ?? '';
+                      return (
+                        <tr key={tid} className="hover:bg-zinc-800/30 transition-colors">
+                          <td className="px-4 py-3 text-sm text-zinc-400">
+                            {tx.transactionDate ? new Date(tx.transactionDate).toLocaleString() : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">
+                              {typeLabel}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium">
+                            <span className={sg === '+' ? 'text-emerald-400' : 'text-red-400'}>
+                              {sg === '+' ? '+' : sg === '-' ? '-' : ''}
+                              {amt != null ? parseFloat(amt).toFixed(2) : '—'} {cur}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-zinc-400">{tx.details || '—'}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

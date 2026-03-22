@@ -25,6 +25,8 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/actuator/**").permitAll()
+                    // Public self-service: create client profile before auth register (links clientId)
+                    .requestMatchers(HttpMethod.POST, "/api/clients/sign-up").permitAll()
                     // ADMIN only
                     .requestMatchers(HttpMethod.POST, "/api/clients").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/api/clients/*").hasRole("ADMIN")

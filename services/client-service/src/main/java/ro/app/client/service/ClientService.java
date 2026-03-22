@@ -157,6 +157,7 @@ public class ClientService {
                     dto.setFirstName(v.getClientFirstName());
                     dto.setLastName(v.getClientLastName());
                     dto.setClientType(v.getClientTypeName());
+                    dto.setRiskLevel(v.getRiskLevel());
                     dto.setActive(v.getActive());
                     dto.setCreatedAt(v.getCreatedAt());
                     try {

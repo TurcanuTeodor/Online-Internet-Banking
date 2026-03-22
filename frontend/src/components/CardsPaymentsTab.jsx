@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { CreditCard, Loader2, Trash2, Star, Wallet } from 'lucide-react';
+import { CreditCard, Loader2, Trash2, Star, Wallet, ShieldCheck } from 'lucide-react';
+import { stripeElementsAppearance } from '../lib/stripeAppearance';
 import {
   getPaymentMethodsByClient,
   attachPaymentMethod,
@@ -60,12 +61,13 @@ function AddCardForm({ clientId, onSuccess, onError }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+      <div className="p-4 rounded-xl border border-gray-700 bg-gray-800/50">
         <CardElement options={cardStyle} />
       </div>
-      <p className="text-xs text-zinc-500">
-        Card data goes to Stripe only — we store brand/last4 after attach.
-      </p>
+      <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
+        <ShieldCheck size={14} className="text-green-500 shrink-0" />
+        <span>Card data goes to Stripe only — we store brand/last4 after attach.</span>
+      </div>
       <button type="submit" disabled={!stripe || busy} className="btn-primary w-full flex items-center justify-center gap-2">
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
         Save card
@@ -159,7 +161,7 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
         <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
           {success}
           <button type="button" onClick={() => setSuccess('')} className="ml-3 underline">
-            OK
+            Dismiss
           </button>
         </div>
       )}
@@ -168,18 +170,20 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
       <section className="glass rounded-2xl p-6">
         <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
           <Wallet className="w-5 h-5 text-emerald-400" />
-          Alimentare cont (Stripe)
+          Top up account (Stripe)
         </h2>
-        <p className="text-sm text-zinc-500 mb-4">Alege contul și deschide plata cu cardul (nu trimitem numărul pe server).</p>
+        <p className="text-sm text-zinc-500 mb-4">
+          Choose an account and pay with your card — card numbers never go to our servers.
+        </p>
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
           <div className="flex-1">
-            <label className="block text-sm text-zinc-400 mb-1">Cont</label>
+            <label className="block text-sm text-zinc-400 mb-1">Account</label>
             <select
               className="input-field w-full"
               value={topUpAccountId}
               onChange={(e) => setTopUpAccountId(e.target.value)}
             >
-              <option value="">— selectează —</option>
+              <option value="">— Select —</option>
               {activeAccounts
                 .filter((a) => a.currencyCode === 'EUR' || a.currencyCode === 'RON')
                 .map((a) => (
@@ -199,20 +203,20 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
             }}
           >
             <CreditCard className="w-4 h-4" />
-            Continuă la plată
+            Continue to payment
           </button>
         </div>
       </section>
 
       {/* Saved cards */}
       <section className="glass rounded-2xl p-6">
-        <h2 className="text-xl font-bold mb-4">Carduri salvate</h2>
+        <h2 className="text-xl font-bold mb-4">Saved cards</h2>
         {loading ? (
           <div className="flex items-center gap-2 text-zinc-400">
-            <Loader2 className="w-5 h-5 animate-spin" /> Se încarcă…
+            <Loader2 className="w-5 h-5 animate-spin" /> Loading…
           </div>
         ) : methods.length === 0 ? (
-          <p className="text-zinc-500 text-sm">Niciun card încă. Adaugă unul mai jos.</p>
+          <p className="text-zinc-500 text-sm">No cards yet. Add one below.</p>
         ) : (
           <ul className="space-y-3">
             {methods.map((m) => (
@@ -244,7 +248,7 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
                     onClick={() => handleDelete(m.id)}
                   >
                     <Trash2 className="w-4 h-4 inline mr-1" />
-                    Șterge
+                    Remove
                   </button>
                 </div>
               </li>
@@ -255,17 +259,17 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
 
       {/* Add card */}
       <section className="glass rounded-2xl p-6">
-        <h2 className="text-xl font-bold mb-4">Adaugă card nou</h2>
+        <h2 className="text-xl font-bold mb-4">Add new card</h2>
         {!publishableKey || !stripePromise ? (
           <p className="text-amber-400 text-sm">
-            Setează <code className="text-zinc-300">VITE_STRIPE_PUBLISHABLE_KEY</code> în <code>.env.local</code>.
+            Set <code className="text-zinc-300">VITE_STRIPE_PUBLISHABLE_KEY</code> in <code>.env.local</code>.
           </p>
         ) : (
-          <Elements stripe={stripePromise}>
+          <Elements stripe={stripePromise} options={{ appearance: stripeElementsAppearance }}>
             <AddCardForm
               clientId={clientId}
               onSuccess={() => {
-                setSuccess('Card salvat');
+                setSuccess('Card saved');
                 loadMethods();
                 onRefresh?.();
               }}
@@ -277,18 +281,18 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
 
       {/* Card / Stripe payment history */}
       <section className="glass rounded-2xl p-6 overflow-hidden">
-        <h2 className="text-xl font-bold mb-4">Istoric plăți card (Stripe)</h2>
+        <h2 className="text-xl font-bold mb-4">Card payments (Stripe)</h2>
         {stripePayments.length === 0 ? (
-          <p className="text-zinc-500 text-sm">Nicio tranzacție Stripe încă.</p>
+          <p className="text-zinc-500 text-sm">No Stripe card payments yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-left text-zinc-400">
-                  <th className="py-2 pr-4">Dată</th>
-                  <th className="py-2 pr-4">Tip</th>
-                  <th className="py-2 pr-4">Detalii</th>
-                  <th className="py-2 text-right">Sumă</th>
+                  <th className="py-2 pr-4">Date</th>
+                  <th className="py-2 pr-4">Type</th>
+                  <th className="py-2 pr-4">Details</th>
+                  <th className="py-2 text-right">Amount</th>
                 </tr>
               </thead>
               <tbody>

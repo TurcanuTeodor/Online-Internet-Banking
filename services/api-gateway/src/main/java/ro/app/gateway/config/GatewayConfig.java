@@ -30,6 +30,16 @@ public class GatewayConfig {
                         )
                         .uri("http://localhost:8081"))
 
+                // Client sign-up (no JWT) — must be before /api/clients/** catch-all
+                .route("client-sign-up", r -> r
+                        .path("/api/clients/sign-up")
+                        .filters(f -> f
+                                .circuitBreaker(cb -> cb
+                                        .setName("clientSignUpCB")
+                                        .setFallbackUri("forward:/fallback/service"))
+                        )
+                        .uri("http://localhost:8082"))
+
                 // CLIENTS — protejat cu JWT
                 .route("client-service", r -> r
                         .path("/api/clients/**")

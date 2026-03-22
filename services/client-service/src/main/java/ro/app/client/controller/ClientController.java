@@ -29,6 +29,15 @@ public class ClientController {
         this.ownershipChecker = ownershipChecker;
     }
 
+    /**
+     * Public sign-up step 1: create CLIENT row (no JWT). Frontend then calls auth-service /register with returned {@code id} as {@code clientId}.
+     */
+    @PostMapping("/sign-up")
+    public ResponseEntity<ClientDTO> signUp(@Valid @RequestBody ClientDTO dto) throws Exception {
+        ClientDTO created = clientService.createClient(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
     // 1) Create client (PF/PJ) - ADMIN only
     @PostMapping
     public ResponseEntity<ClientDTO> create(@Valid @RequestBody ClientDTO dto) throws Exception {

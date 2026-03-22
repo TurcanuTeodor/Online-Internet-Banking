@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../services/authService';
-import { LogOut, Wallet, Plus, Send, Eye, EyeOff, Shield, Filter, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react';
+import { LogOut, Wallet, Plus, Send, Eye, EyeOff, Shield, Filter, ChevronLeft, ChevronRight, CreditCard, Receipt } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import QRCode from 'qrcode';
@@ -245,29 +245,35 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-900 to-slate-950">
       {/* Nav */}
       <nav className="glass border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center shrink-0">
               <Wallet className="w-5 h-5 text-emerald-400" />
             </div>
-            <h1 className="text-xl font-bold">CashTactics Dashboard</h1>
+            <h1 className="text-lg sm:text-xl font-bold truncate">CashTactics Dashboard</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             {!twoFaEnabled && (
-              <button onClick={handleSetup2FA} className="btn-secondary flex items-center gap-2">
-                <Shield className="w-4 h-4" />
+              <button
+                onClick={handleSetup2FA}
+                className="btn-secondary flex items-center gap-2 text-sm px-3 py-2 md:text-base md:px-4"
+              >
+                <Shield className="w-4 h-4 shrink-0" />
                 Enable 2FA
               </button>
             )}
-            <button onClick={handleLogout} className="btn-secondary flex items-center gap-2">
-              <LogOut className="w-4 h-4" />
+            <button
+              onClick={handleLogout}
+              className="btn-secondary flex items-center gap-2 text-sm px-3 py-2 md:text-base md:px-4"
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
               Logout
             </button>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Error/Success Messages */}
         {error && (
           <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 animate-fade-in">
@@ -283,21 +289,31 @@ export default function Dashboard() {
         )}
 
         {clientId && !loading && (
-          <div className="flex flex-wrap gap-2 mb-8">
-            <button
-              type="button"
-              onClick={() => setMainTab('home')}
-              className={mainTab === 'home' ? 'btn-primary' : 'btn-secondary'}
-            >
-              Conturi & Tranzacții
-            </button>
-            <button
-              type="button"
-              onClick={() => setMainTab('payments')}
-              className={mainTab === 'payments' ? 'btn-primary' : 'btn-secondary'}
-            >
-              Carduri & Plăți
-            </button>
+          <div className="border-b border-gray-700 mb-6">
+            <div className="flex gap-6 sm:gap-8">
+              <button
+                type="button"
+                onClick={() => setMainTab('home')}
+                className={`pb-3 px-1 -mb-px text-sm sm:text-base transition-colors ${
+                  mainTab === 'home'
+                    ? 'border-b-2 border-green-500 text-white font-medium'
+                    : 'border-b-2 border-transparent text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Accounts & Transactions
+              </button>
+              <button
+                type="button"
+                onClick={() => setMainTab('payments')}
+                className={`pb-3 px-1 -mb-px text-sm sm:text-base transition-colors ${
+                  mainTab === 'payments'
+                    ? 'border-b-2 border-green-500 text-white font-medium'
+                    : 'border-b-2 border-transparent text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Cards & Payments
+              </button>
+            </div>
           </div>
         )}
 
@@ -315,12 +331,12 @@ export default function Dashboard() {
             onOpenTopUp={setTopUpAccount}
           />
         ) : (
-          <>
+          <div className="space-y-10">
             {/* Accounts Section */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                 <h2 className="text-2xl font-bold">Your Accounts</h2>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                   <button
                     onClick={() => setShowBalances(!showBalances)}
                     className="btn-secondary flex items-center gap-2"
@@ -348,47 +364,62 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {accounts.map((account) => (
-                    <div key={account.id} className="glass rounded-2xl p-6 hover:border-emerald-500/20 transition-all">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-                          <Wallet className="w-6 h-6 text-emerald-400" />
-                        </div>
-                        <span className={`px-3 py-1 rounded-lg text-xs font-medium ${
-                          account.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-700 text-zinc-400'
-                        }`}>
-                          {account.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-zinc-500 mb-2">IBAN</p>
-                      <p className="text-sm font-mono text-zinc-300 mb-4">{account.iban}</p>
-                      <p className="text-2xl font-bold mb-6">
-                        {showBalances ? formatCurrency(account.balance, account.currencyCode) : '••••••'}
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedAccount(account);
-                            setActiveModal('transfer');
-                          }}
-                          className="btn-primary flex-1 flex items-center justify-center gap-2"
-                        >
-                          <Send className="w-4 h-4" />
-                          Transfer
-                        </button>
-                        {account.status === 'ACTIVE' && (account.currencyCode === 'EUR' || account.currencyCode === 'RON') && (
-                          <button
-                            type="button"
-                            onClick={() => setTopUpAccount(account)}
-                            className="btn-secondary flex-1 flex items-center justify-center gap-2 border-emerald-500/30 text-emerald-300"
+                  {accounts.map((account) => {
+                    const canTopUp =
+                      account.status === 'ACTIVE' &&
+                      (account.currencyCode === 'EUR' || account.currencyCode === 'RON');
+                    return (
+                      <div key={account.id} className="glass rounded-2xl p-6 hover:border-emerald-500/20 transition-all flex flex-col">
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center shrink-0">
+                              <Wallet className="w-6 h-6 text-emerald-400" />
+                            </div>
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-600/50">
+                              {account.currencyCode}
+                            </span>
+                          </div>
+                          <span
+                            className={`shrink-0 px-3 py-1 rounded-lg text-xs font-medium ${
+                              account.status === 'ACTIVE'
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-zinc-700 text-zinc-400'
+                            }`}
                           >
-                            <CreditCard className="w-4 h-4" />
-                            Top up
+                            {account.status}
+                          </span>
+                        </div>
+                        <p className="text-sm font-mono text-gray-400 break-all leading-snug">{account.iban}</p>
+                        <p className="text-3xl font-bold mt-4 mb-6">
+                          {showBalances ? formatCurrency(account.balance, account.currencyCode) : '••••••'}
+                        </p>
+                        <div
+                          className={`mt-auto grid gap-3 ${canTopUp ? 'grid-cols-2' : 'grid-cols-1'}`}
+                        >
+                          <button
+                            onClick={() => {
+                              setSelectedAccount(account);
+                              setActiveModal('transfer');
+                            }}
+                            className="btn-primary w-full flex items-center justify-center gap-2"
+                          >
+                            <Send className="w-4 h-4" />
+                            Transfer
                           </button>
-                        )}
+                          {canTopUp && (
+                            <button
+                              type="button"
+                              onClick={() => setTopUpAccount(account)}
+                              className="btn-secondary w-full flex items-center justify-center gap-2 border-emerald-500/30 text-emerald-300"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                              Top up
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -516,8 +547,14 @@ export default function Dashboard() {
               )}
 
               {transactions.length === 0 ? (
-                <div className="glass rounded-2xl p-12 text-center">
-                  <p className="text-zinc-400">No transactions yet</p>
+                <div className="glass rounded-2xl">
+                  <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <Receipt className="w-12 h-12 text-zinc-600" aria-hidden />
+                    <p className="text-gray-400 text-sm">No transactions yet</p>
+                    <p className="text-gray-500 text-xs text-center px-4">
+                      Make a transfer or top up to get started
+                    </p>
+                  </div>
                 </div>
               ) : filteredTransactions.length === 0 ? (
                 <div className="glass rounded-2xl p-12 text-center">
@@ -631,7 +668,7 @@ export default function Dashboard() {
                 </>
               )}
             </div>
-          </>
+          </div>
         )}
       </div>
 

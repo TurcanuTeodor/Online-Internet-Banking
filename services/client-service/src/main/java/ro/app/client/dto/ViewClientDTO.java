@@ -7,6 +7,7 @@ public class ViewClientDTO {
     private String firstName;
     private String lastName;
     private String clientType;
+    private String riskLevel;
     private Boolean active;
     private LocalDateTime createdAt;
     private String email;
@@ -27,6 +28,9 @@ public class ViewClientDTO {
 
     public String getClientType() { return clientType; }
     public void setClientType(String clientType) { this.clientType = clientType; }
+
+    public String getRiskLevel() { return riskLevel; }
+    public void setRiskLevel(String riskLevel) { this.riskLevel = riskLevel; }
 
     public Boolean getActive() { return active; }
     public void setActive(Boolean active) { this.active = active; }
