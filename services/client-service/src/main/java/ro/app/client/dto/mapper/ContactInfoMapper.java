@@ -1,7 +1,7 @@
 package ro.app.client.dto.mapper;
 
 import ro.app.client.dto.ContactInfoDTO;
-import ro.app.client.model.embedded.ContactInfo;
+import ro.app.client.model.entity.ContactInfo;
 import ro.app.client.model.entity.Client;
 import ro.app.client.service.EncryptionService;
 

@@ -1,4 +1,4 @@
-package ro.app.transaction.dto.client;
+package ro.app.transaction.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

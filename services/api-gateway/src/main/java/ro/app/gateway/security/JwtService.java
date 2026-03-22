@@ -28,7 +28,7 @@ public class JwtService {
             Jwts.parser()
                     .verifyWith(secretKey)
                     .build()
-                    .parseClaimsJws(token);
+                    .parseSignedClaims(token);
             return true;
 
         }catch(JwtException e) {
@@ -40,7 +40,7 @@ public class JwtService {
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
-                .parseClaimsJws(token)
+                .parseSignedClaims(token)
                 .getPayload();
     }
 

@@ -1,4 +1,4 @@
-package ro.app.account.dto.request;
+package ro.app.account.internal;
 
 import java.math.BigDecimal;
 

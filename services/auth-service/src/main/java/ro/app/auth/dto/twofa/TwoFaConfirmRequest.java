@@ -1,4 +1,4 @@
-package ro.app.auth.dto;
+package ro.app.auth.dto.twofa;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

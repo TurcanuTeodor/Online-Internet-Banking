@@ -12,13 +12,12 @@ import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import ro.app.client.dto.ClientDTO;
-import ro.app.client.dto.ClientExportDTO;
 import ro.app.client.dto.ContactInfoDTO;
 import ro.app.client.dto.ViewClientDTO;
 import ro.app.client.dto.mapper.ClientMapper;
 import ro.app.client.dto.mapper.ContactInfoMapper;
 import ro.app.client.exception.ResourceNotFoundException;
-import ro.app.client.model.embedded.ContactInfo;
+import ro.app.client.model.entity.ContactInfo;
 import ro.app.client.model.entity.Client;
 import ro.app.client.model.enums.ClientType;
 import ro.app.client.model.enums.SexType;
@@ -161,57 +160,5 @@ public class ClientService {
                     return dto;
                 })
                 .toList();
-    }
-
-    //--7 GDPR Data Export
-    public ClientExportDTO exportClientData(@NotNull Long clientId){
-        if(clientId == null){
-            throw new IllegalArgumentException("Client ID cannot be null");
-        }
-
-        Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
-
-        ContactInfo contactInfo = contactInfoRepository.findByClientId(clientId);
-
-        ClientExportDTO export= new ClientExportDTO();
-
-        // date client decriptate
-        export.setClientId(client.getId());
-        try{
-            export.setFirstName(encryptionService.decrypt(client.getFirstName(), encryptionKey));
-            export.setLastName(encryptionService.decrypt(client.getLastName(), encryptionKey));
-        }catch(Exception e){
-            export.setFirstName(client.getFirstName());
-            export.setLastName(client.getLastName());
-        }
-        export.setClientType(client.getClientType() != null ? client.getClientType().getCode() : null);
-        export.setSexType(client.getSexType() != null ? client.getSexType().getCode() : null);
-        export.setRiskLevel(client.getRiskLevel());
-        export.setActive(client.isActive());
-
-        // date contact info decriptate
-        if (contactInfo != null) {
-            try {
-                export.setEmail(encryptionService.decrypt(contactInfo.getEmail(), encryptionKey));
-                export.setPhone(encryptionService.decrypt(contactInfo.getPhone(), encryptionKey));
-                export.setContactPerson(encryptionService.decrypt(contactInfo.getContactPerson(), encryptionKey));
-                export.setWebsite(encryptionService.decrypt(contactInfo.getWebsite(), encryptionKey));
-                export.setAddress(encryptionService.decrypt(contactInfo.getAddress(), encryptionKey));
-                export.setCity(encryptionService.decrypt(contactInfo.getCity(), encryptionKey));
-                export.setPostalCode(encryptionService.decrypt(contactInfo.getPostalCode(), encryptionKey));
-            } catch (Exception e) {
-                // fallback pentru date necriptate (seed dev)
-                export.setEmail(contactInfo.getEmail());
-                export.setPhone(contactInfo.getPhone());
-                export.setContactPerson(contactInfo.getContactPerson());
-                export.setWebsite(contactInfo.getWebsite());
-                export.setAddress(contactInfo.getAddress());
-                export.setCity(contactInfo.getCity());
-                export.setPostalCode(contactInfo.getPostalCode());
-            }
-        }
-
-        return export;
     }
 }

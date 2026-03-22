@@ -1,8 +1,8 @@
-package ro.app.client.dto;
+package ro.app.client.dto.gdpr;
 
 import java.time.LocalDateTime;
 
-//GDPR Data Export DTO
+/** GDPR data export payload (Art. 15 / portability). */
 public class ClientExportDTO {
     // === Date client ===
     private Long clientId;
@@ -31,8 +31,6 @@ public class ClientExportDTO {
         this.exportedAt = LocalDateTime.now();
         this.exportReason = "GDPR data export request";
     }
-
-    // === Getters & Setters ===
 
     public Long getClientId() { return clientId; }
     public void setClientId(Long clientId) { this.clientId = clientId; }

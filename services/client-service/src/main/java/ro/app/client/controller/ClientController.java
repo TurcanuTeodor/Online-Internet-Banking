@@ -7,7 +7,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ro.app.client.dto.ClientDTO;
-import ro.app.client.dto.ClientExportDTO;
 import ro.app.client.dto.ContactInfoDTO;
 import ro.app.client.dto.ViewClientDTO;
 import ro.app.client.security.JwtPrincipal;

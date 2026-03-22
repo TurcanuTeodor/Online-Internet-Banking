@@ -1,10 +1,10 @@
-package ro.app.auth.dto;
+package ro.app.auth.dto.token;
 
 public class RefreshTokenResponse {
-    private String token; // New access token
-    private String refreshToken; // New refresh token (optional, for rotation)
+    private String token;
+    private String refreshToken;
 
-    public RefreshTokenResponse(){}
+    public RefreshTokenResponse() {}
 
     public RefreshTokenResponse(String token) {
         this.token = token;

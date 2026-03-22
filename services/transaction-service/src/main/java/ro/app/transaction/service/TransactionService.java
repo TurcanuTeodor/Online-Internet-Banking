@@ -2,109 +2,73 @@ package ro.app.transaction.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
-import ro.app.transaction.client.AccountRestClient;
-import ro.app.transaction.dto.client.ExternalAccountDto;
+import ro.app.transaction.client.ExternalAccountDto;
 import ro.app.transaction.model.entity.Transaction;
-import ro.app.transaction.model.enums.TransactionType;
 import ro.app.transaction.model.view.ViewTransaction;
-import ro.app.transaction.repository.TransactionRepository;
-import ro.app.transaction.repository.ViewTransactionRepository;
 
+/**
+ * Facade — delegates to {@link TransactionQueryService} (repository-only) and
+ * {@link TransactionOrchestrationService} (HTTP + repository). Public API unchanged for controllers.
+ */
 @Service
 public class TransactionService {
 
-    private final TransactionRepository transactionRepository;
-    private final ViewTransactionRepository viewTransactionRepository;
-    private final AccountRestClient accountRestClient;
+    private final TransactionQueryService transactionQueryService;
+    private final TransactionOrchestrationService transactionOrchestrationService;
 
     public TransactionService(
-            TransactionRepository transactionRepository,
-            ViewTransactionRepository viewTransactionRepository,
-            AccountRestClient accountRestClient) {
-        this.transactionRepository = transactionRepository;
-        this.viewTransactionRepository = viewTransactionRepository;
-        this.accountRestClient = accountRestClient;
+            TransactionQueryService transactionQueryService,
+            TransactionOrchestrationService transactionOrchestrationService) {
+        this.transactionQueryService = transactionQueryService;
+        this.transactionOrchestrationService = transactionOrchestrationService;
     }
 
-    // 1) View-only list (from VIEW_TRANSACTION)
     public List<ViewTransaction> getAllView() {
-        return viewTransactionRepository.findAll();
+        return transactionQueryService.getAllView();
     }
 
-    // 2) Transactions by account ID
     public List<Transaction> getTransactionsByAccountId(Long accountId) {
-        return transactionRepository.findByAccountIdOrderByTransactionDateDesc(accountId);
+        return transactionQueryService.getTransactionsByAccountId(accountId);
     }
 
-    // 3) Transactions for multiple accounts (used when caller provides account IDs for a client)
     public List<Transaction> getTransactionsByAccountIds(List<Long> accountIds) {
-        if (accountIds == null || accountIds.isEmpty()) {
-            return List.of();
-        }
-        return transactionRepository.findByAccountIdIn(accountIds);
+        return transactionQueryService.getTransactionsByAccountIds(accountIds);
     }
 
-    /**
-     * All transactions for every account belonging to a client (via account-service + {@link TransactionRepository#findByAccountIdIn}).
-     */
     public List<Transaction> getTransactionsForClientViaAccounts(Long clientId, String authorizationHeader) {
-        List<ExternalAccountDto> accounts = accountRestClient.getAccountsByClient(clientId, authorizationHeader);
-        if (accounts.isEmpty()) {
-            return List.of();
-        }
-        List<Long> accountIds = accounts.stream().map(ExternalAccountDto::getId).toList();
-        return transactionRepository.findByAccountIdIn(accountIds);
+        return transactionOrchestrationService.getTransactionsForClientViaAccounts(clientId, authorizationHeader);
     }
 
-    /**
-     * Resolves account metadata by IBAN (account-service enforces JWT; transaction-controller adds {@code OwnershipChecker}).
-     */
     public ExternalAccountDto getAccountSummaryForIban(String iban, String authorizationHeader) {
-        return accountRestClient.getAccountByIban(iban, authorizationHeader);
+        return transactionOrchestrationService.getAccountSummaryForIban(iban, authorizationHeader);
     }
 
-    // 4) Transactions between dates
     public List<Transaction> getTransactionsBetweenDates(LocalDate from, LocalDate to) {
-        return transactionRepository.findBetweenDates(from, to);
+        return transactionQueryService.getTransactionsBetweenDates(from, to);
     }
 
-    // 5) Transactions by type (e.g. DEPOSIT, WITHDRAWAL, TRANSFER_INTERNAL, TRANSFER_EXTERNAL)
     public List<Transaction> getTransactionsByType(String code) {
-        TransactionType type = TransactionType.fromCode(code);
-        return transactionRepository.findByTransactionType(type);
+        return transactionQueryService.getTransactionsByType(code);
     }
 
-    // 6) Daily totals (aggregated report)
     public Map<LocalDate, BigDecimal> calculateDailyTotals() {
-        Map<LocalDate, BigDecimal> result = new HashMap<>();
-        for (Object[] row : transactionRepository.calculateDailyTotals()) {
-            LocalDate day = ((java.sql.Date) row[0]).toLocalDate();
-            BigDecimal total = (BigDecimal) row[1];
-            result.put(day, total);
-        }
-        return result;
+        return transactionQueryService.calculateDailyTotals();
     }
 
-    // 7) Flagged transactions
     public List<Transaction> getFlaggedTransactions() {
-        return transactionRepository.findByFlaggedTrueOrderByTransactionDateDesc();
+        return transactionQueryService.getFlaggedTransactions();
     }
 
-    // 8) Find by ID
     public Transaction getById(Long id) {
-        return transactionRepository.findById(id)
-                .orElseThrow(() -> new ro.app.transaction.exception.ResourceNotFoundException(
-                        "Transaction not found with id: " + id));
+        return transactionQueryService.getById(id);
     }
 
-    // 9) Save a new transaction
     public Transaction save(Transaction transaction) {
-        return transactionRepository.save(transaction);
+        return transactionQueryService.save(transaction);
     }
 }

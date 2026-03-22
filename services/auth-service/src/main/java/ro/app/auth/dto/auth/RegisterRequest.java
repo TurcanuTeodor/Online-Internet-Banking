@@ -1,26 +1,24 @@
-package ro.app.auth.dto;
+package ro.app.auth.dto.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public class RegisterRequest {
-    // Optional: if provided, link to existing client; otherwise create new client
     private Long clientId;
-    
+
     @NotBlank(message = "Username/Email is required")
     private String usernameOrEmail;
-    
+
     @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
 
-    // Fields for creating new client (required if clientId is null)
     private String firstName;
     private String lastName;
-    private String sexCode; // M, F, O
-    private String clientTypeCode; // PF (personal), PJ (business)
+    private String sexCode;
+    private String clientTypeCode;
 
-    public RegisterRequest(){ }
+    public RegisterRequest() {}
 
     public Long getClientId() { return clientId; }
     public void setClientId(Long clientId) { this.clientId = clientId; }

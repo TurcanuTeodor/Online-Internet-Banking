@@ -11,32 +11,48 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import ro.app.auth.dto.*;
+import ro.app.auth.dto.auth.LoginRequest;
+import ro.app.auth.dto.auth.LoginResponse;
+import ro.app.auth.dto.auth.RegisterRequest;
+import ro.app.auth.dto.token.RefreshTokenRequest;
+import ro.app.auth.dto.token.RefreshTokenResponse;
+import ro.app.auth.dto.twofa.TwoFaConfirmRequest;
+import ro.app.auth.dto.twofa.TwoFaSetupResponse;
+import ro.app.auth.dto.twofa.TwoFaVerifyRequest;
 import ro.app.auth.service.AuthService;
 import ro.app.auth.service.RateLimitService;
-
+import ro.app.auth.service.TokenService;
+import ro.app.auth.service.TwoFaService;
 
 @RestController
-@Validated //enable method-level validation
+@Validated
 @RequestMapping("/api/auth")
 public class AuthController {
-    
+
     private final AuthService authService;
+    private final TwoFaService twoFaService;
+    private final TokenService tokenService;
     private final RateLimitService rateLimitService;
 
-    public AuthController(AuthService authService, RateLimitService rateLimitService){
+    public AuthController(
+            AuthService authService,
+            TwoFaService twoFaService,
+            TokenService tokenService,
+            RateLimitService rateLimitService) {
         this.authService = authService;
+        this.twoFaService = twoFaService;
+        this.tokenService = tokenService;
         this.rateLimitService = rateLimitService;
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req){
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
         authService.register(req);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest req, HttpServletRequest httpReq){
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest req, HttpServletRequest httpReq) {
         String clientIp = httpReq.getRemoteAddr();
         rateLimitService.validateLoginAttempt(clientIp);
         try {
@@ -49,32 +65,30 @@ public class AuthController {
         }
     }
 
-    //---------------user needs to be logged in to activate 2fa-----------------
-
     @PostMapping("/2fa/setup")
-    public ResponseEntity<TwoFaSetupResponse> setup2fa(Authentication auth){
-        return ResponseEntity.ok(authService.setup2fa(auth.getName()));
+    public ResponseEntity<TwoFaSetupResponse> setup2fa(Authentication auth) {
+        return ResponseEntity.ok(twoFaService.setup2fa(auth.getName()));
     }
 
     @PostMapping("/2fa/confirm")
-    public ResponseEntity<?> confirm2fa(@Valid @RequestBody TwoFaConfirmRequest req, Authentication auth){
-        authService.confirm2fa(auth.getName(), req.getCode());
+    public ResponseEntity<?> confirm2fa(@Valid @RequestBody TwoFaConfirmRequest req, Authentication auth) {
+        twoFaService.confirm2fa(auth.getName(), req.getCode());
         return ResponseEntity.ok().build();
     }
-    
+
     @PostMapping("/2fa/verify")
-    public ResponseEntity<LoginResponse> verify2fa(@Valid @RequestBody TwoFaVerifyRequest req){
-        return ResponseEntity.ok(authService.verify2fa(req.getTempToken(), req.getCode()));
+    public ResponseEntity<LoginResponse> verify2fa(@Valid @RequestBody TwoFaVerifyRequest req) {
+        return ResponseEntity.ok(twoFaService.verify2fa(req.getTempToken(), req.getCode()));
     }
-    
+
     @PostMapping("/refresh-token")
-    public ResponseEntity<RefreshTokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest req){
-        return ResponseEntity.ok(authService.refreshToken(req.getRefreshToken()));
+    public ResponseEntity<RefreshTokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest req) {
+        return ResponseEntity.ok(tokenService.refreshToken(req.getRefreshToken()));
     }
-    
+
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@Valid @RequestBody RefreshTokenRequest req){
+    public ResponseEntity<?> logout(@Valid @RequestBody RefreshTokenRequest req) {
         authService.logout(req.getRefreshToken());
         return ResponseEntity.ok().build();
-    }    
-}  
+    }
+}

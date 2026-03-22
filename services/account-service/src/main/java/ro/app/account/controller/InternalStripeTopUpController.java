@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
-import ro.app.account.dto.request.StripeTopUpApplyRequest;
+import ro.app.account.internal.StripeTopUpApplyRequest;
 import ro.app.account.internal.InternalApiHeaders;
 import ro.app.account.service.AccountService;
 

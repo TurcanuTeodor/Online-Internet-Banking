@@ -16,7 +16,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriUtils;
 
-import ro.app.transaction.dto.client.ExternalAccountDto;
 import ro.app.transaction.exception.ResourceNotFoundException;
 
 /**
