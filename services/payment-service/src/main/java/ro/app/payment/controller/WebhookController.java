@@ -12,7 +12,7 @@ import com.stripe.model.Event;
 import com.stripe.model.PaymentIntent;
 import com.stripe.net.Webhook;
 
-import ro.app.payment.service.PaymentService;
+import ro.app.payment.service.payment.PaymentService;
 
 @RestController
 @RequestMapping("/api/payments")

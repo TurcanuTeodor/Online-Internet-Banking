@@ -1,4 +1,4 @@
-package ro.app.payment.service;
+package ro.app.payment.service.payment;
 
 import java.util.List;
 
@@ -9,13 +9,13 @@ import ro.app.payment.dto.request.CreatePaymentRequest;
 import ro.app.payment.dto.request.CreateTopUpIntentRequest;
 import ro.app.payment.dto.response.TopUpIntentResponse;
 import ro.app.payment.security.JwtPrincipal;
-import ro.app.payment.service.creation.PaymentCreationService;
-import ro.app.payment.service.query.PaymentQueryService;
-import ro.app.payment.service.refund.PaymentRefundService;
-import ro.app.payment.service.webhook.PaymentWebhookService;
+import ro.app.payment.service.payment.creation.PaymentCreationService;
+import ro.app.payment.service.payment.query.PaymentQueryService;
+import ro.app.payment.service.payment.refund.PaymentRefundService;
+import ro.app.payment.service.payment.webhook.PaymentWebhookService;
 
 /**
- * Facade for payment operations. Delegates to focused services under {@code service.creation}, {@code service.query}, etc.
+ * Facade for payment operations. Delegates to {@code service.payment.creation}, {@code service.payment.query}, etc.
  */
 @Service
 public class PaymentService {

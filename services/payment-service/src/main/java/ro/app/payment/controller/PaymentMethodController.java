@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import ro.app.payment.dto.PaymentMethodDTO;
 import ro.app.payment.dto.request.AttachPaymentMethodRequest;
-import ro.app.payment.service.PaymentMethodService;
+import ro.app.payment.service.payment_method.PaymentMethodService;
 import ro.app.payment.security.JwtPrincipal;
 import ro.app.payment.security.OwnershipChecker;
 

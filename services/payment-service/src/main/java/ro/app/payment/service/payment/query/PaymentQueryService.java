@@ -1,4 +1,4 @@
-package ro.app.payment.service.query;
+package ro.app.payment.service.payment.query;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package ro.app.payment.service.webhook;
+package ro.app.payment.service.payment.webhook;
 
 import java.time.LocalDateTime;
 
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import ro.app.payment.model.entity.Payment;
 import ro.app.payment.model.enums.PaymentStatus;
 import ro.app.payment.repository.PaymentRepository;
-import ro.app.payment.service.credit.PaymentCreditService;
+import ro.app.payment.service.payment.credit.PaymentCreditService;
 
 /**
  * Stripe webhook handling: event routing, idempotent settlement, status updates.

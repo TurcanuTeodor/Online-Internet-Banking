@@ -1,4 +1,4 @@
-package ro.app.payment.service.creation;
+package ro.app.payment.service.payment.creation;
 
 import java.math.BigDecimal;
 import java.util.Set;

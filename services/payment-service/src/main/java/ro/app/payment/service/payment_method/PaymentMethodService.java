@@ -1,4 +1,4 @@
-package ro.app.payment.service;
+package ro.app.payment.service.payment_method;
 
 import java.util.List;
 
@@ -9,12 +9,12 @@ import ro.app.payment.dto.request.AttachPaymentMethodRequest;
 import ro.app.payment.model.entity.PaymentMethod;
 import ro.app.payment.security.JwtPrincipal;
 import ro.app.payment.security.OwnershipChecker;
-import ro.app.payment.service.method.attachment.PaymentMethodAttachmentService;
-import ro.app.payment.service.method.management.PaymentMethodManagementService;
-import ro.app.payment.service.method.query.PaymentMethodQueryService;
+import ro.app.payment.service.payment_method.attachment.PaymentMethodAttachmentService;
+import ro.app.payment.service.payment_method.management.PaymentMethodManagementService;
+import ro.app.payment.service.payment_method.query.PaymentMethodQueryService;
 
 /**
- * Facade for saved payment methods. Delegates to {@code method.attachment}, {@code method.query}, {@code method.management}.
+ * Facade for saved payment methods. Delegates to {@code service.payment_method.attachment}, {@code .query}, {@code .management}.
  */
 @Service
 public class PaymentMethodService {

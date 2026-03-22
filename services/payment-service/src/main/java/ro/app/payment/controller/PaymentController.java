@@ -15,7 +15,7 @@ import ro.app.payment.dto.PaymentDTO;
 import ro.app.payment.dto.request.CreatePaymentRequest;
 import ro.app.payment.dto.request.CreateTopUpIntentRequest;
 import ro.app.payment.dto.response.TopUpIntentResponse;
-import ro.app.payment.service.PaymentService;
+import ro.app.payment.service.payment.PaymentService;
 import ro.app.payment.security.JwtPrincipal;
 import ro.app.payment.security.OwnershipChecker;
 

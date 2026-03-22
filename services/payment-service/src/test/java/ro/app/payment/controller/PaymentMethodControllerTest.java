@@ -11,7 +11,7 @@ import ro.app.payment.dto.PaymentMethodDTO;
 import ro.app.payment.dto.request.AttachPaymentMethodRequest;
 import ro.app.payment.security.JwtPrincipal;
 import ro.app.payment.security.OwnershipChecker;
-import ro.app.payment.service.PaymentMethodService;
+import ro.app.payment.service.payment_method.PaymentMethodService;
 
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;

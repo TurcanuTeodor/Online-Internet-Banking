@@ -1,4 +1,4 @@
-package ro.app.payment.service.method.management;
+package ro.app.payment.service.payment_method.management;
 
 import java.util.List;
 

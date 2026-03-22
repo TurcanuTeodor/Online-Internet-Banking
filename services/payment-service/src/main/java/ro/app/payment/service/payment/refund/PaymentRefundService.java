@@ -1,4 +1,4 @@
-package ro.app.payment.service.refund;
+package ro.app.payment.service.payment.refund;
 
 import java.time.LocalDateTime;
 
@@ -16,7 +16,7 @@ import ro.app.payment.exception.PaymentFailedException;
 import ro.app.payment.model.entity.Payment;
 import ro.app.payment.model.enums.PaymentStatus;
 import ro.app.payment.repository.PaymentRepository;
-import ro.app.payment.service.query.PaymentQueryService;
+import ro.app.payment.service.payment.query.PaymentQueryService;
 
 /**
  * Stripe refunds and local status updates.

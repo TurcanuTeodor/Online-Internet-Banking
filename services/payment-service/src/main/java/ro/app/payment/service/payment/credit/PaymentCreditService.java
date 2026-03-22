@@ -1,4 +1,4 @@
-package ro.app.payment.service.credit;
+package ro.app.payment.service.payment.credit;
 
 import java.util.HashMap;
 import java.util.Map;

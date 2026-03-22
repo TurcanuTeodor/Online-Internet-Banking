@@ -1,4 +1,4 @@
-package ro.app.payment.service.method.attachment;
+package ro.app.payment.service.payment_method.attachment;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
