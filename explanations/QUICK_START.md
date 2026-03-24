@@ -16,47 +16,25 @@ After starting all services, you'll have these accounts:
 
 ## Starting the Application
 
-### 1. Start PostgreSQL
-Ensure PostgreSQL is running on port 5432 with database `banking`.
+### Recommended (Docker Compose)
 
-### 2. Start Microservices (each in its own terminal)
+From project root:
 
 ```bash
-# Terminal 1: Auth Service (port 8081)
-cd services/auth-service
-.\mvnw.cmd spring-boot:run
-
-# Terminal 2: Client Service (port 8082)
-cd services/client-service
-.\mvnw.cmd spring-boot:run
-
-# Terminal 3: Account Service (port 8083)
-cd services/account-service
-.\mvnw.cmd spring-boot:run
-
-# Terminal 4: Transaction Service (port 8084)
-cd services/transaction-service
-.\mvnw.cmd spring-boot:run
-
-# Terminal 5: Payment Service (port 8085)
-cd services/payment-service
-.\mvnw.cmd spring-boot:run
-
-# Terminal 6: API Gateway (port 8443 - HTTPS)
-cd services/api-gateway
-.\mvnw.cmd spring-boot:run
+docker compose up --build
 ```
 
-### 3. Start Frontend (Port 5173)
-```bash
-cd frontend
-npm run dev
-```
+This starts postgres, all backend services, api-gateway and frontend.
 
-### 4. Open in Browser
+### Open in Browser
 Navigate to: **http://localhost:5173**
 
-All API calls go through the **API Gateway** at `https://localhost:8443` (configured in `frontend/vite.config.js`).
+All API calls go through the API Gateway at `http://localhost:8443`.
+
+### Optional Manual Start (without Docker)
+
+If you prefer manual startup, run each service from `services/*` and frontend from `frontend`.
+In manual mode, gateway can be configured as HTTPS depending on `api-gateway` SSL settings.
 
 ## Service Ports Summary
 
@@ -67,7 +45,7 @@ All API calls go through the **API Gateway** at `https://localhost:8443` (config
 | account-service | 8083 | HTTP |
 | transaction-service | 8084 | HTTP |
 | payment-service | 8085 | HTTP |
-| api-gateway | 8443 | HTTPS |
+| api-gateway | 8443 | HTTP (Docker dev) |
 | frontend | 5173 | HTTP |
 | PostgreSQL | 5432 | TCP |
 
@@ -97,7 +75,7 @@ Sample data includes:
 
 ## API Endpoints (via Gateway)
 
-Base URL: `https://localhost:8443/api`
+Base URL: `http://localhost:8443/api`
 
 ### Auth (public)
 - `POST /auth/login` — Login

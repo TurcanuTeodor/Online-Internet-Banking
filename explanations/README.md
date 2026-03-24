@@ -31,7 +31,7 @@ This is a college project demonstrating a full-stack online banking application 
 - JWT-based authentication with refresh tokens
 - Two-factor authentication (2FA) with TOTP
 - Role-based access control (Admin/User)
-- SSL/TLS with HTTPS
+- SSL/TLS supported (gateway may run HTTP in Docker dev override)
 
 ### Banking Features
 - Multiple account types and currencies (EUR, USD, RON, GBP)
@@ -51,7 +51,7 @@ This is a college project demonstrating a full-stack online banking application 
 ### Backend (Microservices)
 - **Java 21** with **Spring Boot 3.3**
 - **Spring Cloud Gateway** (API Gateway, reactive/Netty)
-- **PostgreSQL 17** with Flyway migrations
+- **PostgreSQL 16** with Flyway migrations
 - **Spring Security** + **JWT** (jjwt 0.12.5)
 - **TOTP** for 2FA
 - **Resilience4j** for circuit breaker + rate limiting
@@ -85,7 +85,7 @@ This is a college project demonstrating a full-stack online banking application 
 ```
 Online-Internet-Banking/
 ├── services/                   # Microservices
-│   ├── api-gateway/            # API Gateway (port 8443, HTTPS)
+│   ├── api-gateway/            # API Gateway (port 8443)
 │   ├── auth-service/           # Authentication (port 8081)
 │   ├── client-service/         # Client management (port 8082)
 │   ├── account-service/        # Account management (port 8083)

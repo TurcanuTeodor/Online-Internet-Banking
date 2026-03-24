@@ -1,0 +1,78 @@
+services:
+  frontend:
+    image: node:20-alpine
+    container_name: frontend
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_PROXY_TARGET: http://api-gateway:8443
+      VITE_API_BASE_URL: http://localhost:8443/api
+    depends_on:
+      api-gateway:
+        condition: service_started
+    ports:
+      - "5173:5173"
+
+  auth-service:
+    build:
+      target: build
+    working_dir: /app
+    command: mvn spring-boot:run
+    volumes:
+      - ./services/auth-service:/app
+      - maven-cache:/root/.m2
+
+  client-service:
+    build:
+      target: build
+    working_dir: /app
+    command: mvn spring-boot:run
+    volumes:
+      - ./services/client-service:/app
+      - maven-cache:/root/.m2
+
+  account-service:
+    build:
+      target: build
+    working_dir: /app
+    command: mvn spring-boot:run
+    volumes:
+      - ./services/account-service:/app
+      - maven-cache:/root/.m2
+
+  transaction-service:
+    build:
+      target: build
+    working_dir: /app
+    command: mvn spring-boot:run
+    volumes:
+      - ./services/transaction-service:/app
+      - maven-cache:/root/.m2
+
+  payment-service:
+    build:
+      target: build
+    working_dir: /app
+    command: mvn spring-boot:run
+    volumes:
+      - ./services/payment-service:/app
+      - maven-cache:/root/.m2
+
+  api-gateway:
+    build:
+      target: build
+    working_dir: /app
+    command: mvn spring-boot:run
+    volumes:
+      - ./services/api-gateway:/app
+      - maven-cache:/root/.m2
+    environment:
+      SERVER_SSL_ENABLED: "false"
+
+volumes:
+  maven-cache:
+  frontend-node-modules:

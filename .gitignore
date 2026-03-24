@@ -32,7 +32,7 @@ build/
 ### VS Code ###
 .vscode/
 .env.properties
-backend/target/
-backend/.env.properties
+services/*/target/
+services/*/.env.properties
 frontend/node_modules/
 frontend/dist/

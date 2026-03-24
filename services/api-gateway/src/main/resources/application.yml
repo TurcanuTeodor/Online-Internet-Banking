@@ -12,6 +12,18 @@ spring:
   config:
     import: optional:file:.env.properties
 
+services:
+  auth:
+    url: ${AUTH_SERVICE_URL:http://localhost:8081}
+  client:
+    url: ${CLIENT_SERVICE_URL:http://localhost:8082}
+  account:
+    url: ${ACCOUNT_SERVICE_URL:http://localhost:8083}
+  transaction:
+    url: ${TRANSACTION_SERVICE_URL:http://localhost:8084}
+  payment:
+    url: ${PAYMENT_SERVICE_URL:http://localhost:8085}
+
 # JWT
 app:
   jwt:

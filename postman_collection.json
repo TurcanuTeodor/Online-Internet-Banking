@@ -289,13 +289,13 @@
           }
         },
         {
-          "name": "By Type (DEP/RET/TRF)",
+          "name": "By Type (DEPOSIT/WITHDRAWAL/TRANSFER_*)",
           "request": {
             "method": "GET",
             "header": [
               {"key": "Authorization", "value": "Bearer {{token}}"}
             ],
-            "url": {"raw": "{{baseUrl}}/api/transactions/by-type/DEP", "host": ["{{baseUrl}}"], "path": ["api","transactions","by-type","DEP"]}
+            "url": {"raw": "{{baseUrl}}/api/transactions/by-type/DEPOSIT", "host": ["{{baseUrl}}"], "path": ["api","transactions","by-type","DEPOSIT"]}
           }
         },
         {
@@ -312,7 +312,7 @@
     }
   ],
   "variable": [
-    {"key": "baseUrl", "value": "https://localhost:8443"},
+    {"key": "baseUrl", "value": "http://localhost:8443"},
     {"key": "token", "value": ""},
     {"key": "tempToken", "value": ""},
     {"key": "totpCode", "value": "123456"},

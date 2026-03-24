@@ -261,10 +261,12 @@ spring.flyway.schemas=auth  # or clients, accounts, etc.
 
 ### Frontend (vite.config.js)
 ```javascript
+const proxyTarget = process.env.VITE_PROXY_TARGET || 'https://localhost:8443'
+
 server: {
   proxy: {
     '/api': {
-      target: 'https://localhost:8443',  // API Gateway
+      target: proxyTarget,  // API Gateway
       changeOrigin: true,
       secure: false  // Self-signed cert
     }
