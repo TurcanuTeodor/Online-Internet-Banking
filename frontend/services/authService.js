@@ -150,3 +150,26 @@ export const isAuthenticated = () => {
     return false;
   }
 };
+
+/**
+ * Check if current authenticated user has ADMIN role.
+ * @returns {boolean}
+ */
+export const isAdmin = () => {
+  const token = localStorage.getItem('jwt_token');
+  if (!token) return false;
+
+  try {
+    const decoded = jwtDecode(token);
+    const role = String(decoded.role || decoded.authority || '').toUpperCase();
+    if (role === 'ADMIN' || role === 'ROLE_ADMIN') return true;
+
+    const roles = Array.isArray(decoded.roles) ? decoded.roles : [];
+    return roles.some((r) => {
+      const normalized = String(r).toUpperCase();
+      return normalized === 'ADMIN' || normalized === 'ROLE_ADMIN';
+    });
+  } catch {
+    return false;
+  }
+};

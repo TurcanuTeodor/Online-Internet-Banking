@@ -1,16 +1,22 @@
 import { Wallet, Plus, Send, Eye, EyeOff, CreditCard } from 'lucide-react';
+import UserAnalyticsSection from './UserAnalyticsSection';
+import { TransactionCompactRow } from './TransactionRow';
 
 export default function UserAccountsTab({
   accounts,
+  transactions,
+  latestActivity,
   showBalances,
   setShowBalances,
   setActiveModal,
   setSelectedAccount,
   setTopUpAccount,
+  onViewAllActivity,
   formatCurrency,
   totalBalance,
   activeAccountsCount,
   monthlyOutgoing,
+  onExpenseTypeSelect,
 }) {
   return (
     <div className="space-y-8">
@@ -124,6 +130,32 @@ export default function UserAccountsTab({
           </div>
         )}
       </div>
+
+      <UserAnalyticsSection transactions={transactions} onExpenseTypeSelect={onExpenseTypeSelect} />
+
+      <section className="glass rounded-2xl p-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h3 className="text-xl font-bold">Latest Activity</h3>
+          <button type="button" className="btn-secondary text-sm" onClick={onViewAllActivity}>
+            View all
+          </button>
+        </div>
+        {!latestActivity || latestActivity.length === 0 ? (
+          <p className="text-zinc-500 text-sm">No recent activity.</p>
+        ) : (
+          <div className="space-y-3">
+            {latestActivity.map((tx) => (
+              <TransactionCompactRow
+                key={tx.id}
+                tx={tx}
+                formatDate={(d) => (d ? new Date(d).toLocaleString() : '—')}
+                formatCurrency={formatCurrency}
+                showAccount={false}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

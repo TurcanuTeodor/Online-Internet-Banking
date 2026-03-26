@@ -6,6 +6,7 @@ import { jwtDecode } from 'jwt-decode';
 import QRCode from 'qrcode';
 import { getAccountsByClient, openAccount, transfer, getBalanceByIban } from '../../services/accountService';
 import { getTransactionsByClient } from '../../services/transactionService';
+import { getPaymentHistory } from '../../services/paymentService';
 import { setup2FA, confirm2FA } from '../../services/authService';
 import TopUpModal from '../components/TopUpModal';
 import CardsPaymentsTab from '../components/CardsPaymentsTab';
@@ -13,8 +14,9 @@ import ProfileTab from '../components/ProfileTab';
 import TransactionDetailsModal from '../components/TransactionDetailsModal';
 import UserAccountsTab from '../components/UserAccountsTab';
 import UserTransactionsTab from '../components/UserTransactionsTab';
+import UserPaymentsTab from '../components/UserPaymentsTab';
 
-const USER_SECTIONS = ['accounts', 'transactions', 'payments', 'profile'];
+const USER_SECTIONS = ['accounts', 'transactions', 'payments', 'cards', 'profile'];
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ export default function Dashboard() {
   const [clientId, setClientId] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showBalances, setShowBalances] = useState(true);
   const [activeModal, setActiveModal] = useState(null); // 'openAccount', 'transfer', '2fa'
@@ -77,12 +80,14 @@ export default function Dashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [accountsData, transactionsData] = await Promise.all([
+      const [accountsData, transactionsData, paymentsData] = await Promise.all([
         getAccountsByClient(clientId),
-        getTransactionsByClient(clientId)
+        getTransactionsByClient(clientId),
+        getPaymentHistory(clientId),
       ]);
       setAccounts(accountsData);
       setTransactions(transactionsData); // Show all transactions, filter and paginate client-side
+      setPayments(Array.isArray(paymentsData) ? paymentsData : []);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError('Failed to load data');
@@ -167,9 +172,40 @@ export default function Dashboard() {
     });
   };
 
+  const normalizedPaymentEntries = (payments || [])
+    .filter((p) => {
+      const status = String(p?.status || '').toUpperCase();
+      const type = String(p?.paymentType || p?.type || '').toUpperCase();
+      const successLike = ['SUCCEEDED', 'SUCCESS', 'COMPLETED', 'PAID'].includes(status);
+      const topUpLike = type.includes('TOP') || type.includes('DEPOSIT') || type.includes('FUND');
+      return successLike && topUpLike;
+    })
+    .map((p) => {
+    const rawType = p.paymentType || p.type || '';
+    const typeText = String(rawType).toUpperCase();
+    const isTopUp = typeText.includes('TOP') || typeText.includes('DEPOSIT') || typeText.includes('FUND');
+    return {
+      id: `payment-${p.id}`,
+      transactionDate: p.createdAt || p.updatedAt,
+      transactionTypeName: rawType || 'PAYMENT',
+      transactionTypeCode: rawType || 'PAYMENT',
+      displayLabel: p.merchant || p.provider || (isTopUp ? 'Card Top-up' : 'Payment'),
+      accountIban: p.accountIban || null,
+      currencyCode: p.currencyCode || 'EUR',
+      amount: Number(p.amount || 0),
+      sign: isTopUp ? '+' : '-',
+      paymentId: p.id,
+      source: 'payment',
+      status: p.status,
+    };
+  });
+
+  const ledgerTransactions = [...(transactions || []), ...normalizedPaymentEntries]
+    .sort((a, b) => new Date(b.transactionDate || 0).getTime() - new Date(a.transactionDate || 0).getTime());
+
   // Filter transactions based on selected filters
   const getFilteredTransactions = () => {
-    let filtered = [...transactions];
+    let filtered = [...ledgerTransactions];
 
     // Filter by selected account
     if (selectedAccountFilter !== 'all') {
@@ -211,12 +247,13 @@ export default function Dashboard() {
 
   // Get unique transaction types for filter dropdown
   const getTransactionTypes = () => {
-    const types = new Set(transactions.map(tx => tx.transactionTypeName));
+    const types = new Set(ledgerTransactions.map(tx => tx.transactionTypeName));
     return Array.from(types).sort();
   };
 
   // Apply filtering and pagination
   const filteredTransactions = getFilteredTransactions();
+  const latestActivity = ledgerTransactions.slice(0, 5);
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
   const paginatedTransactions = filteredTransactions.slice(
     (currentPage - 1) * itemsPerPage,
@@ -225,7 +262,7 @@ export default function Dashboard() {
   const totalBalance = accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0);
   const activeAccountsCount = accounts.filter((account) => account.status === 'ACTIVE').length;
   const monthKey = new Date().toISOString().slice(0, 7);
-  const monthlyOutgoing = transactions
+  const monthlyOutgoing = ledgerTransactions
     .filter((tx) => tx.sign === '-' && String(tx.transactionDate || '').startsWith(monthKey))
     .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
@@ -268,11 +305,23 @@ export default function Dashboard() {
     }
   };
 
+  const handleAnalyticsExpenseTypeSelect = (typeLabel) => {
+    if (!typeLabel) return;
+    const matchingType = getTransactionTypes().find((t) => String(t).toLowerCase() === String(typeLabel).toLowerCase());
+    setFilters((prev) => ({
+      ...prev,
+      type: matchingType || prev.type,
+      sign: '-',
+    }));
+    navigate('/dashboard/transactions');
+  };
+
   const contentWidthClass = mainTab === 'accounts' || mainTab === 'transactions' ? 'max-w-6xl' : 'max-w-5xl';
   const USER_NAV = [
     { id: 'accounts', label: 'Accounts', icon: LayoutDashboard },
     { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight },
     { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'cards', label: 'Cards', icon: Wallet },
     { id: 'profile', label: 'Profile', icon: UserCircle },
   ];
 
@@ -363,10 +412,19 @@ export default function Dashboard() {
           </div>
         ) : mainTab === 'payments' && clientId ? (
           <div className="space-y-6">
+            <UserPaymentsTab
+              accounts={accounts}
+              onSuccess={setSuccess}
+              onError={setError}
+              onRefresh={fetchData}
+            />
+          </div>
+        ) : mainTab === 'cards' && clientId ? (
+          <div className="space-y-6">
             <div className="glass rounded-2xl p-6">
-              <h2 className="text-2xl font-bold">Cards & Payments</h2>
+              <h2 className="text-2xl font-bold">Cards</h2>
               <p className="text-zinc-500 text-sm mt-1">
-                Manage saved cards, review payment activity, and request refunds.
+                Manage funding methods and top up accounts.
               </p>
             </div>
             <CardsPaymentsTab
@@ -413,15 +471,19 @@ export default function Dashboard() {
         ) : (
           <UserAccountsTab
             accounts={accounts}
+            transactions={ledgerTransactions}
+            latestActivity={latestActivity}
             showBalances={showBalances}
             setShowBalances={setShowBalances}
             setActiveModal={setActiveModal}
             setSelectedAccount={setSelectedAccount}
             setTopUpAccount={setTopUpAccount}
+            onViewAllActivity={() => navigate('/dashboard/transactions')}
             formatCurrency={formatCurrency}
             totalBalance={totalBalance}
             activeAccountsCount={activeAccountsCount}
             monthlyOutgoing={monthlyOutgoing}
+            onExpenseTypeSelect={handleAnalyticsExpenseTypeSelect}
           />
         )}
       </div>

@@ -3,14 +3,11 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { CreditCard, Loader2, Trash2, Star, Wallet, ShieldCheck } from 'lucide-react';
 import { stripeElementsAppearance } from '../lib/stripeAppearance';
-import ModalShell from './ModalShell';
 import {
   getPaymentMethodsByClient,
   attachPaymentMethod,
   deletePaymentMethod,
   setDefaultPaymentMethod,
-  getPaymentHistory,
-  requestRefund,
 } from '../../services/paymentService';
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
@@ -94,10 +91,6 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [topUpAccountId, setTopUpAccountId] = useState('');
-  const [payments, setPayments] = useState([]);
-  const [paymentsLoading, setPaymentsLoading] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState(null);
-  const [refundBusy, setRefundBusy] = useState(false);
 
   const loadMethods = async () => {
     setLoading(true);
@@ -115,24 +108,6 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
 
   useEffect(() => {
     if (clientId) loadMethods();
-  }, [clientId]);
-
-  const loadPayments = async () => {
-    setPaymentsLoading(true);
-    setError('');
-    try {
-      const data = await getPaymentHistory(clientId);
-      setPayments(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setPayments([]);
-      setError(err.message || 'Could not load payment history');
-    } finally {
-      setPaymentsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (clientId) loadPayments();
   }, [clientId]);
 
   const handleDelete = async (id) => {
@@ -171,32 +146,6 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
     d ? new Date(d).toLocaleString() : '—';
 
   const activeAccounts = (accounts || []).filter((a) => a.status === 'ACTIVE');
-  const selectedPaymentStatus = String(selectedPayment?.status || '').toUpperCase();
-  const refundBlockedStatuses = ['REFUNDED', 'REFUND_REQUESTED', 'FAILED', 'CANCELED', 'CANCELLED'];
-  const canRequestRefund =
-    selectedPayment &&
-    selectedPayment.id != null &&
-    !refundBlockedStatuses.includes(selectedPaymentStatus);
-
-  const paymentDetailsRows = selectedPayment
-    ? [
-        ['Payment ID', selectedPayment.id],
-        ['Status', selectedPayment.status],
-        ['Amount', selectedPayment.amount != null ? formatMoney(selectedPayment.amount, selectedPayment.currencyCode) : null],
-        ['Currency', selectedPayment.currencyCode],
-        ['Type', selectedPayment.paymentType || selectedPayment.type],
-        ['Provider', selectedPayment.provider || selectedPayment.gateway || selectedPayment.merchant],
-        ['Payment Intent', selectedPayment.paymentIntentId || selectedPayment.stripePaymentIntentId],
-        ['Method', selectedPayment.method || selectedPayment.paymentMethodType || selectedPayment.cardBrand],
-        ['Card Last4', selectedPayment.cardLast4],
-        ['Client ID', selectedPayment.clientId],
-        ['Account ID', selectedPayment.accountId],
-        ['Account IBAN', selectedPayment.accountIban],
-        ['Created at', selectedPayment.createdAt ? new Date(selectedPayment.createdAt).toLocaleString() : null],
-        ['Updated at', selectedPayment.updatedAt ? new Date(selectedPayment.updatedAt).toLocaleString() : null],
-      ].filter(([, value]) => value !== null && value !== undefined && value !== '')
-    : [];
-
   useEffect(() => {
     if (!error) return;
     const t = setTimeout(() => setError(''), 4500);
@@ -339,170 +288,6 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
         )}
       </section>
 
-      {/* Payment history */}
-      <section className="glass rounded-2xl p-6 overflow-hidden">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <div>
-            <h2 className="text-xl font-bold">Payment history</h2>
-            <p className="text-xs text-zinc-500 mt-1">Click any payment to open details and refund actions.</p>
-          </div>
-          <button type="button" className="btn-secondary text-sm" onClick={loadPayments} disabled={paymentsLoading}>
-            Refresh
-          </button>
-        </div>
-        {paymentsLoading ? (
-          <div className="flex items-center gap-2 text-zinc-400">
-            <Loader2 className="w-5 h-5 animate-spin" /> Loading…
-          </div>
-        ) : payments.length === 0 ? (
-          <p className="text-zinc-500 text-sm">No payments yet.</p>
-        ) : (
-          <>
-            <div className="md:hidden space-y-3">
-              {payments.map((p) => (
-                <div key={p.id} className="rounded-xl border border-zinc-800 bg-black/20 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-zinc-500">Date</p>
-                      <p className="text-sm text-zinc-300">{p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}</p>
-                    </div>
-                    <p className="text-sm font-semibold text-zinc-200">
-                      {p.amount != null ? formatMoney(p.amount, p.currencyCode) : '—'}
-                    </p>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-sm">
-                    <p className="text-zinc-400">{p.paymentType || p.type || '—'}</p>
-                    <p className="text-zinc-500">{p.status || '—'}</p>
-                  </div>
-                  <button type="button" className="btn-secondary text-xs py-1.5 px-3 mt-3" onClick={() => setSelectedPayment(p)}>
-                    View
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-800 text-left text-zinc-400">
-                  <th className="sticky top-0 z-10 py-2 pr-4 bg-zinc-900/95">Date</th>
-                  <th className="sticky top-0 z-10 py-2 pr-4 bg-zinc-900/95">Type</th>
-                  <th className="sticky top-0 z-10 py-2 pr-4 bg-zinc-900/95">Status</th>
-                  <th className="sticky top-0 z-10 py-2 text-right bg-zinc-900/95">Amount</th>
-                  <th className="sticky top-0 z-10 py-2 pl-4 text-right bg-zinc-900/95">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map((p) => (
-                  <tr key={p.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                    <td className="py-2 pr-4 text-zinc-300">
-                      {p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}
-                    </td>
-                    <td className="py-2 pr-4 text-zinc-300">{p.paymentType || p.type || '—'}</td>
-                    <td className="py-2 pr-4 text-zinc-500">{p.status || '—'}</td>
-                    <td className="py-2 text-right font-medium text-zinc-200">
-                      {p.amount != null ? formatMoney(p.amount, p.currencyCode) : '—'}
-                    </td>
-                    <td className="py-2 pl-4 text-right">
-                      <button
-                        type="button"
-                        className="btn-secondary text-xs py-1.5 px-3"
-                        onClick={() => setSelectedPayment(p)}
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </section>
-
-      {/* Card / Stripe payment history */}
-      <section className="glass rounded-2xl p-6 overflow-hidden">
-        <h2 className="text-xl font-bold mb-4">Card payments (Stripe)</h2>
-        {stripePayments.length === 0 ? (
-          <p className="text-zinc-500 text-sm">No Stripe card payments yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-800 text-left text-zinc-400">
-                  <th className="sticky top-0 z-10 py-2 pr-4 bg-zinc-900/95">Date</th>
-                  <th className="sticky top-0 z-10 py-2 pr-4 bg-zinc-900/95">Type</th>
-                  <th className="sticky top-0 z-10 py-2 pr-4 bg-zinc-900/95">Details</th>
-                  <th className="sticky top-0 z-10 py-2 text-right bg-zinc-900/95">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stripePayments.map((tx) => (
-                  <tr key={tx.id} className="border-b border-zinc-800/50">
-                    <td className="py-2 pr-4 text-zinc-300">{formatDate(tx.transactionDate)}</td>
-                    <td className="py-2 pr-4">{tx.transactionTypeName}</td>
-                    <td className="py-2 pr-4 text-zinc-500 max-w-xs truncate">{tx.details || '—'}</td>
-                    <td className={`py-2 text-right font-medium ${tx.sign === '+' ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {tx.sign === '+' ? '+' : '-'}
-                      {formatMoney(tx.amount, tx.originalCurrencyCode)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {selectedPayment && (
-        <ModalShell
-          title="Payment details"
-          subtitle={`Payment ID: ${selectedPayment.id}`}
-          onClose={() => setSelectedPayment(null)}
-          maxWidth="max-w-lg"
-          footer={
-            <>
-              <button type="button" className="btn-secondary" onClick={() => setSelectedPayment(null)}>
-                Close
-              </button>
-              {canRequestRefund ? (
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={refundBusy}
-                  onClick={async () => {
-                    if (!window.confirm('Request a refund for this payment?')) return;
-                    setRefundBusy(true);
-                    try {
-                      await requestRefund(selectedPayment.id);
-                      setSuccess('Refund requested');
-                      setSelectedPayment(null);
-                      loadPayments();
-                    } catch (e) {
-                      setError(e.message || 'Refund request failed');
-                    } finally {
-                      setRefundBusy(false);
-                    }
-                  }}
-                >
-                  {refundBusy ? 'Requesting…' : 'Request refund'}
-                </button>
-              ) : (
-                <span className="text-xs text-zinc-500">Refund unavailable for this payment status.</span>
-              )}
-            </>
-          }
-        >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              {paymentDetailsRows.map(([label, value]) => (
-                <div key={label} className="glass rounded-xl p-3">
-                  <p className="text-xs text-zinc-500">{label}</p>
-                  <p className="text-zinc-200 break-all">{String(value)}</p>
-                </div>
-              ))}
-            </div>
-        </ModalShell>
-      )}
     </div>
   );
 }

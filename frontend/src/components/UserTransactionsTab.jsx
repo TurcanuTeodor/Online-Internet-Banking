@@ -1,4 +1,5 @@
 import { Filter, ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
+import { TransactionCompactRow, getTransactionAccountText, getTransactionLabel } from './TransactionRow';
 
 export default function UserTransactionsTab({
   accounts,
@@ -151,26 +152,13 @@ export default function UserTransactionsTab({
           <>
             <div className="md:hidden space-y-3">
               {paginatedTransactions.map((tx) => (
-                <div key={tx.id} className="glass rounded-xl p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm text-zinc-300">{formatDate(tx.transactionDate)}</p>
-                      <p className="text-xs text-zinc-500 mt-1">{tx.transactionTypeName}</p>
-                    </div>
-                    <p className={`text-sm font-bold ${tx.sign === '+' ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {tx.sign === '+' ? '+' : '-'}
-                      {formatCurrency(tx.amount, tx.currencyCode || tx.originalCurrencyCode)}
-                    </p>
-                  </div>
-                  <p className="text-xs font-mono text-zinc-500 mt-2 break-all">{tx.accountIban}</p>
-                  <button
-                    type="button"
-                    className="btn-secondary text-xs py-1.5 px-3 mt-3"
-                    onClick={() => setSelectedTransactionId(tx.id)}
-                  >
-                    View details
-                  </button>
-                </div>
+                <TransactionCompactRow
+                  key={tx.id}
+                  tx={tx}
+                  formatDate={formatDate}
+                  formatCurrency={formatCurrency}
+                  onViewDetails={setSelectedTransactionId}
+                />
               ))}
             </div>
 
@@ -191,10 +179,10 @@ export default function UserTransactionsTab({
                       <td className="px-6 py-4 text-sm text-zinc-300">{formatDate(tx.transactionDate)}</td>
                       <td className="px-6 py-4">
                         <span className="px-2 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400">
-                          {tx.transactionTypeName}
+                          {getTransactionLabel(tx)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm font-mono text-zinc-400">{tx.accountIban}</td>
+                      <td className="px-6 py-4 text-sm font-mono text-zinc-400">{getTransactionAccountText(tx)}</td>
                       <td className={`px-6 py-4 text-sm font-bold text-right ${
                         tx.sign === '+' ? 'text-emerald-400' : 'text-red-400'
                       }`}>

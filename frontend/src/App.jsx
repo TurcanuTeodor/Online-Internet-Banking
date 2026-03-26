@@ -5,10 +5,15 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Profile from './pages/Profile';
-import { isAuthenticated } from '../services/authService';
+import { isAuthenticated, isAdmin } from '../services/authService';
 
 function PrivateRoute({ children }) {
   return isAuthenticated() ? children : <Navigate to="/login" replace />;
+}
+
+function AdminRoute({ children }) {
+  if (!isAuthenticated()) return <Navigate to="/login" replace />;
+  return isAdmin() ? children : <Navigate to="/dashboard/accounts" replace />;
 }
 
 function App() {
@@ -44,9 +49,9 @@ function App() {
       <Route
         path="/admin"
         element={
-          <PrivateRoute>
+          <AdminRoute>
             <AdminDashboard />
-          </PrivateRoute>
+          </AdminRoute>
         }
       />
       <Route path="/" element={<Navigate to="/login" replace />} />

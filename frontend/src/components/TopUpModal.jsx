@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { X, CreditCard, Loader2 } from 'lucide-react';
-import { createTopUpIntent } from '../../services/paymentService';
+import { createTopUpIntent, getPaymentMethodsByClient } from '../../services/paymentService';
 import { stripeElementsAppearance } from '../lib/stripeAppearance';
+import { jwtDecode } from 'jwt-decode';
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
-function TopUpPaymentForm({ clientSecret, currencyCode, amountLabel, onSuccess, onError }) {
+function TopUpPaymentForm({ clientSecret, currencyCode, amountLabel, selectedSavedMethodId, onSuccess, onError }) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -21,9 +22,10 @@ function TopUpPaymentForm({ clientSecret, currencyCode, amountLabel, onSuccess, 
 
     setProcessing(true);
     try {
-      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: { card },
-      });
+      const confirmPayload = selectedSavedMethodId
+        ? { payment_method: selectedSavedMethodId }
+        : { payment_method: { card } };
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, confirmPayload);
       if (error) {
         onError(error.message || 'Payment failed');
         return;
@@ -57,9 +59,15 @@ function TopUpPaymentForm({ clientSecret, currencyCode, amountLabel, onSuccess, 
       <p className="text-sm text-zinc-400">
         Amount: <span className="text-white font-semibold">{amountLabel}</span> ({currencyCode})
       </p>
-      <div className="p-4 rounded-xl border border-gray-700 bg-gray-800/50">
-        <CardElement options={cardStyle} />
-      </div>
+      {!selectedSavedMethodId ? (
+        <div className="p-4 rounded-xl border border-gray-700 bg-gray-800/50">
+          <CardElement options={cardStyle} />
+        </div>
+      ) : (
+        <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 text-sm">
+          Using selected saved card.
+        </div>
+      )}
       <p className="text-xs text-zinc-500">
         Card details are sent directly to Stripe — they never touch CashTactics servers.
       </p>
@@ -84,6 +92,35 @@ export default function TopUpModal({ account, onClose, onSuccess }) {
   const [intent, setIntent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [savedMethods, setSavedMethods] = useState([]);
+  const [selectedSavedMethodId, setSelectedSavedMethodId] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const token = localStorage.getItem('jwt_token');
+        if (!token) return;
+        const payload = jwtDecode(token);
+        const cid = payload?.clientId;
+        if (!cid) return;
+        const methods = await getPaymentMethodsByClient(cid);
+        if (mounted) {
+          const arr = Array.isArray(methods) ? methods : [];
+          setSavedMethods(arr);
+          const def = arr.find((m) => m.isDefault);
+          if (def?.stripePaymentMethodId || def?.paymentMethodId || def?.id) {
+            setSelectedSavedMethodId(def.stripePaymentMethodId || def.paymentMethodId || def.id);
+          }
+        }
+      } catch {
+        // keep silent; fallback to manual card entry still works
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   if (!publishableKey || !stripePromise) {
     return (
@@ -181,12 +218,34 @@ export default function TopUpModal({ account, onClose, onSuccess }) {
               clientSecret={intent.clientSecret}
               currencyCode={intent.currencyCode}
               amountLabel={amountLabel}
+              selectedSavedMethodId={selectedSavedMethodId}
               onSuccess={() => {
                 onSuccess();
                 onClose();
               }}
               onError={(msg) => setLocalError(msg)}
             />
+            {savedMethods.length > 0 && (
+              <div className="mt-4">
+                <label className="block text-sm text-zinc-400 mb-2">Quick fund with saved card</label>
+                <select
+                  className="input-field"
+                  value={selectedSavedMethodId}
+                  onChange={(e) => setSelectedSavedMethodId(e.target.value)}
+                >
+                  <option value="">Use manual card entry</option>
+                  {savedMethods.map((m) => {
+                    const methodId = m.stripePaymentMethodId || m.paymentMethodId || m.id;
+                    return (
+                      <option key={m.id} value={methodId}>
+                        {(m.cardBrand || 'Card').toUpperCase()} •••• {m.cardLast4}
+                        {m.isDefault ? ' (Default)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
           </Elements>
         )}
       </div>
