@@ -12,6 +12,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import ro.app.gateway.audit.AuditService;
 import ro.app.gateway.security.JwtService;
 
 import java.time.LocalDateTime;
@@ -24,9 +25,11 @@ public class AuditLoggingFilter implements GlobalFilter, Ordered {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final JwtService jwtService;
+    private final AuditService auditService;
 
-    public AuditLoggingFilter(JwtService jwtService) {
+    public AuditLoggingFilter(JwtService jwtService, AuditService auditService) {
         this.jwtService = jwtService;
+        this.auditService = auditService;
     }
 
     @Override
@@ -46,8 +49,38 @@ public class AuditLoggingFilter implements GlobalFilter, Ordered {
 
            log.info("[AUDIT] {} | {} | {} {} | status={} | ip={}",
                    timestamp, user, method, path, status, ip);
+
+           if (status == 403 && "GET".equals(method) && "/api/clients/view".equals(path)) {
+               JwtRole jwtRole = extractJwtRole(request);
+               if ("USER".equals(jwtRole.role())) {
+                   auditService.log(
+                           "ADMIN_DATA_ACCESS_ATTEMPT",
+                           jwtRole.clientId(),
+                           jwtRole.role(),
+                           null,
+                           "Forbidden access to admin client list");
+               }
+           }
         });
     }
+
+    private JwtRole extractJwtRole(ServerHttpRequest request) {
+        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return new JwtRole(null, null);
+        }
+        try {
+            String token = authHeader.substring(7);
+            Claims claims = jwtService.parseClaims(token);
+            String role = claims.get("role", String.class);
+            Long clientId = claims.get("clientId", Long.class);
+            return new JwtRole(clientId, role);
+        } catch (Exception e) {
+            return new JwtRole(null, null);
+        }
+    }
+
+    private record JwtRole(Long clientId, String role) {}
 
     private String extractUser(ServerHttpRequest request){
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);

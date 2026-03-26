@@ -31,7 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+.env
 .env.properties
+*.env.properties
 services/*/target/
 services/*/.env.properties
 frontend/node_modules/

@@ -84,3 +84,22 @@ export const getAllClientsFromView = async () => {
   const response = await apiClient.get('/clients/view');
   return response.data;
 };
+
+/**
+ * Get authenticated client's profile (read-only view).
+ * Gateway endpoint: GET /api/clients/view/me
+ * @returns {Promise<Object>} Client profile for the logged-in user
+ */
+export const getClientProfile = async () => {
+  try {
+    const response = await apiClient.get('/clients/view/me');
+    return response.data;
+  } catch (err) {
+    const message =
+      err?.response?.data?.message ||
+      err?.message ||
+      'Failed to load client profile';
+    throw new Error(message);
+  }
+};
+

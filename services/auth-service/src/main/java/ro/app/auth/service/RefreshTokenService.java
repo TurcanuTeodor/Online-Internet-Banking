@@ -1,6 +1,10 @@
 package ro.app.auth.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -27,23 +31,27 @@ public class RefreshTokenService {
         this.jwtService = jwtService;
     }
 
-    public RefreshToken createRefreshToken(User user) {
+    /**
+     * Persists SHA-256 hash of refresh JWT; returns the raw token for the client only.
+     */
+    public String createRefreshToken(User user) {
         String tokenValue = jwtService.generateRefreshToken(user.getUsernameOrEmail());
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiryDate = now.plusDays(7);
 
-        RefreshToken refreshToken = new RefreshToken(tokenValue, user, expiryDate, now);
-
-        return refreshTokenRepository.save(refreshToken);
+        RefreshToken refreshToken = new RefreshToken(hashToken(tokenValue), user, expiryDate, now);
+        refreshTokenRepository.save(refreshToken);
+        return tokenValue;
     }
 
-    public Optional<RefreshToken> findByToken(String token) {
-        return refreshTokenRepository.findByToken(token);
-    }
+    public RefreshToken verifyRefreshToken(String rawToken) {
+        if (!jwtService.isValid(rawToken)) {
+            throw new IllegalArgumentException("Invalid refresh token signature");
+        }
 
-    public RefreshToken verifyRefreshToken(String token) {
-        Optional<RefreshToken> refreshToken = findByToken(token);
+        String hash = hashToken(rawToken);
+        Optional<RefreshToken> refreshToken = refreshTokenRepository.findByTokenHash(hash);
 
         if (refreshToken.isEmpty()) {
             throw new IllegalArgumentException("Invalid refresh token");
@@ -55,15 +63,12 @@ public class RefreshTokenService {
             throw new IllegalArgumentException("Refresh token expired or revoked");
         }
 
-        if (!jwtService.isValid(token)) {
-            throw new IllegalArgumentException("Invalid refresh token signature");
-        }
-
         return rt;
     }
 
-    public void revokeRefreshToken(String token) {
-        Optional<RefreshToken> refreshToken = findByToken(token);
+    public void revokeRefreshToken(String rawToken) {
+        String hash = hashToken(rawToken);
+        Optional<RefreshToken> refreshToken = refreshTokenRepository.findByTokenHash(hash);
 
         if (refreshToken.isPresent()) {
             RefreshToken rt = refreshToken.get();
@@ -86,5 +91,15 @@ public class RefreshTokenService {
     public void deleteExpiredTokens() {
         refreshTokenRepository.deleteAllExpiredBefore(LocalDateTime.now());
         log.info("Expired refresh tokens cleanup completed at");
+    }
+
+    private static String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 }

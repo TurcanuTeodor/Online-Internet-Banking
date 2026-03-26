@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import ro.app.client.audit.AuditService;
 import ro.app.client.dto.ContactInfoDTO;
 import ro.app.client.security.JwtPrincipal;
 import ro.app.client.security.OwnershipChecker;
@@ -21,13 +22,15 @@ class ClientControllerTest {
     private ClientService clientService;
     @Mock
     private OwnershipChecker ownershipChecker;
+    @Mock
+    private AuditService auditService;
     @InjectMocks
     private ClientController clientController;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        clientController = new ClientController(clientService, ownershipChecker);
+        clientController = new ClientController(clientService, ownershipChecker, auditService);
     }
 
     @Test

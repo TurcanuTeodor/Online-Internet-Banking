@@ -38,6 +38,8 @@ public class AuthService {
 
     @Transactional
     public void register(RegisterRequest req) {
+        validatePassword(req.getPassword());
+
         if (userRepo.existsByUsernameOrEmail(req.getUsernameOrEmail())) {
             throw new IllegalArgumentException("Username/Email already used");
         }
@@ -73,7 +75,7 @@ public class AuthService {
         Long clientId = user.getClientId();
 
         if (!user.isTwoFactorEnabled()) {
-            RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+            String refreshTokenValue = refreshTokenService.createRefreshToken(user);
 
             String token = jwtService.generateToken(
                     user.getUsernameOrEmail(),
@@ -84,7 +86,7 @@ public class AuthService {
                             "2fa_verified", false
                     ));
 
-            return new LoginResponse(false, token, refreshToken.getToken(), clientId, user.getRole().name());
+            return new LoginResponse(false, token, refreshTokenValue, clientId, user.getRole().name());
         }
 
         String tempToken = jwtService.generateTempToken(
@@ -103,6 +105,21 @@ public class AuthService {
             refreshTokenService.revokeRefreshToken(refreshTokenValue);
         } catch (Exception e) {
             // Log and continue
+        }
+    }
+
+    private void validatePassword(String password) {
+        if (password == null || password.length() < 8) {
+            throw new IllegalArgumentException("Minimum 8 characters");
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            throw new IllegalArgumentException("Must contain uppercase letter");
+        }
+        if (!password.matches(".*[0-9].*")) {
+            throw new IllegalArgumentException("Must contain number");
+        }
+        if (!password.matches(".*[!@#$%^&*].*")) {
+            throw new IllegalArgumentException("Must contain special character");
         }
     }
 }

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import ro.app.client.audit.AuditService;
 import ro.app.client.dto.gdpr.ClientExportDTO;
 import ro.app.client.security.JwtPrincipal;
 import ro.app.client.security.OwnershipChecker;
@@ -21,10 +22,15 @@ public class GdprController {
 
     private final ClientGdprService clientGdprService;
     private final OwnershipChecker ownershipChecker;
+    private final AuditService auditService;
 
-    public GdprController(ClientGdprService clientGdprService, OwnershipChecker ownershipChecker) {
+    public GdprController(
+            ClientGdprService clientGdprService,
+            OwnershipChecker ownershipChecker,
+            AuditService auditService) {
         this.clientGdprService = clientGdprService;
         this.ownershipChecker = ownershipChecker;
+        this.auditService = auditService;
     }
 
     // GDPR Art. 15 — Right of access / Data portability
@@ -34,7 +40,11 @@ public class GdprController {
             @PathVariable Long id,
             @AuthenticationPrincipal JwtPrincipal principal) {
         ownershipChecker.checkOwnership(principal, id);
-        return ResponseEntity.ok(clientGdprService.exportClientData(id));
+        ClientExportDTO body = clientGdprService.exportClientData(id);
+        Long actorClientId = principal != null ? principal.clientId() : null;
+        String role = principal != null ? principal.role() : "UNKNOWN";
+        auditService.log("GDPR_EXPORT", actorClientId, role, id, "Personal data export (Art. 15)");
+        return ResponseEntity.ok(body);
     }
 
     // GDPR Art. 17 — Right to erasure (ADMIN or owner)

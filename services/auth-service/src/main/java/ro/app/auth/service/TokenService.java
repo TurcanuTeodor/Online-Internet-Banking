@@ -40,8 +40,8 @@ public class TokenService {
                 ));
 
         refreshTokenService.revokeRefreshToken(refreshTokenValue);
-        RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user);
+        String newRefreshTokenValue = refreshTokenService.createRefreshToken(user);
 
-        return new RefreshTokenResponse(newToken, newRefreshToken.getToken());
+        return new RefreshTokenResponse(newToken, newRefreshTokenValue);
     }
 }

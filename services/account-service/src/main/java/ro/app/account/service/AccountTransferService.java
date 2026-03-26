@@ -21,6 +21,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
+import ro.app.account.audit.AuditService;
 import ro.app.account.exception.InsufficientFundsException;
 import ro.app.account.exception.ResourceNotFoundException;
 import ro.app.account.model.entity.Account;
@@ -41,19 +42,25 @@ public class AccountTransferService {
     private final ExchangeRateService exchangeRateService;
     private final RestTemplate restTemplate;
     private final OwnershipChecker ownershipChecker;
+    private final AuditService auditService;
     private final String transactionServiceUrl;
+    private final BigDecimal largeTransferThreshold;
 
     public AccountTransferService(
             AccountRepository accountRepository,
             ExchangeRateService exchangeRateService,
             RestTemplate restTemplate,
             OwnershipChecker ownershipChecker,
-            @Value("${app.services.transaction.url}") String transactionServiceUrl) {
+            AuditService auditService,
+            @Value("${app.services.transaction.url}") String transactionServiceUrl,
+            @Value("${app.audit.large-transfer-threshold:10000}") BigDecimal largeTransferThreshold) {
         this.accountRepository = accountRepository;
         this.exchangeRateService = exchangeRateService;
         this.restTemplate = restTemplate;
         this.ownershipChecker = ownershipChecker;
+        this.auditService = auditService;
         this.transactionServiceUrl = transactionServiceUrl.replaceAll("/$", "");
+        this.largeTransferThreshold = largeTransferThreshold;
     }
 
     @Transactional
@@ -80,6 +87,17 @@ public class AccountTransferService {
 
         if (from.getBalance().compareTo(amount) < 0) {
             throw new InsufficientFundsException("Insufficient funds");
+        }
+
+        if (amount.compareTo(largeTransferThreshold) >= 0) {
+            Long actorClientId = principal != null ? principal.clientId() : null;
+            String role = principal != null ? principal.role() : "UNKNOWN";
+            auditService.log(
+                    "LARGE_TRANSFER",
+                    actorClientId,
+                    role,
+                    from.getClientId(),
+                    "amount=" + amount + " " + from.getCurrency().getCode() + " fromIban=" + fromIban + " toIban=" + toIban);
         }
 
         CurrencyType fromCurrency = from.getCurrency();

@@ -19,6 +19,7 @@ import ro.app.auth.dto.token.RefreshTokenResponse;
 import ro.app.auth.dto.twofa.TwoFaConfirmRequest;
 import ro.app.auth.dto.twofa.TwoFaSetupResponse;
 import ro.app.auth.dto.twofa.TwoFaVerifyRequest;
+import ro.app.auth.audit.AuditService;
 import ro.app.auth.service.AuthService;
 import ro.app.auth.service.RateLimitService;
 import ro.app.auth.service.TokenService;
@@ -33,16 +34,19 @@ public class AuthController {
     private final TwoFaService twoFaService;
     private final TokenService tokenService;
     private final RateLimitService rateLimitService;
+    private final AuditService auditService;
 
     public AuthController(
             AuthService authService,
             TwoFaService twoFaService,
             TokenService tokenService,
-            RateLimitService rateLimitService) {
+            RateLimitService rateLimitService,
+            AuditService auditService) {
         this.authService = authService;
         this.twoFaService = twoFaService;
         this.tokenService = tokenService;
         this.rateLimitService = rateLimitService;
+        this.auditService = auditService;
     }
 
     @PostMapping("/register")
@@ -61,6 +65,7 @@ public class AuthController {
             return ResponseEntity.ok(response);
         } catch (Exception ex) {
             rateLimitService.recordFailedAttempt(clientIp);
+            auditService.log("LOGIN_FAILED", null, null, null, "ip=" + clientIp + " reason=" + ex.getMessage());
             throw ex;
         }
     }

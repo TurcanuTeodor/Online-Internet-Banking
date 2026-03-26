@@ -1,0 +1,130 @@
+import { Wallet, Plus, Send, Eye, EyeOff, CreditCard } from 'lucide-react';
+
+export default function UserAccountsTab({
+  accounts,
+  showBalances,
+  setShowBalances,
+  setActiveModal,
+  setSelectedAccount,
+  setTopUpAccount,
+  formatCurrency,
+  totalBalance,
+  activeAccountsCount,
+  monthlyOutgoing,
+}) {
+  return (
+    <div className="space-y-8">
+      <div className="glass rounded-2xl p-6">
+        <h2 className="text-2xl font-bold">Accounts</h2>
+        <p className="text-zinc-500 text-sm mt-1">
+          Manage balances, open new accounts, and initiate transfers.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="glass rounded-2xl p-5">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Total balances</p>
+          <p className="text-2xl font-bold mt-2">{formatCurrency(totalBalance, 'EUR')}</p>
+        </div>
+        <div className="glass rounded-2xl p-5">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Active accounts</p>
+          <p className="text-2xl font-bold mt-2">{activeAccountsCount}</p>
+        </div>
+        <div className="glass rounded-2xl p-5">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">This month outflow</p>
+          <p className="text-2xl font-bold mt-2 text-red-400">-{formatCurrency(monthlyOutgoing, 'EUR')}</p>
+        </div>
+      </div>
+
+      <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h2 className="text-2xl font-bold">Your Accounts</h2>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setShowBalances(!showBalances)}
+              className="btn-secondary flex items-center gap-2"
+            >
+              {showBalances ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showBalances ? 'Hide' : 'Show'} Balances
+            </button>
+            <button
+              onClick={() => setActiveModal('openAccount')}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Open Account
+            </button>
+          </div>
+        </div>
+
+        {accounts.length === 0 ? (
+          <div className="glass rounded-2xl p-12 text-center">
+            <Wallet className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
+            <p className="text-zinc-400 mb-4">No accounts yet</p>
+            <button onClick={() => setActiveModal('openAccount')} className="btn-primary">
+              Open Your First Account
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {accounts.map((account) => {
+              const canTopUp =
+                account.status === 'ACTIVE' &&
+                (account.currencyCode === 'EUR' || account.currencyCode === 'RON');
+              return (
+                <div key={account.id} className="glass rounded-2xl p-6 hover:border-emerald-500/20 transition-all flex flex-col">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center shrink-0">
+                        <Wallet className="w-6 h-6 text-emerald-400" />
+                      </div>
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-600/50">
+                        {account.currencyCode}
+                      </span>
+                    </div>
+                    <span
+                      className={`shrink-0 px-3 py-1 rounded-lg text-xs font-medium ${
+                        account.status === 'ACTIVE'
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : 'bg-zinc-700 text-zinc-400'
+                      }`}
+                    >
+                      {account.status}
+                    </span>
+                  </div>
+                  <p className="text-sm font-mono text-gray-400 break-all leading-snug">{account.iban}</p>
+                  <p className="text-3xl font-bold mt-4 mb-6">
+                    {showBalances ? formatCurrency(account.balance, account.currencyCode) : '••••••'}
+                  </p>
+                  <div className={`mt-auto grid gap-3 ${canTopUp ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    <button
+                      onClick={() => {
+                        setSelectedAccount(account);
+                        setActiveModal('transfer');
+                      }}
+                      className="btn-primary w-full flex items-center justify-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      Transfer
+                    </button>
+                    {canTopUp && (
+                      <button
+                        type="button"
+                        onClick={() => setTopUpAccount(account)}
+                        className="btn-secondary w-full flex items-center justify-center gap-2 border-emerald-500/30 text-emerald-300"
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        Top up
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+

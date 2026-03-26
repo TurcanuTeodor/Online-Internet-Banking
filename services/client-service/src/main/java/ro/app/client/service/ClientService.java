@@ -29,6 +29,8 @@ import ro.app.client.repository.ViewClientRepository;
 @Service
 public class ClientService {
 
+    private static final String PII_MASK = "[PROTECTED]";
+
     private final ClientRepository clientRepository;
     private final ViewClientRepository viewClientRepository;
     private final ContactInfoRepository contactInfoRepository;
@@ -147,35 +149,66 @@ public class ClientService {
         }
     }
 
-    // --6 View clients (decripteaza inainte de a returna)
+    /**
+     * Admin list: names decrypted when possible; contact PII never decrypted — masked.
+     */
     public List<ViewClientDTO> getAllViewClients() {
-        return viewClientRepository.findAll()
-                .stream()
-                .map(v -> {
-                    ViewClientDTO dto = new ViewClientDTO();
-                    dto.setClientId(v.getClientId());
-                    dto.setFirstName(v.getClientFirstName());
-                    dto.setLastName(v.getClientLastName());
-                    dto.setClientType(v.getClientTypeName());
-                    dto.setRiskLevel(v.getRiskLevel());
-                    dto.setActive(v.getActive());
-                    dto.setCreatedAt(v.getCreatedAt());
-                    try {
-                        dto.setEmail(encryptionService.decrypt(v.getEmailEncrypted(), encryptionKey));
-                        dto.setPhone(encryptionService.decrypt(v.getPhoneEncrypted(), encryptionKey));
-                        dto.setAddress(encryptionService.decrypt(v.getAddressEncrypted(), encryptionKey));
-                        dto.setCity(encryptionService.decrypt(v.getCityEncrypted(), encryptionKey));
-                        dto.setPostalCode(encryptionService.decrypt(v.getPostalCodeEncrypted(), encryptionKey));
-                    } catch (Exception e) {
-                        // date necriptate (seed dev) — returnează ca atare
-                        dto.setEmail(v.getEmailEncrypted());
-                        dto.setPhone(v.getPhoneEncrypted());
-                        dto.setAddress(v.getAddressEncrypted());
-                        dto.setCity(v.getCityEncrypted());
-                        dto.setPostalCode(v.getPostalCodeEncrypted());
-                    }
-                    return dto;
-                })
-                .toList();
+        return viewClientRepository.findAll().stream().map(this::toAdminListViewDto).toList();
+    }
+
+    /** USER: full decrypted row for own client only (caller enforces via JWT). */
+    public ViewClientDTO getViewClientForSelf(Long clientId) {
+        ViewClient v = viewClientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found in view"));
+        return toOwnerViewDto(v);
+    }
+
+    private ViewClientDTO toAdminListViewDto(ViewClient v) {
+        ViewClientDTO dto = baseViewFields(v);
+        dto.setEmail(PII_MASK);
+        dto.setPhone(PII_MASK);
+        dto.setAddress(PII_MASK);
+        dto.setCity(PII_MASK);
+        dto.setPostalCode(PII_MASK);
+        try {
+            dto.setFirstName(encryptionService.decrypt(v.getClientFirstName(), encryptionKey));
+            dto.setLastName(encryptionService.decrypt(v.getClientLastName(), encryptionKey));
+        } catch (Exception e) {
+            dto.setFirstName(v.getClientFirstName());
+            dto.setLastName(v.getClientLastName());
+        }
+        return dto;
+    }
+
+    private ViewClientDTO toOwnerViewDto(ViewClient v) {
+        ViewClientDTO dto = baseViewFields(v);
+        try {
+            dto.setFirstName(encryptionService.decrypt(v.getClientFirstName(), encryptionKey));
+            dto.setLastName(encryptionService.decrypt(v.getClientLastName(), encryptionKey));
+            dto.setEmail(encryptionService.decrypt(v.getEmailEncrypted(), encryptionKey));
+            dto.setPhone(encryptionService.decrypt(v.getPhoneEncrypted(), encryptionKey));
+            dto.setAddress(encryptionService.decrypt(v.getAddressEncrypted(), encryptionKey));
+            dto.setCity(encryptionService.decrypt(v.getCityEncrypted(), encryptionKey));
+            dto.setPostalCode(encryptionService.decrypt(v.getPostalCodeEncrypted(), encryptionKey));
+        } catch (Exception e) {
+            dto.setFirstName(v.getClientFirstName());
+            dto.setLastName(v.getClientLastName());
+            dto.setEmail(v.getEmailEncrypted());
+            dto.setPhone(v.getPhoneEncrypted());
+            dto.setAddress(v.getAddressEncrypted());
+            dto.setCity(v.getCityEncrypted());
+            dto.setPostalCode(v.getPostalCodeEncrypted());
+        }
+        return dto;
+    }
+
+    private static ViewClientDTO baseViewFields(ViewClient v) {
+        ViewClientDTO dto = new ViewClientDTO();
+        dto.setClientId(v.getClientId());
+        dto.setClientType(v.getClientTypeName());
+        dto.setRiskLevel(v.getRiskLevel());
+        dto.setActive(v.getActive());
+        dto.setCreatedAt(v.getCreatedAt());
+        return dto;
     }
 }

@@ -24,11 +24,13 @@ services:
   payment:
     url: ${PAYMENT_SERVICE_URL:http://localhost:8085}
 
-# JWT
+# JWT + CORS (comma-separated origins; never use *)
 app:
   jwt:
     secret: ${JWT_SECRET}
     issuer: CashTactics
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 # Actuator
 management:
@@ -55,4 +57,5 @@ resilience4j:
 logging:
   level:
     AUDIT: INFO
+    SECURITY_AUDIT: INFO
     ro.app.gateway: INFO

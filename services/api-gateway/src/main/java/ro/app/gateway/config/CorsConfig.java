@@ -1,5 +1,6 @@
 package ro.app.gateway.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -10,11 +11,17 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 public class CorsConfig {
 
     @Bean
-    public CorsWebFilter corsWebFilter(){
+    public CorsWebFilter corsWebFilter(
+            @Value("${app.cors.allowed-origins:http://localhost:5173}") String allowedOrigins) {
         CorsConfiguration config = new CorsConfiguration();
-        config.addAllowedOrigin("http://localhost:5173");
-        config.addAllowedMethod("*"); //GET, POST, PUT, DELETE
-        config.addAllowedHeader("*"); //Authorization, Content-Type
+        for (String origin : allowedOrigins.split(",")) {
+            String o = origin.trim();
+            if (!o.isEmpty()) {
+                config.addAllowedOrigin(o);
+            }
+        }
+        config.addAllowedMethod("*"); // GET, POST, PUT, DELETE
+        config.addAllowedHeader("*"); // Authorization, Content-Type
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

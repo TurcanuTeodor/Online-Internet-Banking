@@ -9,7 +9,6 @@ import io.jsonwebtoken.Claims;
 import ro.app.auth.dto.auth.LoginResponse;
 import ro.app.auth.dto.twofa.TwoFaSetupResponse;
 import ro.app.auth.exception.AuthenticationException;
-import ro.app.auth.model.entity.RefreshToken;
 import ro.app.auth.model.entity.User;
 import ro.app.auth.repository.UserRepository;
 import ro.app.auth.security.jwt.JwtService;
@@ -102,7 +101,7 @@ public class TwoFaService {
                         "2fa_verified", true
                 ));
 
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
-        return new LoginResponse(false, finalToken, refreshToken.getToken(), clientId, user.getRole().name());
+        String refreshTokenValue = refreshTokenService.createRefreshToken(user);
+        return new LoginResponse(false, finalToken, refreshTokenValue, clientId, user.getRole().name());
     }
 }

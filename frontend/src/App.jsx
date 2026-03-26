@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import Profile from './pages/Profile';
 import { isAuthenticated } from '../services/authService';
 
 function PrivateRoute({ children }) {
@@ -20,7 +21,23 @@ function App() {
         path="/dashboard"
         element={
           <PrivateRoute>
+            <Navigate to="/dashboard/accounts" replace />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/dashboard/:section"
+        element={
+          <PrivateRoute>
             <Dashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <PrivateRoute>
+            <Profile />
           </PrivateRoute>
         }
       />

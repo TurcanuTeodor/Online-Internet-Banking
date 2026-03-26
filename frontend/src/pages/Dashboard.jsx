@@ -1,6 +1,6 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { logout } from '../../services/authService';
-import { LogOut, Wallet, Plus, Send, Eye, EyeOff, Shield, Filter, ChevronLeft, ChevronRight, CreditCard, Receipt } from 'lucide-react';
+import { LogOut, Wallet, Shield, CreditCard, LayoutDashboard, ArrowLeftRight, UserCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import QRCode from 'qrcode';
@@ -9,9 +9,16 @@ import { getTransactionsByClient } from '../../services/transactionService';
 import { setup2FA, confirm2FA } from '../../services/authService';
 import TopUpModal from '../components/TopUpModal';
 import CardsPaymentsTab from '../components/CardsPaymentsTab';
+import ProfileTab from '../components/ProfileTab';
+import TransactionDetailsModal from '../components/TransactionDetailsModal';
+import UserAccountsTab from '../components/UserAccountsTab';
+import UserTransactionsTab from '../components/UserTransactionsTab';
+
+const USER_SECTIONS = ['accounts', 'transactions', 'payments', 'profile'];
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { section } = useParams();
   const [clientId, setClientId] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -44,7 +51,9 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [topUpAccount, setTopUpAccount] = useState(null);
-  const [mainTab, setMainTab] = useState('home');
+  const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+
+  const mainTab = USER_SECTIONS.includes(section) ? section : 'accounts';
 
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
@@ -213,11 +222,29 @@ export default function Dashboard() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+  const totalBalance = accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0);
+  const activeAccountsCount = accounts.filter((account) => account.status === 'ACTIVE').length;
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const monthlyOutgoing = transactions
+    .filter((tx) => tx.sign === '-' && String(tx.transactionDate || '').startsWith(monthKey))
+    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filters, itemsPerPage, selectedAccountFilter]);
+
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(''), 4500);
+    return () => clearTimeout(t);
+  }, [error]);
+
+  useEffect(() => {
+    if (!success) return;
+    const t = setTimeout(() => setSuccess(''), 3500);
+    return () => clearTimeout(t);
+  }, [success]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -240,6 +267,20 @@ export default function Dashboard() {
       setCurrentPage(page);
     }
   };
+
+  const contentWidthClass = mainTab === 'accounts' || mainTab === 'transactions' ? 'max-w-6xl' : 'max-w-5xl';
+  const USER_NAV = [
+    { id: 'accounts', label: 'Accounts', icon: LayoutDashboard },
+    { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight },
+    { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'profile', label: 'Profile', icon: UserCircle },
+  ];
+
+  useEffect(() => {
+    if (!section || !USER_SECTIONS.includes(section)) {
+      navigate('/dashboard/accounts', { replace: true });
+    }
+  }, [section, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-900 to-slate-950">
@@ -273,46 +314,44 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        {/* Error/Success Messages */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 animate-fade-in">
-            {error}
-            <button onClick={() => setError('')} className="ml-4 underline">Dismiss</button>
-          </div>
-        )}
-        {success && (
-          <div className="mb-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 animate-fade-in">
-            {success}
-            <button onClick={() => setSuccess('')} className="ml-4 underline">Dismiss</button>
+      <div className={`${contentWidthClass} mx-auto px-6 py-8`}>
+        {(error || success) && (
+          <div className="fixed top-4 right-4 z-[60] space-y-2 w-[min(92vw,360px)]">
+            {error ? (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-300 text-sm shadow-lg">
+                {error}
+              </div>
+            ) : null}
+            {success ? (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-300 text-sm shadow-lg">
+                {success}
+              </div>
+            ) : null}
           </div>
         )}
 
         {clientId && !loading && (
           <div className="border-b border-gray-700 mb-6">
-            <div className="flex gap-6 sm:gap-8">
-              <button
-                type="button"
-                onClick={() => setMainTab('home')}
-                className={`pb-3 px-1 -mb-px text-sm sm:text-base transition-colors ${
-                  mainTab === 'home'
-                    ? 'border-b-2 border-green-500 text-white font-medium'
-                    : 'border-b-2 border-transparent text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                Accounts & Transactions
-              </button>
-              <button
-                type="button"
-                onClick={() => setMainTab('payments')}
-                className={`pb-3 px-1 -mb-px text-sm sm:text-base transition-colors ${
-                  mainTab === 'payments'
-                    ? 'border-b-2 border-green-500 text-white font-medium'
-                    : 'border-b-2 border-transparent text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                Cards & Payments
-              </button>
+            <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2">
+              {USER_NAV.map((item) => {
+                const Icon = item.icon;
+                const active = mainTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => navigate(`/dashboard/${item.id}`)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm whitespace-nowrap border transition-colors ${
+                      active
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                        : 'text-zinc-400 border-transparent hover:text-zinc-200 hover:bg-zinc-800/70'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -323,352 +362,67 @@ export default function Dashboard() {
             <p className="text-zinc-400">Loading your accounts...</p>
           </div>
         ) : mainTab === 'payments' && clientId ? (
-          <CardsPaymentsTab
-            clientId={clientId}
+          <div className="space-y-6">
+            <div className="glass rounded-2xl p-6">
+              <h2 className="text-2xl font-bold">Cards & Payments</h2>
+              <p className="text-zinc-500 text-sm mt-1">
+                Manage saved cards, review payment activity, and request refunds.
+              </p>
+            </div>
+            <CardsPaymentsTab
+              clientId={clientId}
+              accounts={accounts}
+              transactions={transactions}
+              onRefresh={fetchData}
+              onOpenTopUp={setTopUpAccount}
+            />
+          </div>
+        ) : mainTab === 'profile' && clientId ? (
+          <div className="space-y-6">
+            <div className="glass rounded-2xl p-6">
+              <h2 className="text-2xl font-bold">Profile</h2>
+              <p className="text-zinc-500 text-sm mt-1">
+                Your personal details and account profile information.
+              </p>
+            </div>
+            <ProfileTab />
+          </div>
+        ) : mainTab === 'transactions' ? (
+          <UserTransactionsTab
             accounts={accounts}
+            selectedAccountFilter={selectedAccountFilter}
+            setSelectedAccountFilter={setSelectedAccountFilter}
+            filters={filters}
+            handleFilterChange={handleFilterChange}
+            getTransactionTypes={getTransactionTypes}
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            filteredTransactions={filteredTransactions}
+            resetFilters={resetFilters}
             transactions={transactions}
-            onRefresh={fetchData}
-            onOpenTopUp={setTopUpAccount}
+            paginatedTransactions={paginatedTransactions}
+            formatDate={formatDate}
+            formatCurrency={formatCurrency}
+            setSelectedTransactionId={setSelectedTransactionId}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            setItemsPerPage={setItemsPerPage}
+            currentPage={currentPage}
+            goToPage={goToPage}
           />
         ) : (
-          <div className="space-y-10">
-            {/* Accounts Section */}
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <h2 className="text-2xl font-bold">Your Accounts</h2>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={() => setShowBalances(!showBalances)}
-                    className="btn-secondary flex items-center gap-2"
-                  >
-                    {showBalances ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    {showBalances ? 'Hide' : 'Show'} Balances
-                  </button>
-                  <button
-                    onClick={() => setActiveModal('openAccount')}
-                    className="btn-primary flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Open Account
-                  </button>
-                </div>
-              </div>
-
-              {accounts.length === 0 ? (
-                <div className="glass rounded-2xl p-12 text-center">
-                  <Wallet className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
-                  <p className="text-zinc-400 mb-4">No accounts yet</p>
-                  <button onClick={() => setActiveModal('openAccount')} className="btn-primary">
-                    Open Your First Account
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {accounts.map((account) => {
-                    const canTopUp =
-                      account.status === 'ACTIVE' &&
-                      (account.currencyCode === 'EUR' || account.currencyCode === 'RON');
-                    return (
-                      <div key={account.id} className="glass rounded-2xl p-6 hover:border-emerald-500/20 transition-all flex flex-col">
-                        <div className="flex items-center justify-between gap-3 mb-3">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center shrink-0">
-                              <Wallet className="w-6 h-6 text-emerald-400" />
-                            </div>
-                            <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-600/50">
-                              {account.currencyCode}
-                            </span>
-                          </div>
-                          <span
-                            className={`shrink-0 px-3 py-1 rounded-lg text-xs font-medium ${
-                              account.status === 'ACTIVE'
-                                ? 'bg-emerald-500/20 text-emerald-400'
-                                : 'bg-zinc-700 text-zinc-400'
-                            }`}
-                          >
-                            {account.status}
-                          </span>
-                        </div>
-                        <p className="text-sm font-mono text-gray-400 break-all leading-snug">{account.iban}</p>
-                        <p className="text-3xl font-bold mt-4 mb-6">
-                          {showBalances ? formatCurrency(account.balance, account.currencyCode) : '••••••'}
-                        </p>
-                        <div
-                          className={`mt-auto grid gap-3 ${canTopUp ? 'grid-cols-2' : 'grid-cols-1'}`}
-                        >
-                          <button
-                            onClick={() => {
-                              setSelectedAccount(account);
-                              setActiveModal('transfer');
-                            }}
-                            className="btn-primary w-full flex items-center justify-center gap-2"
-                          >
-                            <Send className="w-4 h-4" />
-                            Transfer
-                          </button>
-                          {canTopUp && (
-                            <button
-                              type="button"
-                              onClick={() => setTopUpAccount(account)}
-                              className="btn-secondary w-full flex items-center justify-center gap-2 border-emerald-500/30 text-emerald-300"
-                            >
-                              <CreditCard className="w-4 h-4" />
-                              Top up
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Recent Transactions */}
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <h2 className="text-2xl font-bold">Recent Transactions</h2>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  <select
-                    value={selectedAccountFilter}
-                    onChange={(e) => setSelectedAccountFilter(e.target.value)}
-                    className="input-field min-w-[200px]"
-                  >
-                    <option value="all">All Accounts</option>
-                    {accounts.map((account) => (
-                      <option key={account.id} value={account.iban}>
-                        {account.iban} ({account.currencyCode})
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={`btn-secondary flex items-center justify-center gap-2 whitespace-nowrap ${showFilters ? 'bg-emerald-500/20 border-emerald-500/30' : ''}`}
-                  >
-                    <Filter className="w-4 h-4" />
-                    {showFilters ? 'Hide' : 'Show'} Filters
-                  </button>
-                </div>
-              </div>
-
-              {/* Filter Panel */}
-              {showFilters && (
-                <div className="glass rounded-2xl p-6 mb-4 animate-fade-in">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-400 mb-2">Transaction Type</label>
-                      <select
-                        value={filters.type}
-                        onChange={(e) => handleFilterChange('type', e.target.value)}
-                        className="input-field"
-                      >
-                        <option value="all">All Types</option>
-                        {getTransactionTypes().map(type => (
-                          <option key={type} value={type}>{type}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-400 mb-2">Transaction Sign</label>
-                      <select
-                        value={filters.sign}
-                        onChange={(e) => handleFilterChange('sign', e.target.value)}
-                        className="input-field"
-                      >
-                        <option value="all">All</option>
-                        <option value="+">Credit (+)</option>
-                        <option value="-">Debit (-)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-400 mb-2">Date From</label>
-                      <input
-                        type="date"
-                        value={filters.dateFrom}
-                        onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                        className="input-field"
-                      />
-                      {filters.dateFrom && !filters.dateTo && (
-                        <p className="text-xs text-amber-400 mt-1">⚠️ Please select "Date To" to complete the range</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-400 mb-2">Date To</label>
-                      <input
-                        type="date"
-                        value={filters.dateTo}
-                        onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                        className="input-field"
-                      />
-                      {!filters.dateFrom && filters.dateTo && (
-                        <p className="text-xs text-amber-400 mt-1">⚠️ Please select "Date From" to complete the range</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-400 mb-2">Min Amount</label>
-                      <input
-                        type="number"
-                        value={filters.minAmount}
-                        onChange={(e) => handleFilterChange('minAmount', e.target.value)}
-                        className="input-field"
-                        placeholder="0.00"
-                        step="0.01"
-                        min="0"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-400 mb-2">Max Amount</label>
-                      <input
-                        type="number"
-                        value={filters.maxAmount}
-                        onChange={(e) => handleFilterChange('maxAmount', e.target.value)}
-                        className="input-field"
-                        placeholder="0.00"
-                        step="0.01"
-                        min="0"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-700">
-                    <p className="text-sm text-zinc-400">
-                      Found {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
-                    </p>
-                    <button onClick={resetFilters} className="btn-secondary text-sm">
-                      Reset Filters
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {transactions.length === 0 ? (
-                <div className="glass rounded-2xl">
-                  <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <Receipt className="w-12 h-12 text-zinc-600" aria-hidden />
-                    <p className="text-gray-400 text-sm">No transactions yet</p>
-                    <p className="text-gray-500 text-xs text-center px-4">
-                      Make a transfer or top up to get started
-                    </p>
-                  </div>
-                </div>
-              ) : filteredTransactions.length === 0 ? (
-                <div className="glass rounded-2xl p-12 text-center">
-                  <p className="text-zinc-400">No transactions match your filters</p>
-                  <button onClick={resetFilters} className="btn-secondary mt-4">
-                    Reset Filters
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="glass rounded-2xl overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-zinc-800/50">
-                        <tr>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase">Date</th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase">Type</th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase">Account</th>
-                          <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-800">
-                        {paginatedTransactions.map((tx) => (
-                          <tr key={tx.id} className="hover:bg-zinc-800/30">
-                            <td className="px-6 py-4 text-sm text-zinc-300">{formatDate(tx.transactionDate)}</td>
-                            <td className="px-6 py-4">
-                              <span className="px-2 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400">
-                                {tx.transactionTypeName}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm font-mono text-zinc-400">{tx.accountIban}</td>
-                            <td className={`px-6 py-4 text-sm font-bold text-right ${
-                              tx.sign === '+' ? 'text-emerald-400' : 'text-red-400'
-                            }`}>
-                              {tx.sign === '+' ? '+' : '-'}
-                              {formatCurrency(tx.amount, tx.currencyCode || tx.originalCurrencyCode)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Pagination Controls */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm text-zinc-400">Items per page:</label>
-                        <select
-                          value={itemsPerPage}
-                          onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                          className="input-field !py-1 !px-2 text-sm w-20"
-                        >
-                          <option value={10}>10</option>
-                          <option value={25}>25</option>
-                          <option value={50}>50</option>
-                        </select>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => goToPage(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          className="btn-secondary !p-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                            let pageNum;
-                            if (totalPages <= 5) {
-                              pageNum = i + 1;
-                            } else if (currentPage <= 3) {
-                              pageNum = i + 1;
-                            } else if (currentPage >= totalPages - 2) {
-                              pageNum = totalPages - 4 + i;
-                            } else {
-                              pageNum = currentPage - 2 + i;
-                            }
-
-                            return (
-                              <button
-                                key={pageNum}
-                                onClick={() => goToPage(pageNum)}
-                                className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
-                                  currentPage === pageNum
-                                    ? 'bg-emerald-500 text-white'
-                                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                                }`}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <button
-                          onClick={() => goToPage(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                          className="btn-secondary !p-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
-
-                        <span className="text-sm text-zinc-400 ml-2">
-                          Page {currentPage} of {totalPages}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
+          <UserAccountsTab
+            accounts={accounts}
+            showBalances={showBalances}
+            setShowBalances={setShowBalances}
+            setActiveModal={setActiveModal}
+            setSelectedAccount={setSelectedAccount}
+            setTopUpAccount={setTopUpAccount}
+            formatCurrency={formatCurrency}
+            totalBalance={totalBalance}
+            activeAccountsCount={activeAccountsCount}
+            monthlyOutgoing={monthlyOutgoing}
+          />
         )}
       </div>
 
@@ -764,6 +518,10 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+      )}
+
+      {selectedTransactionId != null && (
+        <TransactionDetailsModal id={selectedTransactionId} onClose={() => setSelectedTransactionId(null)} />
       )}
     </div>
   );

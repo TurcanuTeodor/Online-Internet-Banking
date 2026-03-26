@@ -61,3 +61,42 @@ export const getDailyTotals = async () => {
   const response = await apiClient.get('/transactions/daily-totals');
   return response.data;
 };
+
+/**
+ * Get transaction details by id (receipt/details view).
+ * Gateway endpoint: GET /api/transactions/{id}
+ * @param {number|string} id - Transaction id
+ */
+export const getTransactionDetails = async (id) => {
+  const encoded = encodeURIComponent(String(id).trim());
+  try {
+    const response = await apiClient.get(`/transactions/${encoded}`);
+    return response.data;
+  } catch (err) {
+    const message =
+      err?.response?.data?.message ||
+      err?.message ||
+      'Failed to load transaction details';
+    throw new Error(message);
+  }
+};
+
+/**
+ * Get transactions by account id.
+ * Gateway endpoint: GET /api/transactions/by-account/{accountId}
+ * @param {number|string} accountId
+ */
+export const getAccountTransactions = async (accountId) => {
+  const encoded = encodeURIComponent(String(accountId).trim());
+  try {
+    const response = await apiClient.get(`/transactions/by-account/${encoded}`);
+    return response.data;
+  } catch (err) {
+    const message =
+      err?.response?.data?.message ||
+      err?.message ||
+      'Failed to load account transactions';
+    throw new Error(message);
+  }
+};
+

@@ -41,3 +41,42 @@ export async function setDefaultPaymentMethod(clientId, paymentMethodId) {
   );
   return data;
 }
+
+/**
+ * Get payment history for a client.
+ * Gateway endpoint: GET /api/payments/by-client/{clientId}
+ * @param {number|string} clientId
+ */
+export async function getPaymentHistory(clientId) {
+  const encoded = encodeURIComponent(String(clientId).trim());
+  try {
+    const { data } = await apiClient.get(`/payments/by-client/${encoded}`);
+    return data;
+  } catch (err) {
+    const message =
+      err?.response?.data?.message ||
+      err?.message ||
+      'Failed to load payment history';
+    throw new Error(message);
+  }
+}
+
+/**
+ * Request refund for a payment.
+ * Gateway endpoint: POST /api/payments/{id}/refund
+ * @param {number|string} id - Payment id
+ */
+export async function requestRefund(id) {
+  const encoded = encodeURIComponent(String(id).trim());
+  try {
+    const { data } = await apiClient.post(`/payments/${encoded}/refund`);
+    return data;
+  } catch (err) {
+    const message =
+      err?.response?.data?.message ||
+      err?.message ||
+      'Failed to request refund';
+    throw new Error(message);
+  }
+}
+
