@@ -1,5 +1,6 @@
 import { Filter, ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
-import { TransactionCompactRow, getTransactionAccountText, getTransactionLabel } from './TransactionRow';
+import { TransactionCompactRow } from './TransactionRow';
+import { getTransactionAccountText, getTransactionLabel } from './transactionUtils';
 
 export default function UserTransactionsTab({
   accounts,

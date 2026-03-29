@@ -1,16 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { login } from '../../services/authService';
-import { LogIn, Loader2, Lock } from 'lucide-react';
+import { LogIn, Loader2, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccess(location.state.message);
+    }
+  }, [location.state]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,12 +26,9 @@ export default function Login() {
 
     try {
       const response = await login(username, password);
-      
-      // If 2FA is required, redirect to 2FA page with temp token
       if (response.twoFactorRequired) {
         navigate('/2fa-verify', { state: { tempToken: response.token } });
       } else {
-        // Direct login success (no 2FA) - redirect based on role
         if (response.role === 'ADMIN') {
           navigate('/admin', { replace: true });
         } else {
@@ -39,85 +43,99 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-zinc-900 to-slate-950">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-glow-pulse" />
-        <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-glow-pulse" style={{ animationDelay: '1s' }} />
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-zinc-900 to-slate-950 relative overflow-hidden">
+      {/* Ambient glows */}
+      <div className="absolute top-1/4 -left-48 w-96 h-96 bg-emerald-500/8 rounded-full blur-3xl animate-glow-pulse pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-emerald-500/8 rounded-full blur-3xl animate-glow-pulse pointer-events-none" style={{ animationDelay: '2s' }} />
 
-      <div className="w-full max-w-md relative z-10">
-        <div className="glass rounded-2xl p-8 shadow-2xl animate-fade-in">
-          <div className="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-            <Lock className="w-8 h-8 text-emerald-400" />
+      <div className="w-full max-w-md relative z-10 animate-slide-up">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/30 to-emerald-600/20 border border-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse-ring">
+            <Lock className="w-7 h-7 text-emerald-400" />
           </div>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
+          <p className="text-zinc-500 mt-1.5 text-sm">Sign in to your CashTactics account</p>
+        </div>
 
-          <h1 className="text-3xl font-bold text-center mb-2">Welcome Back</h1>
-          <p className="text-zinc-400 text-center mb-8">Sign in to your CashTactics account</p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="glass rounded-2xl p-8 shadow-2xl">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-2">Email or Username</label>
+              <label className="block text-sm font-medium text-zinc-400 mb-2" htmlFor="login-username">
+                Email or Username
+              </label>
               <input
+                id="login-username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="input-field"
                 placeholder="Enter your email or username"
                 required
+                autoFocus
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-2">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-field"
-                placeholder="Enter your password"
-                required
-              />
+              <label className="block text-sm font-medium text-zinc-400 mb-2" htmlFor="login-password">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field pr-11"
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             {success && (
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm animate-fade-in">
+              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm flex items-center gap-2 animate-fade-in">
+                <ShieldCheck className="w-4 h-4 shrink-0" />
                 {success}
               </div>
             )}
 
             {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm animate-fade-in">
+              <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm animate-fade-in">
                 {error}
               </div>
             )}
 
-            <button type="submit" disabled={loading} className="w-full btn-primary flex items-center justify-center gap-2">
+            <button type="submit" disabled={loading} className="w-full btn-primary flex items-center justify-center gap-2 py-3">
               {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Signing in...
-                </>
+                <><Loader2 className="w-5 h-5 animate-spin" /> Signing in…</>
               ) : (
-                <>
-                  <LogIn className="w-5 h-5" />
-                  Sign In
-                </>
+                <><LogIn className="w-5 h-5" /> Sign In</>
               )}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-zinc-400 text-sm">
-              Don't have an account?{' '}
+          <div className="mt-6 pt-5 border-t border-white/5 text-center">
+            <p className="text-zinc-500 text-sm">
+              Don&apos;t have an account?{' '}
               <Link to="/register" className="text-emerald-400 hover:text-emerald-300 transition-colors font-medium">
-                Register here
+                Create account
               </Link>
             </p>
           </div>
         </div>
 
-        <p className="text-zinc-600 text-xs text-center mt-6">
-          CashTactics © 2026 • Secured with end-to-end encryption
+        <p className="text-zinc-600 text-xs text-center mt-5 flex items-center justify-center gap-1.5">
+          <Lock className="w-3 h-3" />
+          CashTactics © 2026 — End-to-end encrypted
         </p>
       </div>
     </div>

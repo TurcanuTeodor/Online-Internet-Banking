@@ -1,5 +1,7 @@
 package ro.app.auth.controller;
 
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -88,12 +90,20 @@ public class AuthController {
 
     @PostMapping("/refresh-token")
     public ResponseEntity<RefreshTokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest req) {
-        return ResponseEntity.ok(tokenService.refreshToken(req.getRefreshToken()));
+        return ResponseEntity.ok(tokenService.refreshToken(req.getRefreshToken(), req.getAccessToken()));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@Valid @RequestBody RefreshTokenRequest req) {
         authService.logout(req.getRefreshToken());
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(
+            @Valid @RequestBody ro.app.auth.dto.auth.ChangePasswordRequest req,
+            Authentication auth) {
+        authService.changePassword(auth.getName(), req);
+        return ResponseEntity.ok(Map.of("message", "Password changed successfully. Please log in again."));
     }
 }

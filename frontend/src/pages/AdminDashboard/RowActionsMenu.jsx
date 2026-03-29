@@ -21,7 +21,7 @@ export default function RowActionsMenu({ actions }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+        className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
         aria-expanded={open}
         aria-haspopup="true"
         title="Actions"
@@ -30,7 +30,7 @@ export default function RowActionsMenu({ actions }) {
       </button>
       {open && (
         <div
-          className="absolute right-0 z-50 mt-1 min-w-[11rem] rounded-xl border border-zinc-700 bg-zinc-900 shadow-xl py-1"
+          className="absolute right-0 z-50 mt-1 min-w-[10rem] rounded-xl border border-zinc-700 bg-zinc-900 shadow-xl py-1"
           role="menu"
         >
           {actions.map((a, i) => (
@@ -43,7 +43,7 @@ export default function RowActionsMenu({ actions }) {
                 setOpen(false);
                 a.onClick();
               }}
-              className={`w-full text-left px-3 py-2 text-sm transition-colors disabled:opacity-40 disabled:pointer-events-none ${
+              className={`w-full text-left px-2 py-1.5 text-xs transition-colors disabled:opacity-40 disabled:pointer-events-none ${
                 a.danger
                   ? 'text-red-400 hover:bg-red-500/10'
                   : 'text-zinc-200 hover:bg-zinc-800'

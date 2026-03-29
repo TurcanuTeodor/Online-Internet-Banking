@@ -20,16 +20,19 @@ public class TwoFaService {
     private final JwtService jwtService;
     private final TotpService totpService;
     private final RefreshTokenService refreshTokenService;
+    private final AuthService authService;
 
     public TwoFaService(
             UserRepository userRepo,
             JwtService jwtService,
             TotpService totpService,
-            RefreshTokenService refreshTokenService) {
+            RefreshTokenService refreshTokenService,
+            AuthService authService) {
         this.userRepo = userRepo;
         this.jwtService = jwtService;
         this.totpService = totpService;
         this.refreshTokenService = refreshTokenService;
+        this.authService = authService;
     }
 
     @Transactional
@@ -92,14 +95,24 @@ public class TwoFaService {
 
         Long clientId = user.getClientId();
 
+        Object ek = claims.get("ek");
+
+        java.util.Map<String, Object> tokenClaims = new java.util.HashMap<>();
+        tokenClaims.put("role", user.getRole().name());
+        tokenClaims.put("clientId", clientId);
+        tokenClaims.put("2fa", "ok");
+        tokenClaims.put("2fa_verified", true);
+        if (ek != null) {
+            tokenClaims.put("ek", ek);
+        }
+
         String finalToken = jwtService.generateToken(
                 user.getUsernameOrEmail(),
-                Map.of(
-                        "role", user.getRole().name(),
-                        "clientId", clientId,
-                        "2fa", "ok",
-                        "2fa_verified", true
-                ));
+                tokenClaims);
+
+        if (ek != null) {
+            authService.runPostLoginClientEncryption(clientId, ek.toString());
+        }
 
         String refreshTokenValue = refreshTokenService.createRefreshToken(user);
         return new LoginResponse(false, finalToken, refreshTokenValue, clientId, user.getRole().name());

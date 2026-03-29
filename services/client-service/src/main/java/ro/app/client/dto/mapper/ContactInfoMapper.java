@@ -7,17 +7,17 @@ import ro.app.client.service.EncryptionService;
 
 public class ContactInfoMapper {
 
-    public static ContactInfoDTO toDTO(ContactInfo e, EncryptionService encryptionService, String key) {
+    public static ContactInfoDTO toDTO(ContactInfo e, EncryptionService encryptionService, String key, String legacyKey) {
         if (e == null) return null;
         ContactInfoDTO dto = new ContactInfoDTO();
         try {
-            dto.setPhone(encryptionService.decrypt(e.getPhone(), key));
-            dto.setEmail(encryptionService.decrypt(e.getEmail(), key));
-            dto.setContactPerson(encryptionService.decrypt(e.getContactPerson(), key));
-            dto.setWebsite(encryptionService.decrypt(e.getWebsite(), key));
-            dto.setAddress(encryptionService.decrypt(e.getAddress(), key));
-            dto.setCity(encryptionService.decrypt(e.getCity(), key));
-            dto.setPostalCode(encryptionService.decrypt(e.getPostalCode(), key));
+            dto.setPhone(encryptionService.decryptFlexible(e.getPhone(), key, legacyKey));
+            dto.setEmail(encryptionService.decryptFlexible(e.getEmail(), key, legacyKey));
+            dto.setContactPerson(encryptionService.decryptFlexible(e.getContactPerson(), key, legacyKey));
+            dto.setWebsite(encryptionService.decryptFlexible(e.getWebsite(), key, legacyKey));
+            dto.setAddress(encryptionService.decryptFlexible(e.getAddress(), key, legacyKey));
+            dto.setCity(encryptionService.decryptFlexible(e.getCity(), key, legacyKey));
+            dto.setPostalCode(encryptionService.decryptFlexible(e.getPostalCode(), key, legacyKey));
         } catch (Exception ex) {
             // fallback: return encrypted values if decryption fails
             dto.setPhone(e.getPhone());

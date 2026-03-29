@@ -77,12 +77,29 @@ export default function UserAccountsTab({
               const canTopUp =
                 account.status === 'ACTIVE' &&
                 (account.currencyCode === 'EUR' || account.currencyCode === 'RON');
+              
+              // Determine currency gradient
+              let accentFrom = 'from-emerald-500/20';
+              let accentTo = 'to-emerald-600/10';
+              let accentIcon = 'text-emerald-400';
+              let accentBorder = 'hover:border-emerald-500/30';
+              
+              if (account.currencyCode === 'EUR') {
+                accentFrom = 'from-blue-500/20'; accentTo = 'to-blue-600/10'; accentIcon = 'text-blue-400'; accentBorder = 'hover:border-blue-500/30';
+              } else if (account.currencyCode === 'USD') {
+                accentFrom = 'from-emerald-500/20'; accentTo = 'to-emerald-600/10'; accentIcon = 'text-emerald-400'; accentBorder = 'hover:border-emerald-500/30';
+              } else if (account.currencyCode === 'GBP') {
+                accentFrom = 'from-violet-500/20'; accentTo = 'to-violet-600/10'; accentIcon = 'text-violet-400'; accentBorder = 'hover:border-violet-500/30';
+              } else if (account.currencyCode === 'RON') {
+                accentFrom = 'from-orange-500/20'; accentTo = 'to-orange-600/10'; accentIcon = 'text-orange-400'; accentBorder = 'hover:border-orange-500/30';
+              }
+
               return (
-                <div key={account.id} className="glass rounded-2xl p-6 hover:border-emerald-500/20 transition-all flex flex-col">
+                <div key={account.id} className={`glass rounded-2xl p-6 ${accentBorder} transition-all flex flex-col stat-card`}>
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center shrink-0">
-                        <Wallet className="w-6 h-6 text-emerald-400" />
+                      <div className={`w-12 h-12 bg-gradient-to-br ${accentFrom} ${accentTo} rounded-xl flex items-center justify-center shrink-0`}>
+                        <Wallet className={`w-6 h-6 ${accentIcon}`} />
                       </div>
                       <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-600/50">
                         {account.currencyCode}
@@ -91,17 +108,35 @@ export default function UserAccountsTab({
                     <span
                       className={`shrink-0 px-3 py-1 rounded-lg text-xs font-medium ${
                         account.status === 'ACTIVE'
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : 'bg-zinc-700 text-zinc-400'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
+                          : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
                       }`}
                     >
                       {account.status}
                     </span>
                   </div>
-                  <p className="text-sm font-mono text-gray-400 break-all leading-snug">{account.iban}</p>
+                  
+                  <div 
+                    className="mt-3 group relative cursor-pointer"
+                    onClick={() => {
+                      navigator.clipboard.writeText(account.iban);
+                      // Optional: You could fire a toast here
+                    }}
+                    title="Click to copy IBAN"
+                  >
+                    <p className="text-xs text-zinc-500 mb-0.5">IBAN</p>
+                    <p className="text-sm font-mono text-zinc-300 break-all leading-snug group-hover:text-white transition-colors">
+                      {account.iban}
+                    </p>
+                    <div className="absolute top-1/2 -translate-y-1/2 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-800 text-xs px-2 py-1 rounded shadow-lg text-zinc-300">
+                      Copy
+                    </div>
+                  </div>
+
                   <p className="text-3xl font-bold mt-4 mb-6">
                     {showBalances ? formatCurrency(account.balance, account.currencyCode) : '••••••'}
                   </p>
+                  
                   <div className={`mt-auto grid gap-3 ${canTopUp ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     <button
                       onClick={() => {

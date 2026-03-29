@@ -40,7 +40,8 @@ public class GdprController {
             @PathVariable Long id,
             @AuthenticationPrincipal JwtPrincipal principal) {
         ownershipChecker.checkOwnership(principal, id);
-        ClientExportDTO body = clientGdprService.exportClientData(id);
+        String userKey = principal != null ? principal.encryptionKey() : null;
+        ClientExportDTO body = clientGdprService.exportClientData(id, userKey);
         Long actorClientId = principal != null ? principal.clientId() : null;
         String role = principal != null ? principal.role() : "UNKNOWN";
         auditService.log("GDPR_EXPORT", actorClientId, role, id, "Personal data export (Art. 15)");

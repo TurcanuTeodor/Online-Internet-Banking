@@ -23,6 +23,7 @@ services:
       - ./services/auth-service/.env.properties
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/banking?currentSchema=auth
+      APP_SERVICES_CLIENT_URL: http://client-service:8082
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,6 +54,7 @@ services:
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/banking?currentSchema=accounts
       TRANSACTION_SERVICE_URL: http://transaction-service:8084
+      FRAUD_SERVICE_URL: http://fraud-service:8086
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,6 +89,21 @@ services:
     ports:
       - "8085:8085"
 
+  fraud-service:
+    build: ./services/fraud-service
+    container_name: fraud-service
+    env_file:
+      - ./services/fraud-service/.env.properties
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/banking?currentSchema=fraud
+      TRANSACTION_SERVICE_URL: http://transaction-service:8084
+      ACCOUNT_SERVICE_URL: http://account-service:8083
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8086:8086"
+
   api-gateway:
     build: ./services/api-gateway
     container_name: api-gateway
@@ -98,6 +115,8 @@ services:
       ACCOUNT_SERVICE_URL: http://account-service:8083
       TRANSACTION_SERVICE_URL: http://transaction-service:8084
       PAYMENT_SERVICE_URL: http://payment-service:8085
+      FRAUD_SERVICE_URL: http://fraud-service:8086
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
     depends_on:
       auth-service:
         condition: service_started
@@ -109,8 +128,23 @@ services:
         condition: service_started
       payment-service:
         condition: service_started
+      fraud-service:
+        condition: service_started
     ports:
       - "8443:8443"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+    container_name: frontend
+    depends_on:
+      api-gateway:
+        condition: service_started
+    ports:
+      - "3000:80"
 
 volumes:
   postgres-data:

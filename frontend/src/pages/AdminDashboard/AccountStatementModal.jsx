@@ -8,6 +8,7 @@ export default function AccountStatementModal({ account, onClose }) {
 
   useEffect(() => {
     fetchTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account]);
 
   const fetchTransactions = async () => {
@@ -26,14 +27,14 @@ export default function AccountStatementModal({ account, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="glass rounded-2xl p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
+      <div className="glass rounded-2xl p-4 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2">
+            <h2 className="text-xl font-bold flex items-center gap-2">
               <FileText className="w-6 h-6 text-emerald-400" />
               Account Statement
             </h2>
-            <p className="text-sm text-zinc-400 mt-1">
+            <p className="text-xs text-zinc-400 mt-1">
               IBAN: <span className="font-mono text-zinc-300">{account.accountIban}</span> • Client ID:{' '}
               <span className="font-mono">{account.clientId ?? '—'}</span>
             </p>
@@ -47,7 +48,7 @@ export default function AccountStatementModal({ account, onClose }) {
         </div>
 
         {/* Account Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
           <div className="glass rounded-xl p-4">
             <label className="text-sm text-zinc-400">Current Balance</label>
             <p className="text-2xl font-bold text-emerald-400">
@@ -79,13 +80,13 @@ export default function AccountStatementModal({ account, onClose }) {
 
         {/* Transactions Table */}
         <div className="mb-4">
-          <h3 className="text-lg font-semibold mb-3">Transaction History</h3>
+          <h3 className="text-sm font-semibold mb-2">Transaction History</h3>
           {loading ? (
-            <div className="glass rounded-xl p-12 text-center">
+            <div className="glass rounded-xl p-8 text-center">
               <p className="text-zinc-400">Loading transactions...</p>
             </div>
           ) : transactions.length === 0 ? (
-            <div className="glass rounded-xl p-12 text-center">
+            <div className="glass rounded-xl p-8 text-center">
               <p className="text-zinc-400">No transactions found</p>
             </div>
           ) : (
@@ -94,10 +95,10 @@ export default function AccountStatementModal({ account, onClose }) {
                 <table className="w-full">
                   <thead className="bg-zinc-800/50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-300">Date</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-300">Type</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-300">Amount</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-300">Details</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Type</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Amount</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Details</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800">
@@ -134,7 +135,7 @@ export default function AccountStatementModal({ account, onClose }) {
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-700">
+        <div className="flex items-center justify-end gap-2 pt-4 border-t border-zinc-700">
           <button onClick={onClose} className="btn-primary">
             Close
           </button>

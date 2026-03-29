@@ -112,9 +112,9 @@ export default function TransactionsTab({
   );
 
   return (
-    <div>
+    <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <h2 className="text-xl font-bold">Transactions ({filteredTransactions.length})</h2>
+        <h2 className="text-lg font-semibold">Transactions ({filteredTransactions.length})</h2>
         <button
           onClick={onToggleFilters}
           className={`btn-secondary flex items-center justify-center gap-2 ${showFilters ? 'bg-emerald-500/20 border-emerald-500/30' : ''}`}
@@ -125,7 +125,7 @@ export default function TransactionsTab({
       </div>
 
       {showFilters && (
-        <div className="glass rounded-2xl p-6 mb-4 animate-fade-in">
+        <div className="glass rounded-2xl p-4 mb-3 animate-fade-in border border-white/5">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-2">Transaction type</label>
@@ -209,11 +209,11 @@ export default function TransactionsTab({
             </div>
           </div>
 
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-700">
-            <p className="text-sm text-zinc-400">
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-700">
+            <p className="text-xs text-zinc-400">
               Found {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
             </p>
-            <button onClick={onResetFilters} className="btn-secondary text-sm">
+            <button onClick={onResetFilters} className="btn-secondary text-xs py-1.5 px-3">
               Reset filters
             </button>
           </div>
@@ -221,7 +221,7 @@ export default function TransactionsTab({
       )}
 
       {filteredTransactions.length === 0 ? (
-        <div className="glass rounded-2xl p-12 text-center">
+        <div className="glass rounded-2xl p-8 text-center">
           <p className="text-zinc-400">No transactions match your filters</p>
           {(filters.type !== 'all' ||
             filters.sign !== 'all' ||
@@ -236,18 +236,18 @@ export default function TransactionsTab({
         </div>
       ) : (
         <>
-          <div className="glass rounded-2xl overflow-hidden">
+          <div className="glass rounded-2xl overflow-hidden border border-white/5">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-zinc-800/50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">ID</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Date &amp; time</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Account ID</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Destination account ID</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Type</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Amount</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Risk score</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Date &amp; time</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Account ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Destination account ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Risk score</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800">
@@ -260,8 +260,8 @@ export default function TransactionsTab({
 
                     return (
                       <tr key={tx.transactionId} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="px-6 py-4 text-sm font-mono text-zinc-400">{tx.transactionId}</td>
-                        <td className="px-6 py-4 text-sm text-zinc-400">
+                        <td className="px-4 py-3 text-sm font-mono text-zinc-400">{tx.transactionId}</td>
+                        <td className="px-4 py-3 text-sm text-zinc-400">
                           {tx.transactionDate
                             ? new Date(tx.transactionDate).toLocaleString('en-GB', {
                                 day: '2-digit',
@@ -272,26 +272,26 @@ export default function TransactionsTab({
                               })
                             : '—'}
                         </td>
-                        <td className="px-6 py-4 text-sm font-mono text-zinc-300">
+                        <td className="px-4 py-3 text-sm font-mono text-zinc-300">
                           {tx.accountId != null ? tx.accountId : '—'}
                         </td>
-                        <td className="px-6 py-4 text-sm font-mono text-zinc-400">
+                        <td className="px-4 py-3 text-sm font-mono text-zinc-400">
                           {destId != null ? destId : '—'}
                         </td>
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-4 py-3 text-sm">
                           <span
                             className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${transactionTypeBadgeClass(typeLabel)}`}
                           >
                             {typeLabel}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium">
+                        <td className="px-4 py-3 text-sm font-medium">
                           <span className={sg === '+' ? 'text-emerald-400' : 'text-red-400'}>
                             {sg === '+' ? '+' : sg === '-' ? '-' : ''}
                             {amt !== null ? amt.toFixed(2) : '—'} {cur}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-4 py-3 text-sm">
                           <span className={`font-semibold ${riskScoreColor(tx)}`}>{formatRiskScore(tx)}</span>
                         </td>
                       </tr>

@@ -17,6 +17,7 @@ public class GatewayConfig {
     private final String accountServiceUrl;
     private final String transactionServiceUrl;
     private final String paymentServiceUrl;
+    private final String fraudServiceUrl;
 
     public GatewayConfig(
             JwtAuthFilter jwtAuthFilter,
@@ -24,13 +25,15 @@ public class GatewayConfig {
             @Value("${services.client.url:http://localhost:8082}") String clientServiceUrl,
             @Value("${services.account.url:http://localhost:8083}") String accountServiceUrl,
             @Value("${services.transaction.url:http://localhost:8084}") String transactionServiceUrl,
-            @Value("${services.payment.url:http://localhost:8085}") String paymentServiceUrl) {
+            @Value("${services.payment.url:http://localhost:8085}") String paymentServiceUrl,
+            @Value("${services.fraud.url:http://localhost:8086}") String fraudServiceUrl) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.authServiceUrl = authServiceUrl;
         this.clientServiceUrl = clientServiceUrl;
         this.accountServiceUrl = accountServiceUrl;
         this.transactionServiceUrl = transactionServiceUrl;
         this.paymentServiceUrl = paymentServiceUrl;
+        this.fraudServiceUrl = fraudServiceUrl;
     }
 
     @Bean
@@ -116,6 +119,21 @@ public class GatewayConfig {
                                         .setFallbackUri("forward:/fallback/service"))
                         )
                         .uri(paymentServiceUrl))
+
+                // FRAUD — health public, decisions/alerts require JWT
+                .route("fraud-health", r -> r
+                        .path("/api/fraud/health")
+                        .uri(fraudServiceUrl))
+
+                .route("fraud-service", r -> r
+                        .path("/api/fraud/**")
+                        .filters(f -> f
+                                .filter(jwtAuthFilter.apply(new JwtAuthFilter.Config()))
+                                .circuitBreaker(cb -> cb
+                                        .setName("fraudCB")
+                                        .setFallbackUri("forward:/fallback/service"))
+                        )
+                        .uri(fraudServiceUrl))
 
                 .build();
     }

@@ -85,7 +85,7 @@ function AddCardForm({ clientId, onSuccess, onError }) {
  *   onOpenTopUp: (account: object) => void,
  * }} props
  */
-export default function CardsPaymentsTab({ clientId, accounts, transactions, onRefresh, onOpenTopUp }) {
+export default function CardsPaymentsTab({ clientId, accounts, onRefresh, onOpenTopUp }) {
   const [methods, setMethods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -108,6 +108,7 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
 
   useEffect(() => {
     if (clientId) loadMethods();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
   const handleDelete = async (id) => {
@@ -131,19 +132,6 @@ export default function CardsPaymentsTab({ clientId, accounts, transactions, onR
       setError(err.response?.data?.message || 'Could not set default');
     }
   };
-
-  const stripePayments = (transactions || []).filter(
-    (tx) =>
-      tx?.merchant === 'Stripe' ||
-      (typeof tx?.details === 'string' && tx.details.includes('Stripe')) ||
-      (typeof tx?.details === 'string' && tx.details.includes('Card top-up'))
-  );
-
-  const formatMoney = (amt, cur) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'EUR' }).format(amt);
-
-  const formatDate = (d) =>
-    d ? new Date(d).toLocaleString() : '—';
 
   const activeAccounts = (accounts || []).filter((a) => a.status === 'ACTIVE');
   useEffect(() => {

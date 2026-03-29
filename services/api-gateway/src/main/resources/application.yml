@@ -23,6 +23,8 @@ services:
     url: ${TRANSACTION_SERVICE_URL:http://localhost:8084}
   payment:
     url: ${PAYMENT_SERVICE_URL:http://localhost:8085}
+  fraud:
+    url: ${FRAUD_SERVICE_URL:http://localhost:8086}
 
 # JWT + CORS (comma-separated origins; never use *)
 app:

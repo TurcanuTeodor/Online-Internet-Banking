@@ -52,6 +52,9 @@ public class User {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "encryption_salt", nullable = false, length = 64)
+    private String encryptionSalt;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -98,4 +101,7 @@ public class User {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public String getEncryptionSalt() { return encryptionSalt; }
+    public void setEncryptionSalt(String encryptionSalt) { this.encryptionSalt = encryptionSalt; }
 }

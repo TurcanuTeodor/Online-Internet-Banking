@@ -77,6 +77,7 @@ apiClient.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem('refresh_token');
+        const previousAccessToken = localStorage.getItem('jwt_token');
         
         if (!refreshToken) {
           throw new Error('No refresh token available');
@@ -84,7 +85,7 @@ apiClient.interceptors.response.use(
 
         // Call refresh-token endpoint without interceptor to avoid infinite loop
         const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, 
-          { refreshToken },
+          { refreshToken, accessToken: previousAccessToken || undefined },
           {
             headers: {
               'Content-Type': 'application/json',

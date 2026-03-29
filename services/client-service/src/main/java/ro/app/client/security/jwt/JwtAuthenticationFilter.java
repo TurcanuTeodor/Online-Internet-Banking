@@ -51,13 +51,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String subject = claims.getSubject(); // username/email
             String role = claims.get("role", String.class); // role from JWT claims
             Long clientId = claims.get("clientId", Long.class);
+            String encryptionKey = claims.get("ek", String.class); // per-user encryption key
 
 
             List<SimpleGrantedAuthority> authorities = List.of(
                     new SimpleGrantedAuthority("ROLE_" + (role != null ? role : "USER"))
             );
 
-            JwtPrincipal principal = new JwtPrincipal(subject, clientId, role);
+            JwtPrincipal principal = new JwtPrincipal(subject, clientId, role, encryptionKey);
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(principal, null, authorities);
 

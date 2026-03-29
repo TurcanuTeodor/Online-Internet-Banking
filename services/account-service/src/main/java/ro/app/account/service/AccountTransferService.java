@@ -3,6 +3,7 @@ package ro.app.account.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,8 +23,10 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
 import ro.app.account.audit.AuditService;
+import ro.app.account.exception.BusinessRuleViolationException;
 import ro.app.account.exception.InsufficientFundsException;
 import ro.app.account.exception.ResourceNotFoundException;
+import ro.app.account.internal.InternalApiHeaders;
 import ro.app.account.model.entity.Account;
 import ro.app.account.model.enums.CurrencyType;
 import ro.app.account.repository.AccountRepository;
@@ -44,6 +47,8 @@ public class AccountTransferService {
     private final OwnershipChecker ownershipChecker;
     private final AuditService auditService;
     private final String transactionServiceUrl;
+    private final String fraudServiceUrl;
+    private final String internalApiSecret;
     private final BigDecimal largeTransferThreshold;
 
     public AccountTransferService(
@@ -53,6 +58,8 @@ public class AccountTransferService {
             OwnershipChecker ownershipChecker,
             AuditService auditService,
             @Value("${app.services.transaction.url}") String transactionServiceUrl,
+            @Value("${app.services.fraud.url:}") String fraudServiceUrl,
+            @Value("${app.internal.api-secret}") String internalApiSecret,
             @Value("${app.audit.large-transfer-threshold:10000}") BigDecimal largeTransferThreshold) {
         this.accountRepository = accountRepository;
         this.exchangeRateService = exchangeRateService;
@@ -60,6 +67,8 @@ public class AccountTransferService {
         this.ownershipChecker = ownershipChecker;
         this.auditService = auditService;
         this.transactionServiceUrl = transactionServiceUrl.replaceAll("/$", "");
+        this.fraudServiceUrl = fraudServiceUrl != null ? fraudServiceUrl.replaceAll("/$", "") : "";
+        this.internalApiSecret = internalApiSecret;
         this.largeTransferThreshold = largeTransferThreshold;
     }
 
@@ -99,6 +108,8 @@ public class AccountTransferService {
                     from.getClientId(),
                     "amount=" + amount + " " + from.getCurrency().getCode() + " fromIban=" + fromIban + " toIban=" + toIban);
         }
+
+        runFraudCheck(from, to, amount, principal);
 
         CurrencyType fromCurrency = from.getCurrency();
         CurrencyType toCurrency = to.getCurrency();
@@ -158,6 +169,53 @@ public class AccountTransferService {
 
         } catch (Exception e) {
             log.warn("Failed to create transaction records in transaction-service: {}", e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void runFraudCheck(Account from, Account to, BigDecimal amount, JwtPrincipal principal) {
+        if (fraudServiceUrl == null || fraudServiceUrl.isBlank()) {
+            log.debug("Fraud service URL not configured — skipping fraud check");
+            return;
+        }
+
+        try {
+            String url = fraudServiceUrl + "/api/internal/fraud/evaluate";
+
+            int accountAgeDays = (int) ChronoUnit.DAYS.between(from.getCreatedAt(), LocalDateTime.now());
+            boolean selfTransfer = from.getClientId().equals(to.getClientId());
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("accountId", from.getId());
+            body.put("clientId", from.getClientId());
+            body.put("amount", amount.doubleValue());
+            body.put("currency", from.getCurrency().getCode());
+            body.put("senderIban", from.getIban());
+            body.put("receiverIban", to.getIban());
+            body.put("transactionType", "TRANSFER_INTERNAL");
+            body.put("selfTransfer", selfTransfer);
+            body.put("accountAgeDays", accountAgeDays);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set(InternalApiHeaders.SECRET, internalApiSecret);
+
+            Map<String, Object> resp = restTemplate.postForObject(
+                    url, new HttpEntity<>(body, headers), Map.class);
+
+            if (resp != null && "BLOCK".equals(resp.get("status"))) {
+                String explanation = (String) resp.getOrDefault("explanation", "Transaction blocked by fraud detection");
+                log.warn("FRAUD BLOCK: client={} amount={} reason={}", from.getClientId(), amount, explanation);
+                throw new BusinessRuleViolationException(explanation);
+            }
+
+            log.info("Fraud check passed: client={} status={}", from.getClientId(),
+                    resp != null ? resp.get("status") : "unknown");
+
+        } catch (BusinessRuleViolationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("Fraud service call failed — allowing transfer (fail-open): {}", e.getMessage());
         }
     }
 }

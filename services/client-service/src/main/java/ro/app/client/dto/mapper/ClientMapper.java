@@ -8,12 +8,12 @@ import ro.app.client.service.EncryptionService;
 
 public class ClientMapper {
 
-    public static ClientDTO toDTO(Client e, EncryptionService encryptionService, String key) {
+    public static ClientDTO toDTO(Client e, EncryptionService encryptionService, String key, String legacyKey) {
         ClientDTO dto = new ClientDTO();
         dto.setId(e.getId());
         try {
-            dto.setLastName(encryptionService.decrypt(e.getLastName(), key));
-            dto.setFirstName(encryptionService.decrypt(e.getFirstName(), key));
+            dto.setLastName(encryptionService.decryptFlexible(e.getLastName(), key, legacyKey));
+            dto.setFirstName(encryptionService.decryptFlexible(e.getFirstName(), key, legacyKey));
         } catch (Exception ex) {
             // fallback: return encrypted values if decryption fails
             dto.setLastName(e.getLastName());

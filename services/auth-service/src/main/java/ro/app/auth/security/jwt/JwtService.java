@@ -95,6 +95,21 @@ public class JwtService { //creates/verifies and extracts info(claims) from jwt
                     .getPayload();
     }
 
+    /**
+     * Same as {@link #parseClaims} but returns claims even when the token is expired
+     * (signature must still be valid). Used when refreshing access tokens to copy {@code ek}.
+     */
+    public Claims parseClaimsAllowExpired(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("JWT token is null or blank");
+        }
+        try {
+            return parseClaims(token);
+        } catch (ExpiredJwtException e) {
+            return e.getClaims();
+        }
+    }
+
     public boolean isValid(String token){
         try{
             parseClaims(token);

@@ -63,7 +63,10 @@ public class ClientGdprService {
         clientGdprErasurePersistenceService.applyLocalErasure(clientId);
     }
 
-    public ClientExportDTO exportClientData(@NotNull Long clientId) {
+    /**
+     * @param userDerivedKey encryption key from JWT {@code ek} (owner); null for admin-only access (legacy key only).
+     */
+    public ClientExportDTO exportClientData(@NotNull Long clientId, String userDerivedKey) {
         if (clientId == null) {
             throw new IllegalArgumentException("Client ID cannot be null");
         }
@@ -77,8 +80,8 @@ public class ClientGdprService {
 
         export.setClientId(client.getId());
         try {
-            export.setFirstName(encryptionService.decrypt(client.getFirstName(), encryptionKey));
-            export.setLastName(encryptionService.decrypt(client.getLastName(), encryptionKey));
+            export.setFirstName(encryptionService.decryptFlexible(client.getFirstName(), userDerivedKey, encryptionKey));
+            export.setLastName(encryptionService.decryptFlexible(client.getLastName(), userDerivedKey, encryptionKey));
         } catch (Exception e) {
             export.setFirstName(client.getFirstName());
             export.setLastName(client.getLastName());
@@ -90,13 +93,13 @@ public class ClientGdprService {
 
         if (contactInfo != null) {
             try {
-                export.setEmail(encryptionService.decrypt(contactInfo.getEmail(), encryptionKey));
-                export.setPhone(encryptionService.decrypt(contactInfo.getPhone(), encryptionKey));
-                export.setContactPerson(encryptionService.decrypt(contactInfo.getContactPerson(), encryptionKey));
-                export.setWebsite(encryptionService.decrypt(contactInfo.getWebsite(), encryptionKey));
-                export.setAddress(encryptionService.decrypt(contactInfo.getAddress(), encryptionKey));
-                export.setCity(encryptionService.decrypt(contactInfo.getCity(), encryptionKey));
-                export.setPostalCode(encryptionService.decrypt(contactInfo.getPostalCode(), encryptionKey));
+                export.setEmail(encryptionService.decryptFlexible(contactInfo.getEmail(), userDerivedKey, encryptionKey));
+                export.setPhone(encryptionService.decryptFlexible(contactInfo.getPhone(), userDerivedKey, encryptionKey));
+                export.setContactPerson(encryptionService.decryptFlexible(contactInfo.getContactPerson(), userDerivedKey, encryptionKey));
+                export.setWebsite(encryptionService.decryptFlexible(contactInfo.getWebsite(), userDerivedKey, encryptionKey));
+                export.setAddress(encryptionService.decryptFlexible(contactInfo.getAddress(), userDerivedKey, encryptionKey));
+                export.setCity(encryptionService.decryptFlexible(contactInfo.getCity(), userDerivedKey, encryptionKey));
+                export.setPostalCode(encryptionService.decryptFlexible(contactInfo.getPostalCode(), userDerivedKey, encryptionKey));
             } catch (Exception e) {
                 export.setEmail(contactInfo.getEmail());
                 export.setPhone(contactInfo.getPhone());

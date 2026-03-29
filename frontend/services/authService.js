@@ -36,6 +36,17 @@ export const login = async (usernameOrEmail, password) => {
 };
 
 /**
+ * Change password — also triggers re-encryption of personal data server-side.
+ * After success, all refresh tokens are invalidated → user must log in again.
+ * @param {string} oldPassword
+ * @param {string} newPassword
+ */
+export const changePassword = async (oldPassword, newPassword) => {
+  const response = await apiClient.post('/auth/change-password', { oldPassword, newPassword });
+  return response.data;
+};
+
+/**
  * Refresh the access token using refresh token
  * @param {string} refreshToken - Refresh token from login
  * @returns {Promise} RefreshTokenResponse with new token and optional new refresh token
@@ -48,7 +59,11 @@ export const refreshAccessToken = async (refreshToken = null) => {
   }
   
   try {
-    const response = await apiClient.post('/auth/refresh-token', { refreshToken: token });
+    const previousAccess = typeof localStorage !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    const response = await apiClient.post('/auth/refresh-token', {
+      refreshToken: token,
+      ...(previousAccess ? { accessToken: previousAccess } : {}),
+    });
     
     // Update stored tokens
     localStorage.setItem('jwt_token', response.data.token);
@@ -131,6 +146,7 @@ export const verify2FA = async (tempToken, code) => {
   return response.data;
 };
 
+
 /**
  * Check if user is authenticated
  * @returns {boolean} Authentication status
@@ -146,7 +162,7 @@ export const isAuthenticated = () => {
     const isExpired = typeof decoded.exp === 'number' && Date.now() >= decoded.exp * 1000;
     const hasValidated2fa = decoded['2fa'] === 'ok';
     return !isExpired && hasValidated2fa;
-  } catch (error) {
+  } catch {
     return false;
   }
 };

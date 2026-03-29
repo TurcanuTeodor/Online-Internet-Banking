@@ -12,6 +12,7 @@ import {
   Loader2,
   Wallet,
   LayoutDashboard,
+  ShieldAlert,
 } from 'lucide-react';
 import ClientsTab from './ClientsTab';
 import AccountsTab from './AccountsTab';
@@ -21,12 +22,15 @@ import SuspendClientModal from './SuspendClientModal';
 import AccountStatementModal from './AccountStatementModal';
 import FreezeAccountModal from './FreezeAccountModal';
 import DashboardOverview from './DashboardOverview';
+import FraudAlertsTab from './FraudAlertsTab';
+import FraudCommandCenter from './FraudCommandCenter';
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'clients', label: 'Clients', icon: Users },
   { id: 'accounts', label: 'Accounts', icon: Wallet },
   { id: 'transactions', label: 'Transactions', icon: TrendingUp },
+  { id: 'fraud', label: 'Fraud Center', icon: ShieldAlert },
 ];
 
 export default function AdminDashboard() {
@@ -225,8 +229,8 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-950 flex">
       {/* Sidebar */}
-      <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-white/10 bg-zinc-900/90 backdrop-blur-sm">
-        <div className="p-4 border-b border-white/10 flex items-center gap-3">
+      <aside className="hidden md:flex w-52 shrink-0 flex-col border-r border-white/10 bg-zinc-900/90 backdrop-blur-sm">
+        <div className="p-3 border-b border-white/10 flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center shrink-0">
             <Shield className="w-5 h-5 text-emerald-400" />
           </div>
@@ -235,7 +239,7 @@ export default function AdminDashboard() {
             <p className="text-xs text-zinc-500">Admin</p>
           </div>
         </div>
-        <nav className="p-3 flex flex-col gap-1">
+        <nav className="p-2.5 flex flex-col gap-1">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = activeTab === item.id;
@@ -244,7 +248,7 @@ export default function AdminDashboard() {
                 key={item.id}
                 type="button"
                 onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left w-full ${
+                className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-medium transition-colors text-left w-full ${
                   active
                     ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                     : 'text-zinc-400 hover:text-white hover:bg-zinc-800/80 border border-transparent'
@@ -260,7 +264,7 @@ export default function AdminDashboard() {
 
       <div className="flex-1 flex flex-col min-w-0">
         <nav className="glass border-b border-white/10 shrink-0">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <div className="max-w-7xl mx-auto px-3 py-3 flex items-center justify-between gap-3">
             <div className="md:hidden flex items-center gap-2 text-sm font-bold text-zinc-200">
               <Shield className="w-5 h-5 text-emerald-400" />
               Admin
@@ -274,7 +278,7 @@ export default function AdminDashboard() {
         </nav>
 
         {/* Mobile nav */}
-        <div className="md:hidden border-b border-white/10 bg-zinc-900/80 px-2 py-2 flex gap-1 overflow-x-auto">
+        <div className="md:hidden border-b border-white/10 bg-zinc-900/80 px-2 py-1.5 flex gap-1 overflow-x-auto">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = activeTab === item.id;
@@ -294,9 +298,9 @@ export default function AdminDashboard() {
           })}
         </div>
 
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-3 py-6">
           {loading ? (
-            <div className="glass rounded-2xl p-12 flex flex-col items-center justify-center">
+            <div className="glass rounded-2xl p-8 flex flex-col items-center justify-center">
               <Loader2 className="w-12 h-12 text-emerald-400 animate-spin mb-4" />
               <p className="text-zinc-400">Loading data...</p>
             </div>
@@ -342,6 +346,13 @@ export default function AdminDashboard() {
                   showFilters={showTransactionFilters}
                   onToggleFilters={() => setShowTransactionFilters(!showTransactionFilters)}
                 />
+              )}
+
+              {activeTab === 'fraud' && (
+                <div className="space-y-6">
+                  <FraudAlertsTab />
+                  <FraudCommandCenter />
+                </div>
               )}
             </>
           )}

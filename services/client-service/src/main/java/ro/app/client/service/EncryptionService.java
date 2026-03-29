@@ -56,6 +56,27 @@ public class EncryptionService {
         return new String(plaintextBytes, StandardCharsets.UTF_8);
     }
 
+    /**
+     * Tries {@code primaryKey} first (user-derived key from JWT), then {@code legacyKey} (pre-migration server key).
+     * If {@code primaryKey} is null/blank, uses {@code legacyKey} only (e.g. admin GDPR export).
+     */
+    public String decryptFlexible(String encryptedData, String primaryKey, String legacyKey) throws Exception {
+        if (primaryKey != null && !primaryKey.isBlank()) {
+            try {
+                return decrypt(encryptedData, primaryKey);
+            } catch (Exception e) {
+                if (legacyKey != null && !legacyKey.isBlank()) {
+                    return decrypt(encryptedData, legacyKey);
+                }
+                throw e;
+            }
+        }
+        if (legacyKey != null && !legacyKey.isBlank()) {
+            return decrypt(encryptedData, legacyKey);
+        }
+        throw new IllegalArgumentException("No decryption key available");
+    }
+
     private byte[] generateRandom(int length) {
         byte[] bytes = new byte[length];
         new java.security.SecureRandom().nextBytes(bytes);

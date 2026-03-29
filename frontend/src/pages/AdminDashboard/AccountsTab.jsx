@@ -64,9 +64,9 @@ export default function AccountsTab({
   );
 
   return (
-    <div>
+    <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <h2 className="text-xl font-bold">Accounts ({filteredAccounts.length})</h2>
+        <h2 className="text-lg font-semibold">Accounts ({filteredAccounts.length})</h2>
         <button
           onClick={onToggleFilters}
           className={`btn-secondary flex items-center justify-center gap-2 ${showFilters ? 'bg-emerald-500/20 border-emerald-500/30' : ''}`}
@@ -77,7 +77,7 @@ export default function AccountsTab({
       </div>
 
       {showFilters && (
-        <div className="glass rounded-2xl p-6 mb-4 animate-fade-in">
+        <div className="glass rounded-2xl p-4 mb-3 animate-fade-in border border-white/5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-2">Search (IBAN or client ID)</label>
@@ -126,11 +126,11 @@ export default function AccountsTab({
             </div>
           </div>
 
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-700">
-            <p className="text-sm text-zinc-400">
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-700">
+            <p className="text-xs text-zinc-400">
               Found {filteredAccounts.length} account{filteredAccounts.length !== 1 ? 's' : ''}
             </p>
-            <button onClick={onResetFilters} className="btn-secondary text-sm">
+            <button onClick={onResetFilters} className="btn-secondary text-xs py-1.5 px-3">
               Reset filters
             </button>
           </div>
@@ -148,18 +148,18 @@ export default function AccountsTab({
         </div>
       ) : (
         <>
-          <div className="glass rounded-2xl overflow-hidden">
+          <div className="glass rounded-2xl overflow-hidden border border-white/5">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-zinc-800/50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">IBAN</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Client ID</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Currency</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Balance</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Status</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Opened</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-zinc-300 w-px">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">IBAN</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Client ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Currency</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Balance</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Opened</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-zinc-300 uppercase tracking-wide w-px">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800">
@@ -167,15 +167,15 @@ export default function AccountsTab({
                     const st = accountStatus(acc);
                     return (
                       <tr key={acc.accountId} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="px-6 py-4 text-sm font-mono text-zinc-300">{acc.accountIban}</td>
-                        <td className="px-6 py-4 text-sm font-mono text-zinc-400">{acc.clientId ?? '—'}</td>
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-4 py-3 text-sm font-mono text-zinc-300">{acc.accountIban}</td>
+                        <td className="px-4 py-3 text-sm font-mono text-zinc-400">{acc.clientId ?? '—'}</td>
+                        <td className="px-4 py-3 text-sm">
                           <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded text-xs">
                             {acc.currencyCode}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium text-emerald-400">{formatBalance(acc)}</td>
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-4 py-3 text-sm font-medium text-emerald-400">{formatBalance(acc)}</td>
+                        <td className="px-4 py-3 text-sm">
                           <span
                             className={`px-2 py-1 rounded text-xs ${
                               st === 'ACTIVE'
@@ -188,10 +188,10 @@ export default function AccountsTab({
                             {st}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-zinc-400">
+                        <td className="px-4 py-3 text-sm text-zinc-400">
                           {acc.createdAt ? new Date(acc.createdAt).toLocaleDateString() : '—'}
                         </td>
-                        <td className="px-6 py-4 text-sm text-right">
+                        <td className="px-4 py-3 text-sm text-right">
                           <RowActionsMenu
                             actions={[
                               { label: 'View statement', onClick: () => onViewStatement(acc) },

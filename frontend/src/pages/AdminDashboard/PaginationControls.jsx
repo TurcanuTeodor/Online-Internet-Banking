@@ -14,13 +14,13 @@ export default function PaginationControls({
   };
 
   return (
-    <div className="flex items-center justify-between mt-4">
+    <div className="flex items-center justify-between mt-3">
       <div className="flex items-center gap-2">
-        <label className="text-sm text-zinc-400">Items per page:</label>
+        <label className="text-xs text-zinc-400">Items:</label>
         <select
           value={itemsPerPage}
           onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-          className="input-field !py-1 !px-2 text-sm w-20"
+          className="input-field !py-1 !px-2 text-xs w-16"
         >
           <option value={10}>10</option>
           <option value={25}>25</option>
@@ -54,7 +54,7 @@ export default function PaginationControls({
               <button
                 key={pageNum}
                 onClick={() => goToPage(pageNum)}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
                   currentPage === pageNum
                     ? 'bg-emerald-500 text-white'
                     : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
@@ -74,7 +74,7 @@ export default function PaginationControls({
           <ChevronRight className="w-4 h-4" />
         </button>
 
-        <span className="text-sm text-zinc-400 ml-2">
+        <span className="text-xs text-zinc-400 ml-2">
           Page {currentPage} of {totalPages}
         </span>
       </div>

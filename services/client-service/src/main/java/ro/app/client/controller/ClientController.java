@@ -38,6 +38,7 @@ public class ClientController {
 
     /**
      * Public sign-up step 1: create CLIENT row (no JWT). Frontend then calls auth-service /register with returned {@code id} as {@code clientId}.
+     * Uses fallback encryption key since no JWT is available yet.
      */
     @PostMapping("/sign-up")
     public ResponseEntity<ClientDTO> signUp(@Valid @RequestBody ClientDTO dto) throws Exception {
@@ -47,15 +48,21 @@ public class ClientController {
 
     // 1) Create client (PF/PJ) - ADMIN only
     @PostMapping
-    public ResponseEntity<ClientDTO> create(@Valid @RequestBody ClientDTO dto) throws Exception {
-        ClientDTO created = clientService.createClient(dto);
+    public ResponseEntity<ClientDTO> create(
+            @Valid @RequestBody ClientDTO dto,
+            @AuthenticationPrincipal JwtPrincipal principal) throws Exception {
+        String ek = principal != null ? principal.encryptionKey() : null;
+        ClientDTO created = clientService.createClient(dto, ek);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    // 2) Search clients by name 
+    // 2) Search clients by name
     @GetMapping("/search")
-    public ResponseEntity<List<ClientDTO>> search(@RequestParam String name) {
-        return ResponseEntity.ok(clientService.searchByName(name));
+    public ResponseEntity<List<ClientDTO>> search(
+            @RequestParam String name,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        String ek = principal != null ? principal.encryptionKey() : null;
+        return ResponseEntity.ok(clientService.searchByName(name, ek));
     }
 
     // 3) Update client contact info - ownership check
@@ -65,7 +72,8 @@ public class ClientController {
             @Valid @RequestBody ContactInfoDTO dto,
             @AuthenticationPrincipal JwtPrincipal principal) {
         ownershipChecker.checkOwnership(principal, clientId);
-        ContactInfoDTO updated = clientService.updateClientContactInfo(clientId, dto);
+        String ek = principal != null ? principal.encryptionKey() : null;
+        ContactInfoDTO updated = clientService.updateClientContactInfo(clientId, dto, ek);
         return ResponseEntity.ok(updated);
     }
 
@@ -75,7 +83,8 @@ public class ClientController {
             @PathVariable Long id,
             @AuthenticationPrincipal JwtPrincipal principal) {
         ownershipChecker.checkOwnership(principal, id);
-        return ResponseEntity.ok(clientService.getClientSummary(id));
+        String ek = principal != null ? principal.encryptionKey() : null;
+        return ResponseEntity.ok(clientService.getClientSummary(id, ek));
     }
 
     // 5) Soft delete (active=false)
@@ -103,7 +112,8 @@ public class ClientController {
         if (principal == null || principal.clientId() == null) {
             throw new AccessDeniedException("Client context required");
         }
-        return ResponseEntity.ok(clientService.getViewClientForSelf(principal.clientId()));
+        String ek = principal.encryptionKey();
+        return ResponseEntity.ok(clientService.getViewClientForSelf(principal.clientId(), ek));
     }
 
     // 6) View read-only clients (ADMIN only — masked PII; protejat în SecurityConfig)

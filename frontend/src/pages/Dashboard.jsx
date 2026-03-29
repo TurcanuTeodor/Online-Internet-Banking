@@ -4,7 +4,7 @@ import { LogOut, Wallet, Shield, CreditCard, LayoutDashboard, ArrowLeftRight, Us
 import { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import QRCode from 'qrcode';
-import { getAccountsByClient, openAccount, transfer, getBalanceByIban } from '../../services/accountService';
+import { getAccountsByClient, openAccount, transfer } from '../../services/accountService';
 import { getTransactionsByClient } from '../../services/transactionService';
 import { getPaymentHistory } from '../../services/paymentService';
 import { setup2FA, confirm2FA } from '../../services/authService';
@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [twoFaSetup, setTwoFaSetup] = useState(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState(null);
   const [twoFaEnabled, setTwoFaEnabled] = useState(false);
+  const [sub, setSub] = useState('');
   
   // Form states
   const [newAccountCurrency, setNewAccountCurrency] = useState('EUR');
@@ -65,6 +66,7 @@ export default function Dashboard() {
         const decoded = jwtDecode(token);
         setClientId(decoded.clientId);
         setTwoFaEnabled(decoded['2fa_verified'] === true);
+        setSub(decoded.sub || '');
       } catch (error) {
         console.error('Failed to decode token:', error);
       }
@@ -75,6 +77,7 @@ export default function Dashboard() {
     if (clientId) {
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
   const fetchData = async () => {
@@ -342,14 +345,19 @@ export default function Dashboard() {
             </div>
             <h1 className="text-lg sm:text-xl font-bold truncate">CashTactics Dashboard</h1>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
+            {sub && (
+              <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-sm" title={sub}>
+                {sub.substring(0, 2).toUpperCase()}
+              </div>
+            )}
             {!twoFaEnabled && (
               <button
                 onClick={handleSetup2FA}
                 className="btn-secondary flex items-center gap-2 text-sm px-3 py-2 md:text-base md:px-4"
               >
                 <Shield className="w-4 h-4 shrink-0" />
-                Enable 2FA
+                <span className="hidden sm:inline">Enable 2FA</span>
               </button>
             )}
             <button
@@ -357,7 +365,7 @@ export default function Dashboard() {
               className="btn-secondary flex items-center gap-2 text-sm px-3 py-2 md:text-base md:px-4"
             >
               <LogOut className="w-4 h-4 shrink-0" />
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
@@ -367,13 +375,15 @@ export default function Dashboard() {
         {(error || success) && (
           <div className="fixed top-4 right-4 z-[60] space-y-2 w-[min(92vw,360px)]">
             {error ? (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-300 text-sm shadow-lg">
-                {error}
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-300 text-sm shadow-lg animate-slide-in-right flex items-start justify-between gap-2">
+                <span>{error}</span>
+                <button onClick={() => setError('')} className="text-red-400 hover:text-red-200 mt-0.5 shrink-0">&times;</button>
               </div>
             ) : null}
             {success ? (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-300 text-sm shadow-lg">
-                {success}
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-300 text-sm shadow-lg animate-slide-in-right flex items-start justify-between gap-2">
+                <span>{success}</span>
+                <button onClick={() => setSuccess('')} className="text-emerald-400 hover:text-emerald-200 mt-0.5 shrink-0">&times;</button>
               </div>
             ) : null}
           </div>
@@ -406,9 +416,26 @@ export default function Dashboard() {
         )}
 
         {loading ? (
-          <div className="glass rounded-2xl p-12 text-center">
-            <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-zinc-400">Loading your accounts...</p>
+          <div className="space-y-6 animate-fade-in">
+            <div className="glass rounded-2xl p-6">
+              <div className="skeleton h-8 w-48 mb-2" />
+              <div className="skeleton h-4 w-72" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="glass rounded-2xl p-5">
+                  <div className="skeleton h-3 w-32 mb-4" />
+                  <div className="skeleton h-8 w-24" />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 mb-4 mt-8">
+              <div className="skeleton h-10 w-32" />
+              <div className="skeleton h-10 w-40" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => <div key={i} className="skeleton h-48 w-full" />)}
+            </div>
           </div>
         ) : mainTab === 'payments' && clientId ? (
           <div className="space-y-6">
@@ -430,7 +457,6 @@ export default function Dashboard() {
             <CardsPaymentsTab
               clientId={clientId}
               accounts={accounts}
-              transactions={transactions}
               onRefresh={fetchData}
               onOpenTopUp={setTopUpAccount}
             />

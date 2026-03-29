@@ -1,13 +1,11 @@
 package ro.app.transaction.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
@@ -17,7 +15,7 @@ import ro.app.transaction.model.entity.Transaction;
 import ro.app.transaction.service.TransactionService;
 
 /**
- * Server-to-server deposit recording (e.g. Stripe top-up). Protected by shared secret, not JWT.
+ * Server-to-server endpoints. Protected by shared secret, not JWT.
  */
 @RestController
 @RequestMapping("/api/internal/transactions")
@@ -48,5 +46,19 @@ public class InternalTransactionController {
         Transaction entity = TransactionMapper.toEntity(dto);
         Transaction saved = transactionService.save(entity);
         return ResponseEntity.status(HttpStatus.CREATED).body(TransactionMapper.toDTO(saved));
+    }
+
+    @GetMapping("/by-account/{accountId}")
+    public ResponseEntity<List<TransactionDTO>> getByAccount(
+            @RequestHeader(SECRET_HEADER) String secret,
+            @PathVariable Long accountId) {
+        if (!internalApiSecret.equals(secret)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid internal API secret");
+        }
+        List<TransactionDTO> txs = transactionService.getTransactionsByAccountId(accountId)
+                .stream()
+                .map(TransactionMapper::toDTO)
+                .toList();
+        return ResponseEntity.ok(txs);
     }
 }

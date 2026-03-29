@@ -36,8 +36,14 @@ public class ClientService {
     private final ContactInfoRepository contactInfoRepository;
     private final EncryptionService encryptionService;
 
+    /**
+     * Fallback key from config — used ONLY for:
+     *  1. Admin views (admin has no per-user encryption key for other users)
+     *  2. Sign-up (no JWT yet, encryption key provided externally)
+     *  3. Backward compatibility with pre-migration data
+     */
     @Value("${encryption.key}")
-    private String encryptionKey;
+    private String fallbackEncryptionKey;
 
     public ClientService(ClientRepository clientRepository,
                          ViewClientRepository viewClientRepository,
@@ -49,9 +55,11 @@ public class ClientService {
         this.encryptionService = encryptionService;
     }
 
-    // --1 Create client
+    // --1 Create client (sign-up — no JWT yet, uses provided key or fallback)
     @Transactional
-    public ClientDTO createClient(ClientDTO dto) throws Exception {
+    public ClientDTO createClient(ClientDTO dto, String encryptionKey) throws Exception {
+        String key = resolveKey(encryptionKey);
+
         boolean exists = clientRepository
                 .findByLastNameContainingIgnoreCase(dto.getLastName())
                 .stream()
@@ -67,26 +75,34 @@ public class ClientService {
 
         Client entity = ClientMapper.toEntity(dto, clientType, sexType);
 
-        entity.setFirstName(encryptionService.encrypt(entity.getFirstName(), encryptionKey));
-        entity.setLastName(encryptionService.encrypt(entity.getLastName(), encryptionKey));
+        entity.setFirstName(encryptionService.encrypt(entity.getFirstName(), key));
+        entity.setLastName(encryptionService.encrypt(entity.getLastName(), key));
 
         final Client saved = clientRepository.save(entity);
-        return ClientMapper.toDTO(saved, encryptionService, encryptionKey);
+        return ClientMapper.toDTO(saved, encryptionService, key, fallbackEncryptionKey);
     }
 
-    // --2 Find clients by name
+    // Backward-compatible overload for sign-up (no encryption key yet)
     @Transactional
-    public List<ClientDTO> searchByName(String name) {
+    public ClientDTO createClient(ClientDTO dto) throws Exception {
+        return createClient(dto, fallbackEncryptionKey);
+    }
+
+    // --2 Find clients by name (uses per-user key)
+    @Transactional
+    public List<ClientDTO> searchByName(String name, String encryptionKey) {
+        String key = resolveKey(encryptionKey);
         return clientRepository
                 .findByLastNameContainingIgnoreCaseOrFirstNameContainingIgnoreCase(name, name)
                 .stream()
-                .map(c -> ClientMapper.toDTO(c, encryptionService, encryptionKey))
+                .map(c -> ClientMapper.toDTO(c, encryptionService, key, fallbackEncryptionKey))
                 .collect(Collectors.toList());
     }
 
-    // --3 Update contact info
+    // --3 Update contact info (uses per-user key)
     @Transactional
-    public ContactInfoDTO updateClientContactInfo(@NotNull Long clientId, ContactInfoDTO dto) {
+    public ContactInfoDTO updateClientContactInfo(@NotNull Long clientId, ContactInfoDTO dto, String encryptionKey) {
+        String key = resolveKey(encryptionKey);
         if (clientId == null) {
             throw new IllegalArgumentException("Client ID cannot be null");
         }
@@ -94,15 +110,16 @@ public class ClientService {
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID " + clientId));
 
         ContactInfo contactInfo = Optional.ofNullable(contactInfoRepository.findByClientId(clientId))
-                .map(existing -> ContactInfoMapper.updateEntity(existing, dto, encryptionService, encryptionKey))
-                .orElseGet(() -> ContactInfoMapper.toEntity(dto, client, encryptionService, encryptionKey));
+                .map(existing -> ContactInfoMapper.updateEntity(existing, dto, encryptionService, key))
+                .orElseGet(() -> ContactInfoMapper.toEntity(dto, client, encryptionService, key));
 
         final ContactInfo saved = contactInfoRepository.save(contactInfo);
-        return ContactInfoMapper.toDTO(saved, encryptionService, encryptionKey);
+        return ContactInfoMapper.toDTO(saved, encryptionService, key, fallbackEncryptionKey);
     }
 
-    // --4 Get client summary (client data only — accounts/transactions come from other services)
-    public Map<String, Object> getClientSummary(@NotNull Long clientId) {
+    // --4 Get client summary (uses per-user key)
+    public Map<String, Object> getClientSummary(@NotNull Long clientId, String encryptionKey) {
+        String key = resolveKey(encryptionKey);
         if (clientId == null) {
             throw new IllegalArgumentException("Client ID cannot be null");
         }
@@ -110,9 +127,9 @@ public class ClientService {
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
 
         ContactInfoDTO contactInfo = ContactInfoMapper.toDTO(
-                contactInfoRepository.findByClientId(clientId), encryptionService, encryptionKey);
+                contactInfoRepository.findByClientId(clientId), encryptionService, key, fallbackEncryptionKey);
         Map<String, Object> summary = new HashMap<>();
-        summary.put("client", ClientMapper.toDTO(client, encryptionService, encryptionKey));
+        summary.put("client", ClientMapper.toDTO(client, encryptionService, key, fallbackEncryptionKey));
         summary.put("contactInfo", contactInfo);
         return summary;
     }
@@ -151,16 +168,93 @@ public class ClientService {
 
     /**
      * Admin list: names decrypted when possible; contact PII never decrypted — masked.
+     * Admin uses fallback key since they don't have individual user keys.
      */
     public List<ViewClientDTO> getAllViewClients() {
         return viewClientRepository.findAll().stream().map(this::toAdminListViewDto).toList();
     }
 
     /** USER: full decrypted row for own client only (caller enforces via JWT). */
-    public ViewClientDTO getViewClientForSelf(Long clientId) {
+    public ViewClientDTO getViewClientForSelf(Long clientId, String encryptionKey) {
+        String key = resolveKey(encryptionKey);
         ViewClient v = viewClientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found in view"));
-        return toOwnerViewDto(v);
+        return toOwnerViewDto(v, key);
+    }
+
+    // ======================== RE-ENCRYPTION (internal, called from auth-service) ========================
+
+    /**
+     * Re-encrypts all personal data for a client when their password changes.
+     * Called internally from auth-service via /api/internal/clients/re-encrypt.
+     */
+    @Transactional
+    public void reEncryptClientData(Long clientId, String oldKey, String newKey) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found for re-encryption"));
+
+        // Re-encrypt client names
+        try {
+            String decryptedFirst = encryptionService.decryptFlexible(client.getFirstName(), oldKey, fallbackEncryptionKey);
+            String decryptedLast = encryptionService.decryptFlexible(client.getLastName(), oldKey, fallbackEncryptionKey);
+            client.setFirstName(encryptionService.encrypt(decryptedFirst, newKey));
+            client.setLastName(encryptionService.encrypt(decryptedLast, newKey));
+            clientRepository.save(client);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to re-encrypt client names for clientId=" + clientId, e);
+        }
+
+        // Re-encrypt contact info
+        ContactInfo contactInfo = contactInfoRepository.findByClientId(clientId);
+        if (contactInfo != null) {
+            try {
+                contactInfo.setPhone(reEncryptField(contactInfo.getPhone(), oldKey, newKey));
+                contactInfo.setEmail(reEncryptField(contactInfo.getEmail(), oldKey, newKey));
+                contactInfo.setContactPerson(reEncryptField(contactInfo.getContactPerson(), oldKey, newKey));
+                contactInfo.setWebsite(reEncryptField(contactInfo.getWebsite(), oldKey, newKey));
+                contactInfo.setAddress(reEncryptField(contactInfo.getAddress(), oldKey, newKey));
+                contactInfo.setCity(reEncryptField(contactInfo.getCity(), oldKey, newKey));
+                contactInfo.setPostalCode(reEncryptField(contactInfo.getPostalCode(), oldKey, newKey));
+                contactInfoRepository.save(contactInfo);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to re-encrypt contact info for clientId=" + clientId, e);
+            }
+        }
+    }
+
+    /**
+     * One-time migration: rows still encrypted with the legacy server key are re-encrypted with the user-derived key.
+     */
+    @Transactional
+    public void migrateLegacyEncryption(Long clientId, String newKey) {
+        if (newKey == null || newKey.isBlank()) {
+            return;
+        }
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+        try {
+            encryptionService.decrypt(client.getFirstName(), newKey);
+            return;
+        } catch (Exception ignored) {
+        }
+        try {
+            encryptionService.decrypt(client.getFirstName(), fallbackEncryptionKey);
+        } catch (Exception e) {
+            return;
+        }
+        reEncryptClientData(clientId, fallbackEncryptionKey, newKey);
+    }
+
+    private String reEncryptField(String encryptedValue, String oldKey, String newKey) throws Exception {
+        if (encryptedValue == null || encryptedValue.isBlank()) return encryptedValue;
+        String decrypted = encryptionService.decryptFlexible(encryptedValue, oldKey, fallbackEncryptionKey);
+        return encryptionService.encrypt(decrypted, newKey);
+    }
+
+    // ======================== PRIVATE HELPERS ========================
+
+    private String resolveKey(String encryptionKey) {
+        return (encryptionKey != null && !encryptionKey.isBlank()) ? encryptionKey : fallbackEncryptionKey;
     }
 
     private ViewClientDTO toAdminListViewDto(ViewClient v) {
@@ -171,8 +265,8 @@ public class ClientService {
         dto.setCity(PII_MASK);
         dto.setPostalCode(PII_MASK);
         try {
-            dto.setFirstName(encryptionService.decrypt(v.getClientFirstName(), encryptionKey));
-            dto.setLastName(encryptionService.decrypt(v.getClientLastName(), encryptionKey));
+            dto.setFirstName(encryptionService.decrypt(v.getClientFirstName(), fallbackEncryptionKey));
+            dto.setLastName(encryptionService.decrypt(v.getClientLastName(), fallbackEncryptionKey));
         } catch (Exception e) {
             dto.setFirstName(v.getClientFirstName());
             dto.setLastName(v.getClientLastName());
@@ -180,16 +274,16 @@ public class ClientService {
         return dto;
     }
 
-    private ViewClientDTO toOwnerViewDto(ViewClient v) {
+    private ViewClientDTO toOwnerViewDto(ViewClient v, String encryptionKey) {
         ViewClientDTO dto = baseViewFields(v);
         try {
-            dto.setFirstName(encryptionService.decrypt(v.getClientFirstName(), encryptionKey));
-            dto.setLastName(encryptionService.decrypt(v.getClientLastName(), encryptionKey));
-            dto.setEmail(encryptionService.decrypt(v.getEmailEncrypted(), encryptionKey));
-            dto.setPhone(encryptionService.decrypt(v.getPhoneEncrypted(), encryptionKey));
-            dto.setAddress(encryptionService.decrypt(v.getAddressEncrypted(), encryptionKey));
-            dto.setCity(encryptionService.decrypt(v.getCityEncrypted(), encryptionKey));
-            dto.setPostalCode(encryptionService.decrypt(v.getPostalCodeEncrypted(), encryptionKey));
+            dto.setFirstName(encryptionService.decryptFlexible(v.getClientFirstName(), encryptionKey, fallbackEncryptionKey));
+            dto.setLastName(encryptionService.decryptFlexible(v.getClientLastName(), encryptionKey, fallbackEncryptionKey));
+            dto.setEmail(encryptionService.decryptFlexible(v.getEmailEncrypted(), encryptionKey, fallbackEncryptionKey));
+            dto.setPhone(encryptionService.decryptFlexible(v.getPhoneEncrypted(), encryptionKey, fallbackEncryptionKey));
+            dto.setAddress(encryptionService.decryptFlexible(v.getAddressEncrypted(), encryptionKey, fallbackEncryptionKey));
+            dto.setCity(encryptionService.decryptFlexible(v.getCityEncrypted(), encryptionKey, fallbackEncryptionKey));
+            dto.setPostalCode(encryptionService.decryptFlexible(v.getPostalCodeEncrypted(), encryptionKey, fallbackEncryptionKey));
         } catch (Exception e) {
             dto.setFirstName(v.getClientFirstName());
             dto.setLastName(v.getClientLastName());

@@ -13,6 +13,7 @@ import ro.app.client.security.JwtPrincipal;
 import ro.app.client.security.OwnershipChecker;
 import ro.app.client.service.ClientService;
 
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -36,8 +37,8 @@ class ClientControllerTest {
     @Test
     void updateContact_OwnershipCheckCalled() {
         ContactInfoDTO dto = mock(ContactInfoDTO.class);
-        JwtPrincipal principal = mock(JwtPrincipal.class);
-        when(clientService.updateClientContactInfo(123L, dto)).thenReturn(dto);
+        JwtPrincipal principal = new JwtPrincipal("testUser", 123L, "USER", "testKey");
+        when(clientService.updateClientContactInfo(eq(123L), any(ContactInfoDTO.class), anyString())).thenReturn(dto);
 
         ResponseEntity<ContactInfoDTO> response = clientController.updateContact(123L, dto, principal);
 
