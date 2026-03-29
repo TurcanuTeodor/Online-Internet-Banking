@@ -53,11 +53,9 @@ apiClient.interceptors.response.use(
       // Prevent infinite retry loops
       originalRequest._retry = true;
 
-      // Skip refresh for auth endpoints
+      // Don't attempt token refresh for auth endpoints — these 401s are
+      // expected (wrong password, etc.) and must propagate to the caller.
       if (originalRequest.url.includes('/auth/')) {
-        localStorage.removeItem('jwt_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
         return Promise.reject(error);
       }
 

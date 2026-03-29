@@ -12,7 +12,6 @@ services:
     environment:
       CHOKIDAR_USEPOLLING: "true"
       VITE_PROXY_TARGET: http://api-gateway:8443
-      VITE_API_BASE_URL: http://localhost:8443/api
     depends_on:
       api-gateway:
         condition: service_started
