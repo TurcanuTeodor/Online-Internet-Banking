@@ -17,6 +17,8 @@ import ro.app.fraud.model.enums.FraudTier;
 import ro.app.fraud.repository.FraudDecisionRepository;
 import ro.app.fraud.tier2.BehavioralScoringService;
 import ro.app.fraud.tier2.ScoringResult;
+import ro.app.fraud.tier3.LlmVerdict;
+import ro.app.fraud.tier3.Tier3LlmService;
 
 /**
  * Separate bean so Spring's @Async proxy works (no self-invocation).
@@ -30,15 +32,18 @@ public class Tier2AsyncRunner {
     private final BehavioralScoringService scoringService;
     private final BehaviorProfileService profileService;
     private final TransactionRestClient transactionClient;
+    private final Tier3LlmService tier3LlmService;
 
     public Tier2AsyncRunner(FraudDecisionRepository decisionRepo,
                             BehavioralScoringService scoringService,
                             BehaviorProfileService profileService,
-                            TransactionRestClient transactionClient) {
+                            TransactionRestClient transactionClient,
+                            Tier3LlmService tier3LlmService) {
         this.decisionRepo = decisionRepo;
         this.scoringService = scoringService;
         this.profileService = profileService;
         this.transactionClient = transactionClient;
+        this.tier3LlmService = tier3LlmService;
     }
 
     @Async("fraudAsyncExecutor")
@@ -66,14 +71,29 @@ public class Tier2AsyncRunner {
 
             if (scoring.totalScore() >= 70) {
                 decision.setStatus(FraudDecisionStatus.FLAG);
+                decision.setDecidedByTier(FraudTier.TIER2_BEHAVIORAL);
                 decision.setExplanation("Tier2 HIGH RISK: " + scoring.summary());
                 log.warn("FLAGGED: decision={} score={} client={}", decisionId, scoring.totalScore(), req.getClientId());
             } else if (scoring.totalScore() >= 30) {
-                decision.setStatus(FraudDecisionStatus.ALLOW);
-                decision.setExplanation("Tier2 medium risk (logged): " + scoring.summary());
-                log.info("Tier2 medium risk: decision={} score={}", decisionId, scoring.totalScore());
+                log.info("Tier2 ambiguous (score={}), escalating to Tier3 LLM", scoring.totalScore());
+                LlmVerdict llmVerdict = tier3LlmService.analyze(req, scoring);
+                decision.setDecidedByTier(FraudTier.TIER3_LLM);
+                decision.setRiskScore(scoring.totalScore());
+                if (llmVerdict.isFlagged()) {
+                    decision.setStatus(FraudDecisionStatus.FLAG);
+                    decision.setExplanation("Tier3 LLM FLAG (confidence=" +
+                            String.format("%.0f%%", llmVerdict.confidence() * 100) + "): " + llmVerdict.reasoning());
+                    log.warn("Tier3 FLAGGED: decision={} confidence={} reason={}",
+                            decisionId, llmVerdict.confidence(), llmVerdict.reasoning());
+                } else {
+                    decision.setStatus(FraudDecisionStatus.ALLOW);
+                    decision.setExplanation("Tier3 LLM ALLOW (confidence=" +
+                            String.format("%.0f%%", llmVerdict.confidence() * 100) + "): " + llmVerdict.reasoning());
+                    log.info("Tier3 ALLOW: decision={} confidence={}", decisionId, llmVerdict.confidence());
+                }
             } else {
                 decision.setStatus(FraudDecisionStatus.ALLOW);
+                decision.setDecidedByTier(FraudTier.TIER2_BEHAVIORAL);
                 decision.setExplanation("Tier2 low risk: " + scoring.summary());
                 log.info("Tier2 low risk: decision={} score={}", decisionId, scoring.totalScore());
             }

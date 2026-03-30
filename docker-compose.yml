@@ -98,6 +98,8 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/banking?currentSchema=fraud
       TRANSACTION_SERVICE_URL: http://transaction-service:8084
       ACCOUNT_SERVICE_URL: http://account-service:8083
+      LLM_PROVIDER: groq
+      GROQ_API_KEY: ${GROQ_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
