@@ -249,7 +249,7 @@ public GatewayFilter apply(Config config) {
 ### Per-service (application.properties)
 ```properties
 # JWT (same secret across all services)
-app.jwt.secret=EyJKunD/duQ0XmRynIKwdOPxYAsaoYtO7nqMcpLVBuc=
+app.jwt.secret=${JWT_SECRET}    # set in each service's .env.properties
 app.jwt.issuer=CashTactics
 app.jwt.expiration-minutes=15
 app.jwt.refresh-token-days=7
