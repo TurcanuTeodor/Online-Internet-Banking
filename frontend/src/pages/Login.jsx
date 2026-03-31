@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { login } from '../../services/authService';
+import { login } from '@/services/authService';
 import { LogIn, Loader2, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 export default function Login() {

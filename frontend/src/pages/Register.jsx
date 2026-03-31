@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { register } from '../../services/authService';
-import { signUpClientProfile } from '../../services/clientService';
+import { register } from '@/services/authService';
+import { signUpClientProfile } from '@/services/clientService';
 import { UserPlus, Loader2, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 function StrengthBar({ password }) {

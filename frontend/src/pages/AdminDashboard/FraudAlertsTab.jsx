@@ -3,7 +3,7 @@ import {
   ShieldAlert, Loader2, RefreshCw, AlertTriangle, CheckCircle,
   ChevronLeft, ChevronRight, X, Save, Clock, User, CreditCard,
 } from 'lucide-react';
-import { getFraudAlerts, reviewFraudDecision } from '../../../services/fraudService';
+import { getFraudAlerts, reviewFraudDecision } from '@/services/fraudService';
 
 const STATUS_CONFIG = {
   BLOCK:         { label: 'BLOCK',          cls: 'badge-block',  icon: ShieldAlert },

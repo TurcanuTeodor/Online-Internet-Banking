@@ -4,8 +4,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
-import Profile from './pages/Profile';
-import { isAuthenticated, isAdmin } from '../services/authService';
+import { isAuthenticated, isAdmin } from '@/services/authService';
 
 function PrivateRoute({ children }) {
   return isAuthenticated() ? children : <Navigate to="/login" replace />;
@@ -39,15 +38,15 @@ function App() {
         }
       />
       <Route
-        path="/profile"
+        path="/admin"
         element={
-          <PrivateRoute>
-            <Profile />
-          </PrivateRoute>
+          <AdminRoute>
+            <Navigate to="/admin/dashboard" replace />
+          </AdminRoute>
         }
       />
       <Route
-        path="/admin"
+        path="/admin/:tab"
         element={
           <AdminRoute>
             <AdminDashboard />

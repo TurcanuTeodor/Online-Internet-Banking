@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { verify2FA } from '../../services/authService';
+import { verify2FA } from '@/services/authService';
 import { Shield, ArrowLeft, Loader2 } from 'lucide-react';
 
 export default function TwoFactorVerify() {

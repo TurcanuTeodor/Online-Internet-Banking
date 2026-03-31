@@ -1,6 +1,7 @@
-import { Filter, ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
+import { Filter, ChevronLeft, ChevronRight, Receipt, Download } from 'lucide-react';
 import { TransactionCompactRow } from './TransactionRow';
 import { getTransactionAccountText, getTransactionLabel } from './transactionUtils';
+import { exportTransactionsToCsv } from '@/lib/exportUtils';
 
 export default function UserTransactionsTab({
   accounts,
@@ -74,6 +75,14 @@ export default function UserTransactionsTab({
             >
               <Filter className="w-4 h-4" />
               {showFilters ? 'Hide' : 'More'} Filters
+            </button>
+            <button
+              onClick={() => exportTransactionsToCsv(filteredTransactions, 'transactions.csv')}
+              className="btn-secondary flex items-center justify-center gap-2 whitespace-nowrap"
+              title="Export filtered transactions as CSV"
+            >
+              <Download className="w-4 h-4" />
+              Export
             </button>
           </div>
         </div>

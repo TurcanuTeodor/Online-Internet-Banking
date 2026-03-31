@@ -1,6 +1,6 @@
 import { X, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getTransactionsByIban } from '../../../services/transactionService';
+import { getTransactionsByIban } from '@/services/transactionService';
 
 export default function AccountStatementModal({ account, onClose }) {
   const [transactions, setTransactions] = useState([]);

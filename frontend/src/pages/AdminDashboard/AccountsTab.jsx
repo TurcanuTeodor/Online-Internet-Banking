@@ -22,6 +22,7 @@ export default function AccountsTab({
   onToggleFilters,
   onViewStatement,
   onFreezeAccount,
+  onCloseAccount,
 }) {
   const getAccountStatuses = () => {
     const statuses = new Set(accounts.map((acc) => accountStatus(acc)).filter((s) => s && s !== '—'));
@@ -200,6 +201,12 @@ export default function AccountsTab({
                                 onClick: () => onFreezeAccount(acc),
                                 disabled: st !== 'ACTIVE',
                                 danger: false,
+                              },
+                              {
+                                label: 'Close account',
+                                onClick: () => onCloseAccount?.(acc),
+                                disabled: st === 'CLOSED',
+                                danger: true,
                               },
                             ]}
                           />

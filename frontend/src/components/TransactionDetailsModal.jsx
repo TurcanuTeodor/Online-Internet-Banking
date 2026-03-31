@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Receipt } from 'lucide-react';
-import { getTransactionDetails } from '../../services/transactionService';
+import { getTransactionDetails } from '@/services/transactionService';
 import ModalShell from './ModalShell';
 
 const LABELS = {

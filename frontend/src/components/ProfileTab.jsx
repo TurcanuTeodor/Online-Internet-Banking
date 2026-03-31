@@ -1,11 +1,11 @@
 import ProfileCard from './ProfileCard';
 import ChangePasswordCard from './ChangePasswordCard';
+import GdprSection from './GdprSection';
 import { ShieldCheck, UserCircle } from 'lucide-react';
 
 export default function ProfileTab() {
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Section header */}
       <div className="glass rounded-2xl p-5 border border-emerald-500/10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-500/15 rounded-xl flex items-center justify-center">
@@ -24,6 +24,7 @@ export default function ProfileTab() {
 
       <ProfileCard />
       <ChangePasswordCard />
+      <GdprSection />
     </div>
   );
 }

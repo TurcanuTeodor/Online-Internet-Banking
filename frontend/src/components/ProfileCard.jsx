@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, User, Mail, Phone, MapPin, Pencil, Check, X, Building2 } from 'lucide-react';
-import { getClientProfile, updateClientContact } from '../../services/clientService';
+import { getClientProfile, updateClientContact } from '@/services/clientService';
 import { jwtDecode } from 'jwt-decode';
 
 function pick(...values) {

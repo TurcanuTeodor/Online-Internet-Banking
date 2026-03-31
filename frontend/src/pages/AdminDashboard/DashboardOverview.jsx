@@ -20,7 +20,7 @@ import {
   prepareClientRiskDistributionData,
   prepareHighRiskOverTimeData,
   prepareScatterAnomalyData,
-} from '../../lib/analyticsTransforms';
+} from '@/lib/analyticsTransforms';
 
 const RANGE_OPTIONS = [7, 30, 90];
 const RISK_COLORS = {

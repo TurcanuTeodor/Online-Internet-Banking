@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { X, CreditCard, Loader2 } from 'lucide-react';
-import { createTopUpIntent, getPaymentMethodsByClient } from '../../services/paymentService';
-import { stripeElementsAppearance } from '../lib/stripeAppearance';
+import { createTopUpIntent, getPaymentMethodsByClient } from '@/services/paymentService';
+import { stripeElementsAppearance } from '@/lib/stripeAppearance';
 import { jwtDecode } from 'jwt-decode';
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;

@@ -58,6 +58,7 @@ export default function TransactionsTab({
   onResetFilters,
   showFilters,
   onToggleFilters,
+  onViewDetails,
 }) {
   const getTransactionTypes = () => {
     const types = new Set(transactions.map((tx) => transactionTypeOf(tx)).filter((x) => x && x !== '—'));
@@ -248,6 +249,7 @@ export default function TransactionsTab({
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Type</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Amount</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Risk score</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-zinc-300 uppercase tracking-wide w-px">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800">
@@ -293,6 +295,15 @@ export default function TransactionsTab({
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <span className={`font-semibold ${riskScoreColor(tx)}`}>{formatRiskScore(tx)}</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right">
+                          <button
+                            type="button"
+                            className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
+                            onClick={() => onViewDetails?.(tx.transactionId)}
+                          >
+                            Details
+                          </button>
                         </td>
                       </tr>
                     );

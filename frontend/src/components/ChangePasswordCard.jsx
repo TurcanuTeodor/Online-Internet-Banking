@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Lock, Eye, EyeOff, Loader2, CheckCircle, AlertCircle, LogOut } from 'lucide-react';
-import { changePassword, logout } from '../../services/authService';
+import { changePassword, logout } from '@/services/authService';
 
 function StrengthBar({ password }) {
   const checks = [

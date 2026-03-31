@@ -15,7 +15,7 @@ import {
   filterTransactionsByLastDays,
   prepareCashflowData,
   prepareExpenseCompositionData,
-} from '../lib/analyticsTransforms';
+} from '@/lib/analyticsTransforms';
 
 const DONUT_COLORS = ['#22c55e', '#06b6d4', '#8b5cf6', '#f59e0b', '#ef4444', '#3b82f6', '#a855f7'];
 

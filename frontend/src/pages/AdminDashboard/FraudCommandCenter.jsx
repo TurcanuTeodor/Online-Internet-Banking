@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import {
   CartesianGrid,
   Cell,
@@ -15,14 +15,12 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAllTransactionsFromView } from '../../../services/transactionService';
-import { getAllClientsFromView } from '../../../services/clientService';
 import {
   filterTransactionsByLastDays,
   prepareClientRiskDistributionData,
   prepareHighRiskOverTimeData,
   prepareScatterAnomalyData,
-} from '../../lib/analyticsTransforms';
+} from '@/lib/analyticsTransforms';
 
 const RISK_COLORS = {
   LOW: '#22c55e',
@@ -48,78 +46,8 @@ function formatDate(value) {
 
 const RANGE_OPTIONS = [7, 30, 90];
 
-export default function FraudCommandCenter() {
-  const [transactions, setTransactions] = useState([]);
-  const [clients, setClients] = useState([]);
+export default function FraudCommandCenter({ transactions = [], clients = [] }) {
   const [rangeDays, setRangeDays] = useState(30);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [sourceErrors, setSourceErrors] = useState({
-    transactions: '',
-    clients: '',
-  });
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      setLoading(true);
-      setError('');
-      setSourceErrors({ transactions: '', clients: '' });
-      try {
-        const [txResult, clientResult] = await Promise.allSettled([
-          getAllTransactionsFromView(),
-          getAllClientsFromView(),
-        ]);
-        if (!mounted) return;
-
-        if (txResult.status === 'fulfilled') {
-          setTransactions(Array.isArray(txResult.value) ? txResult.value : []);
-        } else {
-          setTransactions([]);
-          setSourceErrors((prev) => ({
-            ...prev,
-            transactions: txResult.reason?.response?.status === 403
-              ? 'Transactions source is forbidden (403).'
-              : 'Transactions source failed to load.',
-          }));
-        }
-
-        if (clientResult.status === 'fulfilled') {
-          setClients(Array.isArray(clientResult.value) ? clientResult.value : []);
-        } else {
-          setClients([]);
-          setSourceErrors((prev) => ({
-            ...prev,
-            clients: clientResult.reason?.response?.status === 403
-              ? 'Clients source is forbidden (403).'
-              : 'Clients source failed to load.',
-          }));
-        }
-
-        const errors = [txResult, clientResult]
-          .filter((r) => r.status === 'rejected')
-          .map((r) => r.reason?.response?.status || r.reason?.status || r.reason?.message || 'unknown');
-
-        if (errors.length > 0) {
-          const has403 = errors.some((e) => String(e) === '403');
-          setError(
-            has403
-              ? 'Access denied (403) for one or more analytics sources. Showing only data you are allowed to view.'
-              : 'Some analytics sources could not be loaded. Displaying partial data.'
-          );
-        }
-      } catch (err) {
-        if (!mounted) return;
-        setError(err?.response?.data?.message || err?.message || 'Failed to load fraud analytics data.');
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   const rangedTransactions = useMemo(
     () => filterTransactionsByLastDays(transactions, rangeDays),
@@ -131,132 +59,109 @@ export default function FraudCommandCenter() {
   const riskTimeData = useMemo(() => prepareHighRiskOverTimeData(rangedTransactions), [rangedTransactions]);
   const riskDistribution = useMemo(() => prepareClientRiskDistributionData(clients), [clients]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 p-6">
-        <div className="glass rounded-2xl p-12 flex flex-col items-center justify-center">
-          <Loader2 className="w-12 h-12 text-emerald-400 animate-spin mb-4" />
-          <p className="text-zinc-400">Loading fraud command center...</p>
+  return (
+    <div className="space-y-4">
+      <div className="glass rounded-2xl p-5 border border-red-500/10">
+        <div className="flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-400" />
+          <div>
+            <h1 className="text-2xl font-bold">AI Fraud Command Center</h1>
+            <p className="text-sm text-zinc-500">Monitor anomalies, attack waves, and client risk concentration.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 mt-3">
+          {RANGE_OPTIONS.map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setRangeDays(d)}
+              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
+                rangeDays === d
+                  ? 'bg-red-500/20 border-red-500/40 text-red-300'
+                  : 'bg-zinc-900/70 border-zinc-700 text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              {d}d
+            </button>
+          ))}
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="min-h-screen bg-slate-950 p-6">
-      <div className="max-w-7xl mx-auto space-y-4">
-        <div className="glass rounded-2xl p-5 border border-red-500/10">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-400" />
-            <div>
-              <h1 className="text-2xl font-bold">AI Fraud Command Center</h1>
-              <p className="text-sm text-zinc-500">Monitor anomalies, attack waves, and client risk concentration.</p>
-            </div>
-          </div>
-          {error && <p className="text-sm text-red-400 mt-3">{error}</p>}
-          <div className="flex items-center gap-2 mt-3">
-            {RANGE_OPTIONS.map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setRangeDays(d)}
-                className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
-                  rangeDays === d
-                    ? 'bg-red-500/20 border-red-500/40 text-red-300'
-                    : 'bg-zinc-900/70 border-zinc-700 text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                {d}d
-              </button>
-            ))}
-          </div>
+      <section className="glass rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-zinc-300 mb-3">Anomaly / Alerting Detection (last {rangeDays} days)</h2>
+        <div className="h-[380px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 12, right: 24, left: 8, bottom: 8 }}>
+              <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+              <XAxis type="number" dataKey="amount" name="Amount" tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} />
+              <YAxis type="number" dataKey="riskScore" name="Risk score" domain={[0, 100]} tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} />
+              <Tooltip
+                cursor={{ strokeDasharray: '3 3' }}
+                contentStyle={tooltipStyle()}
+                formatter={(value, name) => {
+                  if (name === 'Amount') return [`${Number(value).toFixed(2)}`, 'Amount'];
+                  return [`${Number(value).toFixed(1)}%`, 'Risk score'];
+                }}
+                labelFormatter={(_, payload) => {
+                  const point = Array.isArray(payload) && payload[0]?.payload ? payload[0].payload : null;
+                  if (!point) return 'Transaction';
+                  const type = point.type || 'Transaction';
+                  const dateText = point.date ? formatDate(point.date) : 'Unknown date';
+                  return `${type} | ${dateText}`;
+                }}
+              />
+              <Legend />
+              <Scatter name="Normal" data={normalPoints} fill="#60a5fa" />
+              <Scatter name="High Risk (>70)" data={highRiskPoints} fill="#f97316" />
+            </ScatterChart>
+          </ResponsiveContainer>
         </div>
+      </section>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <section className="glass rounded-2xl p-4">
-          <h2 className="text-sm font-semibold text-zinc-300 mb-3">Anomaly / Alerting Detection (last {rangeDays} days)</h2>
-          {sourceErrors.transactions && (
-            <p className="text-xs text-amber-300 mb-2">{sourceErrors.transactions}</p>
-          )}
-          <div className="h-[380px]">
+          <h2 className="text-sm font-semibold text-zinc-300 mb-3">Risk Over Time (High Risk count/day, last {rangeDays} days)</h2>
+          <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 12, right: 24, left: 8, bottom: 8 }}>
+              <LineChart data={riskTimeData}>
                 <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                <XAxis type="number" dataKey="amount" name="Amount" tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} />
-                <YAxis type="number" dataKey="riskScore" name="Risk score" domain={[0, 100]} tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} />
-                <Tooltip
-                  cursor={{ strokeDasharray: '3 3' }}
-                  contentStyle={tooltipStyle()}
-                  formatter={(value, name) => {
-                    if (name === 'Amount') return [`${Number(value).toFixed(2)}`, 'Amount'];
-                    return [`${Number(value).toFixed(1)}%`, 'Risk score'];
-                  }}
-                  labelFormatter={(_, payload) => {
-                    const point = Array.isArray(payload) && payload[0]?.payload ? payload[0].payload : null;
-                    if (!point) return 'Transaction';
-                    const type = point.type || 'Transaction';
-                    const dateText = point.date ? formatDate(point.date) : 'Unknown date';
-                    return `${type} | ${dateText}`;
-                  }}
-                />
-                <Legend />
-                <Scatter name="Normal" data={normalPoints} fill="#60a5fa" />
-                <Scatter name="High Risk (>70)" data={highRiskPoints} fill="#f97316" />
-              </ScatterChart>
+                <XAxis dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} />
+                <YAxis allowDecimals={false} tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} />
+                <Tooltip contentStyle={tooltipStyle()} />
+                <Line type="monotone" dataKey="highRiskCount" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 3 }} />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <section className="glass rounded-2xl p-4">
-            <h2 className="text-sm font-semibold text-zinc-300 mb-3">Risk Over Time (High Risk count/day, last {rangeDays} days)</h2>
-            {sourceErrors.transactions && (
-              <p className="text-xs text-amber-300 mb-2">{sourceErrors.transactions}</p>
-            )}
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={riskTimeData}>
-                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} />
-                  <YAxis allowDecimals={false} tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} />
-                  <Tooltip contentStyle={tooltipStyle()} />
-                  <Line type="monotone" dataKey="highRiskCount" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
+        <section className="glass rounded-2xl p-4">
+          <h2 className="text-sm font-semibold text-zinc-300 mb-3">Client Risk Distribution</h2>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={riskDistribution} dataKey="value" nameKey="level" outerRadius={105} label>
+                  {riskDistribution.map((entry) => (
+                    <Cell key={entry.level} fill={RISK_COLORS[entry.level] || '#a1a1aa'} />
+                  ))}
+                </Pie>
+                <Legend />
+                <Tooltip contentStyle={tooltipStyle()} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      </div>
 
-          <section className="glass rounded-2xl p-4">
-            <h2 className="text-sm font-semibold text-zinc-300 mb-3">Client Risk Distribution</h2>
-            {sourceErrors.clients && (
-              <p className="text-xs text-amber-300 mb-2">{sourceErrors.clients}</p>
-            )}
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={riskDistribution} dataKey="value" nameKey="level" outerRadius={105} label>
-                    {riskDistribution.map((entry) => (
-                      <Cell key={entry.level} fill={RISK_COLORS[entry.level] || '#a1a1aa'} />
-                    ))}
-                  </Pie>
-                  <Legend />
-                  <Tooltip contentStyle={tooltipStyle()} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
-        </div>
-
-        <div className="glass rounded-2xl p-4">
-          <h3 className="text-sm font-semibold text-zinc-300 mb-2">Analyst hints</h3>
-          <ul className="text-xs text-zinc-400 space-y-1">
-            <li>Orange points in the scatter chart indicate transactions with risk score above 70%.</li>
-            <li>Sharp spikes in the red line can indicate coordinated fraud activity.</li>
-            <li>Risk distribution helps prioritize KYC and account monitoring workflows.</li>
-          </ul>
-          <p className="text-xs text-zinc-500 mt-2">
-            Sample timestamp from dataset: {rangedTransactions[0]?.transactionDate ? formatDate(rangedTransactions[0].transactionDate) : '—'}
-          </p>
-        </div>
+      <div className="glass rounded-2xl p-4">
+        <h3 className="text-sm font-semibold text-zinc-300 mb-2">Analyst hints</h3>
+        <ul className="text-xs text-zinc-400 space-y-1">
+          <li>Orange points in the scatter chart indicate transactions with risk score above 70%.</li>
+          <li>Sharp spikes in the red line can indicate coordinated fraud activity.</li>
+          <li>Risk distribution helps prioritize KYC and account monitoring workflows.</li>
+        </ul>
+        <p className="text-xs text-zinc-500 mt-2">
+          Sample timestamp from dataset: {rangedTransactions[0]?.transactionDate ? formatDate(rangedTransactions[0].transactionDate) : '—'}
+        </p>
       </div>
     </div>
   );

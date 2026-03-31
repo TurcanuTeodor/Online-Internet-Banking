@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { CreditCard, Loader2, Trash2, Star, Wallet, ShieldCheck } from 'lucide-react';
-import { stripeElementsAppearance } from '../lib/stripeAppearance';
+import { stripeElementsAppearance } from '@/lib/stripeAppearance';
 import {
   getPaymentMethodsByClient,
   attachPaymentMethod,
   deletePaymentMethod,
   setDefaultPaymentMethod,
-} from '../../services/paymentService';
+} from '@/services/paymentService';
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
