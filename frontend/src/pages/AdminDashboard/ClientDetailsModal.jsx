@@ -1,5 +1,32 @@
-import { X, Wallet } from 'lucide-react';
+import { X, Wallet, Eye, EyeOff } from 'lucide-react';
+import { useState } from 'react';
 import AdminRiskBadge from './AdminRiskBadge';
+import { maskEmail } from '@/lib/maskingUtils';
+
+function RevealableField({ label, rawValue, maskFn }) {
+  const [revealed, setRevealed] = useState(false);
+  const isMissing = !rawValue || rawValue === '—';
+  const displayValue = isMissing ? '—' : (revealed ? rawValue : maskFn(rawValue));
+
+  return (
+    <div>
+      <label className="text-xs text-zinc-400">{label}</label>
+      <div className="flex items-center gap-2">
+        <p className="text-sm font-medium">{displayValue}</p>
+        {!isMissing && (
+          <button 
+            type="button" 
+            onClick={() => setRevealed(!revealed)}
+            className="text-zinc-500 hover:text-zinc-300 transition-colors"
+            title={revealed ? "Hide" : "Reveal"}
+          >
+            {revealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function firstNameOf(c) {
   return c.firstName ?? c.clientFirstName ?? '';
@@ -39,10 +66,7 @@ export default function ClientDetailsModal({ client, onClose, onViewAccounts }) 
             </p>
           </div>
 
-          <div>
-            <label className="text-xs text-zinc-400">Email</label>
-            <p className="text-sm font-medium">{client.email || '—'}</p>
-          </div>
+          <RevealableField label="Email" rawValue={client.email} maskFn={maskEmail} />
 
           <div>
             <label className="text-xs text-zinc-400">Phone</label>

@@ -8,7 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.Email;
+
 
 @Entity
 @Table(name = "\"CONTACT_INFO\"")
@@ -22,26 +22,25 @@ public class ContactInfo {
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 
-    @Column(name = "phone", length = 20)
+    @Column(name = "phone", length = 500)
     private String phone;
 
-    @Email
-    @Column(name = "email", length = 255)
+    @Column(name = "email", length = 500)
     private String email;
 
-    @Column(name = "contact_person", length = 100)
+    @Column(name = "contact_person", length = 500)
     private String contactPerson;
 
-    @Column(name = "website", length = 100)
+    @Column(name = "website", length = 500)
     private String website;
 
-    @Column(name = "address", length = 255)
+    @Column(name = "address", length = 500)
     private String address;
 
-    @Column(name = "city", length = 100)
+    @Column(name = "city", length = 500)
     private String city;
 
-    @Column(name = "postal_code", length = 20)
+    @Column(name = "postal_code", length = 500)
     private String postalCode;
 
     public Long getId() { return id; }

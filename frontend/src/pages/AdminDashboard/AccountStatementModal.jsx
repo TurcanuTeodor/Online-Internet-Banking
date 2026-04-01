@@ -1,10 +1,12 @@
-import { X, FileText } from 'lucide-react';
+import { X, FileText, Eye, EyeOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getTransactionsByIban } from '@/services/transactionService';
+import { maskIban } from '@/lib/maskingUtils';
 
 export default function AccountStatementModal({ account, onClose }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [revealIban, setRevealIban] = useState(false);
 
   useEffect(() => {
     fetchTransactions();
@@ -34,10 +36,26 @@ export default function AccountStatementModal({ account, onClose }) {
               <FileText className="w-6 h-6 text-emerald-400" />
               Account Statement
             </h2>
-            <p className="text-xs text-zinc-400 mt-1">
-              IBAN: <span className="font-mono text-zinc-300">{account.accountIban}</span> • Client ID:{' '}
-              <span className="font-mono">{account.clientId ?? '—'}</span>
-            </p>
+            <div className="text-xs text-zinc-400 mt-1 flex items-center gap-2">
+              <div>
+                IBAN:{' '}
+                <span className="font-mono text-zinc-300">
+                  {revealIban ? account.accountIban : maskIban(account.accountIban)}
+                </span>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setRevealIban(!revealIban)}
+                className="text-zinc-500 hover:text-zinc-300 transition-colors"
+                title={revealIban ? "Hide IBAN" : "Reveal IBAN"}
+              >
+                {revealIban ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+              <span>•</span>
+              <div>
+                Client ID: <span className="font-mono">{account.clientId ?? '—'}</span>
+              </div>
+            </div>
           </div>
           <button
             onClick={onClose}

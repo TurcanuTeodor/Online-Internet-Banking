@@ -1,5 +1,7 @@
 package ro.app.fraud.tier3;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -53,10 +55,31 @@ public class Tier3LlmService {
         }
     }
 
+    private String pseudonymize(String input) {
+        if (input == null || input.isBlank() || "N/A".equals(input)) return "N/A";
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] encodedhash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder(2 * encodedhash.length);
+            for (byte b : encodedhash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return "CLIENT_" + hexString.toString().substring(0, 8);
+        } catch (Exception e) {
+            log.warn("Hashing failed, falling back to simple hash");
+            return "CLIENT_" + Math.abs(input.hashCode());
+        }
+    }
+
     private String buildUserMessage(FraudEvaluationRequest req, ScoringResult scoring) {
         String components = scoring.componentScores().entrySet().stream()
                 .map(e -> "  - " + e.getKey() + ": " + String.format("%.1f", e.getValue()) + "/100")
                 .collect(Collectors.joining("\n"));
+
+        String safeSender = pseudonymize(req.getSenderIban() != null ? req.getSenderIban() : "N/A");
+        String safeReceiver = pseudonymize(req.getReceiverIban() != null ? req.getReceiverIban() : "N/A");
 
         return String.format("""
                 TRANSACTION UNDER REVIEW:
@@ -78,8 +101,8 @@ public class Tier3LlmService {
                 req.getAmount(),
                 req.getCurrency() != null ? req.getCurrency() : "EUR",
                 req.getTransactionType(),
-                req.getSenderIban() != null ? req.getSenderIban() : "N/A",
-                req.getReceiverIban() != null ? req.getReceiverIban() : "N/A",
+                safeSender,
+                safeReceiver,
                 req.isSelfTransfer() ? "yes" : "no",
                 req.getAccountAgeDays(),
                 scoring.totalScore(),

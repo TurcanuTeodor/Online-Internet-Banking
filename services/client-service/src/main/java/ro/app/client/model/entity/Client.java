@@ -23,10 +23,10 @@ public class Client {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "last_name", nullable = false)
+    @Column(name = "last_name", length = 500, nullable = false)
     private String lastName;
 
-    @Column(name = "first_name", nullable = false)
+    @Column(name = "first_name", length = 500, nullable = false)
     private String firstName;
 
     @Enumerated(EnumType.STRING)

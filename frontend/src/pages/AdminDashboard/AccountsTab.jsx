@@ -1,6 +1,7 @@
 import { Filter, Search } from 'lucide-react';
 import PaginationControls from './PaginationControls';
 import RowActionsMenu from './RowActionsMenu';
+import { maskIban } from '@/lib/maskingUtils';
 
 function accountStatus(acc) {
   return acc.accountStatusName ?? acc.status ?? '—';
@@ -168,7 +169,7 @@ export default function AccountsTab({
                     const st = accountStatus(acc);
                     return (
                       <tr key={acc.accountId} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="px-4 py-3 text-sm font-mono text-zinc-300">{acc.accountIban}</td>
+                        <td className="px-4 py-3 text-sm font-mono text-zinc-300" title={acc.accountIban}>{maskIban(acc.accountIban)}</td>
                         <td className="px-4 py-3 text-sm font-mono text-zinc-400">{acc.clientId ?? '—'}</td>
                         <td className="px-4 py-3 text-sm">
                           <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded text-xs">

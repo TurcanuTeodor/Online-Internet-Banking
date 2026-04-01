@@ -195,8 +195,8 @@ public class ClientService {
 
         // Re-encrypt client names
         try {
-            String decryptedFirst = encryptionService.decryptFlexible(client.getFirstName(), oldKey, fallbackEncryptionKey);
-            String decryptedLast = encryptionService.decryptFlexible(client.getLastName(), oldKey, fallbackEncryptionKey);
+            String decryptedFirst = safeDecrypt(client.getFirstName(), oldKey);
+            String decryptedLast = safeDecrypt(client.getLastName(), oldKey);
             client.setFirstName(encryptionService.encrypt(decryptedFirst, newKey));
             client.setLastName(encryptionService.encrypt(decryptedLast, newKey));
             clientRepository.save(client);
@@ -247,8 +247,17 @@ public class ClientService {
 
     private String reEncryptField(String encryptedValue, String oldKey, String newKey) throws Exception {
         if (encryptedValue == null || encryptedValue.isBlank()) return encryptedValue;
-        String decrypted = encryptionService.decryptFlexible(encryptedValue, oldKey, fallbackEncryptionKey);
+        String decrypted = safeDecrypt(encryptedValue, oldKey);
         return encryptionService.encrypt(decrypted, newKey);
+    }
+
+    private String safeDecrypt(String encryptedValue, String key) {
+        if (encryptedValue == null || encryptedValue.isBlank()) return encryptedValue;
+        try {
+            return encryptionService.decryptFlexible(encryptedValue, key, fallbackEncryptionKey);
+        } catch (Exception e) {
+            return encryptedValue; // Fallback to plaintext if not encrypted (e.g. seed data)
+        }
     }
 
     // ======================== PRIVATE HELPERS ========================
