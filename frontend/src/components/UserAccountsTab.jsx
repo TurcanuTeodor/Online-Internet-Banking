@@ -1,6 +1,15 @@
-import { Wallet, Plus, Send, Eye, EyeOff, CreditCard } from 'lucide-react';
+import { Wallet, Plus, Send, Eye, EyeOff, CreditCard, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import UserAnalyticsSection from './UserAnalyticsSection';
 import { TransactionCompactRow } from './TransactionRow';
+
+const CURRENCY_THEME = {
+  EUR: { from: 'from-blue-500/20', to: 'to-blue-600/10', icon: 'text-blue-400', border: 'hover:border-blue-500/30' },
+  USD: { from: 'from-emerald-500/20', to: 'to-emerald-600/10', icon: 'text-emerald-400', border: 'hover:border-emerald-500/30' },
+  GBP: { from: 'from-violet-500/20', to: 'to-violet-600/10', icon: 'text-violet-400', border: 'hover:border-violet-500/30' },
+  RON: { from: 'from-orange-500/20', to: 'to-orange-600/10', icon: 'text-orange-400', border: 'hover:border-orange-500/30' },
+  DEFAULT: { from: 'from-zinc-500/20', to: 'to-zinc-600/10', icon: 'text-zinc-400', border: 'hover:border-zinc-500/30' }
+};
 
 export default function UserAccountsTab({
   accounts,
@@ -78,28 +87,14 @@ export default function UserAccountsTab({
                 account.status === 'ACTIVE' &&
                 (account.currencyCode === 'EUR' || account.currencyCode === 'RON');
               
-              // Determine currency gradient
-              let accentFrom = 'from-emerald-500/20';
-              let accentTo = 'to-emerald-600/10';
-              let accentIcon = 'text-emerald-400';
-              let accentBorder = 'hover:border-emerald-500/30';
-              
-              if (account.currencyCode === 'EUR') {
-                accentFrom = 'from-blue-500/20'; accentTo = 'to-blue-600/10'; accentIcon = 'text-blue-400'; accentBorder = 'hover:border-blue-500/30';
-              } else if (account.currencyCode === 'USD') {
-                accentFrom = 'from-emerald-500/20'; accentTo = 'to-emerald-600/10'; accentIcon = 'text-emerald-400'; accentBorder = 'hover:border-emerald-500/30';
-              } else if (account.currencyCode === 'GBP') {
-                accentFrom = 'from-violet-500/20'; accentTo = 'to-violet-600/10'; accentIcon = 'text-violet-400'; accentBorder = 'hover:border-violet-500/30';
-              } else if (account.currencyCode === 'RON') {
-                accentFrom = 'from-orange-500/20'; accentTo = 'to-orange-600/10'; accentIcon = 'text-orange-400'; accentBorder = 'hover:border-orange-500/30';
-              }
+              const theme = CURRENCY_THEME[account.currencyCode] || CURRENCY_THEME.DEFAULT;
 
               return (
-                <div key={account.id} className={`glass rounded-2xl p-6 ${accentBorder} transition-all flex flex-col stat-card`}>
+                <div key={account.id} className={`glass rounded-2xl p-6 ${theme.border} transition-all flex flex-col stat-card`}>
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={`w-12 h-12 bg-gradient-to-br ${accentFrom} ${accentTo} rounded-xl flex items-center justify-center shrink-0`}>
-                        <Wallet className={`w-6 h-6 ${accentIcon}`} />
+                      <div className={`w-12 h-12 bg-gradient-to-br ${theme.from} ${theme.to} rounded-xl flex items-center justify-center shrink-0`}>
+                        <Wallet className={`w-6 h-6 ${theme.icon}`} />
                       </div>
                       <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-600/50">
                         {account.currencyCode}
@@ -116,20 +111,23 @@ export default function UserAccountsTab({
                     </span>
                   </div>
                   
-                  <div 
-                    className="mt-3 group relative cursor-pointer"
-                    onClick={() => {
-                      navigator.clipboard.writeText(account.iban);
-                      // Optional: You could fire a toast here
-                    }}
-                    title="Click to copy IBAN"
-                  >
+                  <div className="mt-3 relative">
                     <p className="text-xs text-zinc-500 mb-0.5">IBAN</p>
-                    <p className="text-sm font-mono text-zinc-300 break-all leading-snug group-hover:text-white transition-colors">
-                      {account.iban}
-                    </p>
-                    <div className="absolute top-1/2 -translate-y-1/2 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-800 text-xs px-2 py-1 rounded shadow-lg text-zinc-300">
-                      Copy
+                    <div className="flex items-center justify-between bg-zinc-800/50 p-2 rounded border border-zinc-700/50">
+                      <p className="text-sm font-mono text-zinc-300 break-all leading-snug">
+                        {account.iban}
+                      </p>
+                      <button 
+                        type="button"
+                        className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700/50 rounded transition-colors shrink-0 ml-2"
+                        title="Copy IBAN"
+                        onClick={() => {
+                          navigator.clipboard.writeText(account.iban);
+                          toast.success('IBAN copied to clipboard!');
+                        }}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 

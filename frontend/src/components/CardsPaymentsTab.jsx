@@ -3,6 +3,8 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { CreditCard, Loader2, Trash2, Star, Wallet, ShieldCheck } from 'lucide-react';
 import { stripeElementsAppearance } from '@/lib/stripeAppearance';
+import { toast } from 'sonner';
+import ConfirmDialog from './ConfirmDialog';
 import {
   getPaymentMethodsByClient,
   attachPaymentMethod,
@@ -88,18 +90,15 @@ function AddCardForm({ clientId, onSuccess, onError }) {
 export default function CardsPaymentsTab({ clientId, accounts, onRefresh, onOpenTopUp }) {
   const [methods, setMethods] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [topUpAccountId, setTopUpAccountId] = useState('');
 
   const loadMethods = async () => {
     setLoading(true);
-    setError('');
     try {
       const data = await getPaymentMethodsByClient(clientId);
       setMethods(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not load saved cards');
+      toast.error(err.response?.data?.message || 'Could not load saved cards');
       setMethods([]);
     } finally {
       setLoading(false);
@@ -111,58 +110,46 @@ export default function CardsPaymentsTab({ clientId, accounts, onRefresh, onOpen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Remove this card from your profile?')) return;
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return;
     try {
-      await deletePaymentMethod(id);
-      setSuccess('Card removed');
+      await deletePaymentMethod(confirmDeleteId);
+      toast.success('Card removed');
       loadMethods();
       onRefresh?.();
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not delete card');
+      toast.error(err.response?.data?.message || 'Could not delete card');
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 
   const handleSetDefault = async (id) => {
     try {
       await setDefaultPaymentMethod(clientId, id);
-      setSuccess('Default card updated');
+      toast.success('Default card updated');
       loadMethods();
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not set default');
+      toast.error(err.response?.data?.message || 'Could not set default');
     }
   };
 
   const activeAccounts = (accounts || []).filter((a) => a.status === 'ACTIVE');
-  useEffect(() => {
-    if (!error) return;
-    const t = setTimeout(() => setError(''), 4500);
-    return () => clearTimeout(t);
-  }, [error]);
-
-  useEffect(() => {
-    if (!success) return;
-    const t = setTimeout(() => setSuccess(''), 3500);
-    return () => clearTimeout(t);
-  }, [success]);
 
   return (
     <div className="space-y-8">
-      {(error || success) && (
-        <div className="fixed top-4 right-4 z-[60] space-y-2 w-[min(92vw,360px)]">
-          {error ? (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm shadow-lg">
-              {error}
-            </div>
-          ) : null}
-          {success ? (
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm shadow-lg">
-              {success}
-            </div>
-          ) : null}
-        </div>
+      {confirmDeleteId && (
+        <ConfirmDialog
+          title="Remove Card"
+          message="Are you sure you want to remove this card from your profile?"
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDeleteId(null)}
+          confirmText="Remove"
+          danger
+        />
       )}
-
       {/* Top-up quick action */}
       <section className="glass rounded-2xl p-6">
         <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
@@ -242,7 +229,7 @@ export default function CardsPaymentsTab({ clientId, accounts, onRefresh, onOpen
                   <button
                     type="button"
                     className="btn-secondary text-sm py-1 px-3 text-red-300 border-red-500/30"
-                    onClick={() => handleDelete(m.id)}
+                    onClick={() => setConfirmDeleteId(m.id)}
                   >
                     <Trash2 className="w-4 h-4 inline mr-1" />
                     Remove
@@ -266,11 +253,11 @@ export default function CardsPaymentsTab({ clientId, accounts, onRefresh, onOpen
             <AddCardForm
               clientId={clientId}
               onSuccess={() => {
-                setSuccess('Card saved');
+                toast.success('Card saved');
                 loadMethods();
                 onRefresh?.();
               }}
-              onError={(msg) => setError(msg)}
+              onError={(msg) => toast.error(msg)}
             />
           </Elements>
         )}

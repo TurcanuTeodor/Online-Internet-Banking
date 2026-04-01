@@ -34,7 +34,7 @@ export default function UserTransactionsTab({
             <select
               value={selectedAccountFilter}
               onChange={(e) => setSelectedAccountFilter(e.target.value)}
-              className="input-field min-w-[200px]"
+              className="input-field w-full sm:w-auto sm:min-w-[200px]"
             >
               <option value="all">All Accounts</option>
               {accounts.map((account) => (
@@ -46,7 +46,7 @@ export default function UserTransactionsTab({
             <select
               value={filters.type}
               onChange={(e) => handleFilterChange('type', e.target.value)}
-              className="input-field min-w-[170px]"
+              className="input-field w-full sm:w-auto sm:min-w-[170px]"
             >
               <option value="all">All types</option>
               {getTransactionTypes().map((type) => (
@@ -215,7 +215,7 @@ export default function UserTransactionsTab({
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4">
+              <div className="flex flex-col md:flex-row items-center justify-between mt-4 gap-4">
                 <div className="flex items-center gap-2">
                   <label className="text-sm text-zinc-400">Items per page:</label>
                   <select

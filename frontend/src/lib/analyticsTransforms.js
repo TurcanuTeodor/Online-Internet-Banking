@@ -153,3 +153,100 @@ export function prepareClientRiskDistributionData(clients) {
 
   return Object.entries(base).map(([level, value]) => ({ level, value }));
 }
+
+// ----------------------------------------------------------------------------
+// NEW FINTECH & BUSINESS KPIs (Admin + User)
+// ----------------------------------------------------------------------------
+
+const STATIC_RATES_TO_EUR = {
+  EUR: 1,
+  USD: 0.91,
+  GBP: 1.17,
+  RON: 0.20,
+};
+
+export function preparePlatformVolumeData(transactions, days = 30) {
+  const safeDays = Number.isInteger(days) && days > 0 ? days : 30;
+  const now = new Date();
+  const dayList = Array.from({ length: safeDays }, (_, idx) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - (safeDays - 1 - idx));
+    const iso = d.toISOString().slice(0, 10);
+    return {
+      date: iso,
+      label: formatDayLabel(iso),
+      volumeEUR: 0,
+      txCount: 0,
+    };
+  });
+
+  const byDay = new Map(dayList.map((x) => [x.date, x]));
+  let totalTxCount = 0;
+
+  (Array.isArray(transactions) ? transactions : []).forEach((tx) => {
+    const key = dayKey(tx?.transactionDate);
+    if (!byDay.has(key)) return;
+    
+    const amount = Math.abs(txAmount(tx));
+    if (amount <= 0) return;
+
+    // Best effort cross-currency conversion
+    const currency = (tx?.currencyCode || tx?.currency || 'EUR').toUpperCase();
+    const rate = STATIC_RATES_TO_EUR[currency] || 1;
+    const volumeInEur = amount * rate;
+
+    const bucket = byDay.get(key);
+    bucket.volumeEUR += volumeInEur;
+    bucket.txCount += 1;
+    totalTxCount += 1;
+  });
+
+  return { volumeData: dayList, totalTxCount };
+}
+
+export function prepareTopMerchants(transactions, limit = 3) {
+  const merchantTotals = new Map();
+
+  (Array.isArray(transactions) ? transactions : []).forEach((tx) => {
+    // Only count outflows
+    if (txSign(tx) !== '-') return;
+    const amount = Math.abs(txAmount(tx));
+    if (amount <= 0) return;
+
+    // Use counterpartyName, or fall back to IBAN/Description.
+    // Ensure we don't just group everything under 'Unknown' if we can avoid it.
+    const merchant = 
+      (tx?.counterpartyName && tx.counterpartyName.trim()) || 
+      (tx?.counterpartyIban && tx.counterpartyIban.trim()) || 
+      (tx?.description && tx.description.trim()) || 
+      'Unknown Merchant';
+
+    // Normalize slightly to group casing discrepancies
+    const normalizedMerchant = merchant.toUpperCase();
+
+    merchantTotals.set(normalizedMerchant, {
+      name: merchant,
+      total: (merchantTotals.get(normalizedMerchant)?.total || 0) + amount,
+    });
+  });
+
+  const sortedList = Array.from(merchantTotals.values())
+    .sort((a, b) => b.total - a.total)
+    .slice(0, limit);
+
+  return sortedList;
+}
+
+export function prepareTransactionTypeDistribution(transactions) {
+  const totals = new Map();
+
+  (Array.isArray(transactions) ? transactions : []).forEach((tx) => {
+    const type = normalizeTransactionType(tx);
+    // Grouping by raw count of transaction types
+    totals.set(type, (totals.get(type) || 0) + 1);
+  });
+
+  return Array.from(totals.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+}

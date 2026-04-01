@@ -1,31 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { login } from '@/services/authService';
-import { LogIn, Loader2, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { LogIn, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (location.state?.message) {
-      setSuccess(location.state.message);
+      toast.success(location.state.message);
     }
   }, [location.state]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
       const response = await login(username, password);
+      // Wait to ensure context logic happens correctly
       if (response.twoFactorRequired) {
         navigate('/2fa-verify', { state: { tempToken: response.token } });
       } else {
@@ -36,7 +35,7 @@ export default function Login() {
         }
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid credentials');
+      toast.error(err.response?.data?.message || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
@@ -100,19 +99,6 @@ export default function Login() {
                 </button>
               </div>
             </div>
-
-            {success && (
-              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm flex items-center gap-2 animate-fade-in">
-                <ShieldCheck className="w-4 h-4 shrink-0" />
-                {success}
-              </div>
-            )}
-
-            {error && (
-              <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm animate-fade-in">
-                {error}
-              </div>
-            )}
 
             <button type="submit" disabled={loading} className="w-full btn-primary flex items-center justify-center gap-2 py-3">
               {loading ? (

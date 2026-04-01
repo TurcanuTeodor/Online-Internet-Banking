@@ -38,3 +38,8 @@ services/*/target/
 services/*/.env.properties
 frontend/node_modules/
 frontend/dist/
+
+# Build logs
+frontend/build_log_2.txt
+frontend/build_output.txt
+frontend/err.txt

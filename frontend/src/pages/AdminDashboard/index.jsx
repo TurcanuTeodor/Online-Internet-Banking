@@ -30,7 +30,6 @@ import FraudCommandCenter from './FraudCommandCenter';
 import PaymentsTab from './PaymentsTab';
 import TransactionDetailsModal from '@/components/TransactionDetailsModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import ThemeToggle from '@/components/ThemeToggle';
 
 const VALID_TABS = ['dashboard', 'clients', 'accounts', 'transactions', 'payments', 'fraud'];
 const NAV = [
@@ -331,7 +330,6 @@ export default function AdminDashboard() {
               </div>
               <div className="hidden md:block" />
             </div>
-            <ThemeToggle />
             <button onClick={handleLogout} className="btn-secondary flex items-center gap-2 text-sm px-3 py-2">
               <LogOut className="w-4 h-4" />
               Logout
