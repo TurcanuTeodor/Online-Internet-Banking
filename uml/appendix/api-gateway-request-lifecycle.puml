@@ -1,0 +1,63 @@
+@startuml Gateway_Request_Flow
+!theme plain
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+
+title Figure 4.6 — API Gateway Request Lifecycle
+
+participant "Frontend\n(Browser)" as CLIENT
+box "API Gateway (Port 8443)" #F5F5DC
+  participant "CORS\nFilter" as CORS
+  participant "Rate Limit\nFilter" as RATE
+  participant "Audit Log\nFilter" as AUDIT
+  participant "JWT Auth\nFilter" as JWT
+  participant "Router +\nCircuit Breaker" as ROUTE
+  participant "Fallback\nController" as FALLBACK
+end box
+participant "Target\nMicroservice" as SERVICE
+
+== Incoming Request ==
+CLIENT -> CORS : HTTP Request
+CORS -> CORS : Check allowed\norigins + methods
+
+alt CORS rejected
+  CORS --> CLIENT : 403 Forbidden
+else CORS OK
+  CORS -> RATE : Forward
+end
+
+RATE -> RATE : < 50 req/sec?
+
+alt Rate limit exceeded
+  RATE --> CLIENT : 429 Too Many Requests
+else Rate OK
+  RATE -> AUDIT : Forward
+end
+
+AUDIT -> AUDIT : Log: method, path,\nduration
+AUDIT -> JWT : Forward
+
+== JWT Validation ==
+alt Public route\n(/api/auth/**, /api/clients/sign-up,\n/api/payments/webhook)
+  JWT -> ROUTE : Skip validation
+else Protected route
+  JWT -> JWT : Validate:\n- Signature (HMAC-SHA256)\n- Expiration\n- Claims
+
+  alt Invalid / Expired
+    JWT --> CLIENT : 401 Unauthorized
+  else Valid JWT
+    JWT -> ROUTE : Forward
+  end
+end
+
+== Routing ==
+alt Service healthy
+  ROUTE -> SERVICE : Forward request
+  SERVICE --> ROUTE : Response
+  ROUTE --> CLIENT : Forward response
+else Circuit breaker OPEN
+  ROUTE -> FALLBACK : Redirect
+  FALLBACK --> CLIENT : 503 Service\nUnavailable
+end
+
+@enduml

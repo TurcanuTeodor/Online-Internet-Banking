@@ -1,7 +1,5 @@
 package ro.app.auth.service;
 
-import java.util.Map;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +10,7 @@ import ro.app.auth.exception.AuthenticationException;
 import ro.app.auth.model.entity.User;
 import ro.app.auth.repository.UserRepository;
 import ro.app.auth.security.jwt.JwtService;
+import ro.app.auth.exception.PreconditionRequiredException;
 
 @Service
 public class TwoFaService {
@@ -116,5 +115,19 @@ public class TwoFaService {
 
         String refreshTokenValue = refreshTokenService.createRefreshToken(user);
         return new LoginResponse(false, finalToken, refreshTokenValue, clientId, user.getRole().name());
+    }
+
+    public void verifyStepUp(Long clientId, String code) {
+        User user = userRepo.findByClientId(clientId)
+                .orElseThrow(() -> new AuthenticationException("User not found"));
+
+        if (!user.isTwoFactorEnabled() || user.getTwoFactorSecret() == null) {
+            throw new PreconditionRequiredException("2FA must be enabled to perform this action");
+        }
+
+        boolean ok = totpService.verifyCode(user.getTwoFactorSecret(), code);
+        if (!ok) {
+            throw new AuthenticationException("Invalid 2FA code");
+        }
     }
 }

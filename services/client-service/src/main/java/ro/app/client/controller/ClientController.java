@@ -1,37 +1,55 @@
 package ro.app.client.controller;
 
-import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
+import ro.app.client.audit.AuditService;
 import ro.app.client.dto.ClientDTO;
 import ro.app.client.dto.ContactInfoDTO;
-import ro.app.client.audit.AuditService;
 import ro.app.client.dto.ViewClientDTO;
 import ro.app.client.security.JwtPrincipal;
-import ro.app.client.service.ClientService;
 import ro.app.client.security.OwnershipChecker;
-
-import java.util.List;
-import java.util.Map;
+import ro.app.client.service.ClientContactService;
+import ro.app.client.service.ClientProfileService;
+import ro.app.client.service.ClientViewProjectionService;
 
 @RestController
 @RequestMapping("/api/clients")
 @Validated
 public class ClientController {
 
-    private final ClientService clientService;
+    private final ClientProfileService clientProfileService;
+    private final ClientContactService clientContactService;
+    private final ClientViewProjectionService clientViewProjectionService;
     private final OwnershipChecker ownershipChecker;
     private final AuditService auditService;
 
     public ClientController(
-            ClientService clientService,
+            ClientProfileService clientProfileService,
+            ClientContactService clientContactService,
+            ClientViewProjectionService clientViewProjectionService,
             OwnershipChecker ownershipChecker,
             AuditService auditService) {
-        this.clientService = clientService;
+        this.clientProfileService = clientProfileService;
+        this.clientContactService = clientContactService;
+        this.clientViewProjectionService = clientViewProjectionService;
         this.ownershipChecker = ownershipChecker;
         this.auditService = auditService;
     }
@@ -42,7 +60,7 @@ public class ClientController {
      */
     @PostMapping("/sign-up")
     public ResponseEntity<ClientDTO> signUp(@Valid @RequestBody ClientDTO dto) throws Exception {
-        ClientDTO created = clientService.createClient(dto);
+        ClientDTO created = clientProfileService.createClient(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -52,7 +70,7 @@ public class ClientController {
             @Valid @RequestBody ClientDTO dto,
             @AuthenticationPrincipal JwtPrincipal principal) throws Exception {
         String ek = principal != null ? principal.encryptionKey() : null;
-        ClientDTO created = clientService.createClient(dto, ek);
+        ClientDTO created = clientProfileService.createClient(dto, ek);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -62,7 +80,7 @@ public class ClientController {
             @RequestParam String name,
             @AuthenticationPrincipal JwtPrincipal principal) {
         String ek = principal != null ? principal.encryptionKey() : null;
-        return ResponseEntity.ok(clientService.searchByName(name, ek));
+        return ResponseEntity.ok(clientProfileService.searchByName(name, ek));
     }
 
     // 3) Update client contact info - ownership check
@@ -70,10 +88,11 @@ public class ClientController {
     public ResponseEntity<ContactInfoDTO> updateContact(
             @PathVariable Long clientId,
             @Valid @RequestBody ContactInfoDTO dto,
+            @RequestHeader(value = "X-TOTP-Code", required = false) String totpCode,
             @AuthenticationPrincipal JwtPrincipal principal) {
         ownershipChecker.checkOwnership(principal, clientId);
         String ek = principal != null ? principal.encryptionKey() : null;
-        ContactInfoDTO updated = clientService.updateClientContactInfo(clientId, dto, ek);
+        ContactInfoDTO updated = clientContactService.updateClientContactInfo(clientId, dto, ek, totpCode);
         return ResponseEntity.ok(updated);
     }
 
@@ -84,13 +103,13 @@ public class ClientController {
             @AuthenticationPrincipal JwtPrincipal principal) {
         ownershipChecker.checkOwnership(principal, id);
         String ek = principal != null ? principal.encryptionKey() : null;
-        return ResponseEntity.ok(clientService.getClientSummary(id, ek));
+        return ResponseEntity.ok(clientProfileService.getClientSummary(id, ek));
     }
 
     // 5) Soft delete (active=false)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        clientService.deleteClient(id);
+        clientProfileService.deleteClient(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -99,7 +118,7 @@ public class ClientController {
     public ResponseEntity<Void> suspend(
             @PathVariable Long id,
             @AuthenticationPrincipal JwtPrincipal principal) {
-        clientService.suspendClient(id);
+        clientProfileService.suspendClient(id);
         Long actorClientId = principal != null ? principal.clientId() : null;
         String role = principal != null ? principal.role() : "UNKNOWN";
         auditService.log("ACCOUNT_FREEZE", actorClientId, role, id, "Client suspended (active=false)");
@@ -113,13 +132,13 @@ public class ClientController {
             throw new AccessDeniedException("Client context required");
         }
         String ek = principal.encryptionKey();
-        return ResponseEntity.ok(clientService.getViewClientForSelf(principal.clientId(), ek));
+        return ResponseEntity.ok(clientViewProjectionService.getViewClientForSelf(principal.clientId(), ek));
     }
 
     // 6) View read-only clients (ADMIN only — masked PII; protejat în SecurityConfig)
     @GetMapping("/view")
     public ResponseEntity<List<ViewClientDTO>> viewAll() {
-        return ResponseEntity.ok(clientService.getAllViewClients());
+        return ResponseEntity.ok(clientViewProjectionService.getAllViewClients());
     }
 
 }

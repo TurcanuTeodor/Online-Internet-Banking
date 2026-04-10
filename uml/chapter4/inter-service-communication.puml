@@ -1,0 +1,58 @@
+@startuml InterService_Communication
+!theme plain
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam nodesep 80
+skinparam ranksep 90
+skinparam packageStyle rectangle
+
+title Figure 4.3 — Inter-Service Communication Map
+
+note as N1
+  All calls are synchronous REST
+  (Spring RestTemplate).
+  Two auth patterns:
+  1. JWT forwarding (user-initiated)
+  2. X-Internal-Api-Secret (service-initiated)
+end note
+
+package "Core Services" {
+  rectangle "Transaction\nService\n:8084" as TX #6DB33F
+  rectangle "Fraud\nService\n:8086" as FRAUD #6DB33F
+  rectangle "Account\nService\n:8083" as ACCOUNT #6DB33F
+  rectangle "Payment\nService\n:8085" as PAY #6DB33F
+  rectangle "Client\nService\n:8082" as CLIENT #6DB33F
+  rectangle "Auth\nService\n:8081" as AUTH #6DB33F
+}
+
+package "External AI" {
+  rectangle "LLM\nProviders" as LLM #gray
+}
+
+' === Grid layout (3 rows x 2 cols) ===
+' Row ordering: TX/FRAUD -> ACCOUNT/PAY -> CLIENT/AUTH
+TX -[hidden]right-> FRAUD
+ACCOUNT -[hidden]right-> PAY
+CLIENT -[hidden]right-> AUTH
+
+TX -[hidden]down-> ACCOUNT
+ACCOUNT -[hidden]down-> CLIENT
+FRAUD -[hidden]down-> PAY
+PAY -[hidden]down-> AUTH
+
+FRAUD -[hidden]right-> LLM
+
+' === Connections ===
+ACCOUNT -up-> TX : Create debit/credit tx records\n[JWT forwarded]
+ACCOUNT -up-> FRAUD : Fraud evaluation (sync, Tier 1)\n[X-Internal-Api-Secret]
+FRAUD -left-> TX : Fetch tx history (async, Tier 2)\n[X-Internal-Api-Secret]
+FRAUD -right-> LLM : Pseudonymized scoring (Tier 3)\n[HTTPS + API key]
+PAY -left-> ACCOUNT : Apply Stripe top-up credit\n[X-Internal-Api-Secret]
+AUTH -left-> CLIENT : Re-encrypt on password change\n[X-Internal-Api-Secret]
+CLIENT -right-> AUTH : Deactivate user\n[X-Internal-Api-Secret]
+CLIENT -up-> ACCOUNT : Close all accounts +\nfetch account IDs\n[X-Internal-Api-Secret]
+CLIENT -up-> TX : Anonymize tx details\n[X-Internal-Api-Secret]
+
+@enduml

@@ -54,10 +54,11 @@ Each service is an independent Spring Boot application with its own schema in Po
 - **Endpoints:** `/api/auth/login`, `/api/auth/register`, `/api/auth/2fa/*`, `/api/auth/refresh-token`, `/api/auth/logout`
 
 ### client-service (Port 8082)
-- **Responsibility:** Client CRUD, contact info, search
+- **Responsibility:** Client profile lifecycle, contact info updates with step-up verification, view projection/masking, encryption migration/re-encryption
 - **Schema:** `clients` (clients, contact_info)
 - **Protected** — requires JWT
 - **Endpoints:** `/api/clients/*`
+- **Internal structure:** `ClientProfileService`, `ClientContactService`, `ClientViewProjectionService`, `ClientEncryptionLifecycleService`, `AuthStepUpClient`
 
 ### account-service (Port 8083)
 - **Responsibility:** Account management, transfers, balance, exchange rates

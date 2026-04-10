@@ -1,0 +1,70 @@
+@startuml Data_Zoning
+!theme plain
+top to bottom direction
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam packageStyle frame
+skinparam linetype ortho
+skinparam nodesep 35
+skinparam ranksep 35
+
+title Figure 4.4 — Data Zoning Model\nPostgreSQL 16 (Single Instance, Schema-per-Service)
+
+package "CENTRALIZED ZONE\n(Identity & Authentication)" #FDE8E8 {
+  database "auth schema\nusers\nrefresh_tokens" as AUTH_DB
+  note bottom of AUTH_DB
+    password_hash (BCrypt)
+    encryption_salt (Base64, 24 bytes)
+    two_factor_secret
+    role ENUM (USER / ADMIN)
+  end note
+}
+
+package "SHARED ZONE\n(Core Banking Data)" #DAE8FC {
+  together {
+    database "accounts schema\naccounts\ncurrency_type" as ACC_DB
+    database "transactions schema\ntransactions\ntransaction_type" as TX_DB
+    database "payments schema\npayments\npayment_methods" as PAY_DB
+  }
+}
+
+package "PRIVATE ZONE\n(Encrypted PII & Fraud Intelligence)" #D5E8D4 {
+  database "clients schema\nclients\ncontact_info" as CL_DB
+  note bottom of CL_DB
+    first_name **(AES-256-GCM)**
+    last_name **(AES-256-GCM)**
+    email **(AES-256-GCM)**
+    phone **(AES-256-GCM)**
+    address, city **(AES-256-GCM)**
+  end note
+
+  database "fraud schema\nfraud_decision\nuser_behavior_profile" as FR_DB
+  note bottom of FR_DB
+    risk_score, status
+    decided_by_tier
+    llm_explanation
+    IBANs pseudonymized (SHA-256)
+  end note
+
+  CL_DB -[hidden]right-> FR_DB
+}
+
+AUTH_DB -[hidden]down-> ACC_DB
+ACC_DB -[hidden]down-> CL_DB
+
+note bottom of ACC_DB
+  Cross-schema JOINs are **impossible**.
+  IDs are logical references (no FK constraints).
+  Data correlation requires REST API + authentication.
+end note
+
+note bottom of CL_DB
+  **Breach of Shared Zone CANNOT access:**
+  - Client names (encrypted, different schema)
+  - Contact info (encrypted, different schema)
+  - Fraud intelligence (isolated schema)
+end note
+
+@enduml

@@ -24,50 +24,58 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException ex, HttpServletRequest req) {
         ErrorResponse body = new ErrorResponse(
-            HttpStatus.NOT_FOUND.value(),
-            HttpStatus.NOT_FOUND.getReasonPhrase(),
-            ex.getMessage(),
-            req.getRequestURI()
-        );
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                ex.getMessage(),
+                req.getRequestURI());
         return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
     }
 
     // --- Handle BusinessRuleViolationException (422) ---
     @ExceptionHandler(BusinessRuleViolationException.class)
-    public ResponseEntity<ErrorResponse> handleBusinessRuleViolation(BusinessRuleViolationException ex, HttpServletRequest req) {
+    public ResponseEntity<ErrorResponse> handleBusinessRuleViolation(BusinessRuleViolationException ex,
+            HttpServletRequest req) {
         ErrorResponse body = new ErrorResponse(
-            HttpStatus.UNPROCESSABLE_ENTITY.value(),
-            HttpStatus.UNPROCESSABLE_ENTITY.getReasonPhrase(),
-            ex.getMessage(),
-            req.getRequestURI()
-        );
+                HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                HttpStatus.UNPROCESSABLE_ENTITY.getReasonPhrase(),
+                ex.getMessage(),
+                req.getRequestURI());
         return new ResponseEntity<>(body, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            @NonNull MethodArgumentNotValidException ex, 
-            @NonNull HttpHeaders headers, 
-            @NonNull HttpStatusCode status, 
+            @NonNull MethodArgumentNotValidException ex,
+            @NonNull HttpHeaders headers,
+            @NonNull HttpStatusCode status,
             @NonNull WebRequest request) {
 
         List<String> errors = ex.getBindingResult()
-                                .getFieldErrors()
-                                .stream()
-                                .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                                .collect(Collectors.toList());
+                .getFieldErrors()
+                .stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.toList());
 
         String message = String.join("; ", errors);
         String path = request.getDescription(false).replace("uri=", "");
 
         ErrorResponse response = new ErrorResponse(
-            HttpStatus.BAD_REQUEST.value(),
-            HttpStatus.BAD_REQUEST.getReasonPhrase(),
-            message,
-            path
-        );
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                message,
+                path);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(StepUpRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleStepUpRequired(StepUpRequiredException ex, HttpServletRequest req) {
+        ErrorResponse body = new ErrorResponse(
+                HttpStatus.PRECONDITION_REQUIRED.value(),
+                HttpStatus.PRECONDITION_REQUIRED.getReasonPhrase(),
+                ex.getMessage(),
+                req.getRequestURI());
+        return new ResponseEntity<>(body, HttpStatus.PRECONDITION_REQUIRED);
     }
 
     // --- Downstream GDPR / inter-service failures ---
@@ -77,8 +85,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 HttpStatus.BAD_GATEWAY.value(),
                 HttpStatus.BAD_GATEWAY.getReasonPhrase(),
                 ex.getMessage(),
-                req.getRequestURI()
-        );
+                req.getRequestURI());
         return new ResponseEntity<>(body, HttpStatus.BAD_GATEWAY);
     }
 
@@ -89,14 +96,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 ex.getMessage(),
-                req.getRequestURI()
-        );
+                req.getRequestURI());
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
     // --- Handle ConstraintViolationException (400) ---
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest req) {
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex,
+            HttpServletRequest req) {
         String message = ex.getConstraintViolations().stream()
                 .map(v -> v.getPropertyPath() + ": " + v.getMessage())
                 .collect(Collectors.joining("; "));
@@ -105,8 +112,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 message,
-                req.getRequestURI()
-        );
+                req.getRequestURI());
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
@@ -117,8 +123,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
                 ex.getMessage(),
-                req.getRequestURI()
-        );
+                req.getRequestURI());
         return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

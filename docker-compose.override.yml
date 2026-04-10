@@ -63,6 +63,17 @@ services:
       - ./services/payment-service:/app
       - maven-cache:/root/.m2
 
+  fraud-service:
+    build:
+      target: build
+    working_dir: /app
+    command: mvn spring-boot:run
+    volumes:
+      - ./services/fraud-service:/app
+      - maven-cache:/root/.m2
+    ports:
+      - "8086:8086"
+
   api-gateway:
     build:
       target: build

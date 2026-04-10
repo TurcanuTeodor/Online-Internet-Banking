@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -26,6 +27,7 @@ import ro.app.account.audit.AuditService;
 import ro.app.account.exception.BusinessRuleViolationException;
 import ro.app.account.exception.InsufficientFundsException;
 import ro.app.account.exception.ResourceNotFoundException;
+import ro.app.account.exception.StepUpRequiredException;
 import ro.app.account.internal.InternalApiHeaders;
 import ro.app.account.model.entity.Account;
 import ro.app.account.model.enums.CurrencyType;
@@ -48,6 +50,7 @@ public class AccountTransferService {
     private final AuditService auditService;
     private final String transactionServiceUrl;
     private final String fraudServiceUrl;
+    private final String authServiceUrl;
     private final String internalApiSecret;
     private final BigDecimal largeTransferThreshold;
 
@@ -58,15 +61,17 @@ public class AccountTransferService {
             OwnershipChecker ownershipChecker,
             AuditService auditService,
             @Value("${app.services.transaction.url}") String transactionServiceUrl,
+            @Value("${app.services.auth.url:http://auth-service:8081}") String authServiceUrl,
             @Value("${app.services.fraud.url:}") String fraudServiceUrl,
             @Value("${app.internal.api-secret}") String internalApiSecret,
-            @Value("${app.audit.large-transfer-threshold:10000}") BigDecimal largeTransferThreshold) {
+            @Value("${app.audit.large-transfer-threshold:1000}") BigDecimal largeTransferThreshold) {
         this.accountRepository = accountRepository;
         this.exchangeRateService = exchangeRateService;
         this.restTemplate = restTemplate;
         this.ownershipChecker = ownershipChecker;
         this.auditService = auditService;
         this.transactionServiceUrl = transactionServiceUrl.replaceAll("/$", "");
+        this.authServiceUrl = authServiceUrl.replaceAll("/$", "");
         this.fraudServiceUrl = fraudServiceUrl != null ? fraudServiceUrl.replaceAll("/$", "") : "";
         this.internalApiSecret = internalApiSecret;
         this.largeTransferThreshold = largeTransferThreshold;
@@ -78,7 +83,7 @@ public class AccountTransferService {
             @CacheEvict(value = "balance", key = "#toIban"),
             @CacheEvict(value = "accountsByClient", allEntries = true)
     })
-    public void transfer(String fromIban, String toIban, BigDecimal amount, JwtPrincipal principal) {
+    public void transfer(String fromIban, String toIban, BigDecimal amount, String totpCode, JwtPrincipal principal) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be positive");
         }
@@ -98,7 +103,9 @@ public class AccountTransferService {
             throw new InsufficientFundsException("Insufficient funds");
         }
 
-        if (amount.compareTo(largeTransferThreshold) >= 0) {
+        boolean isLargeTransfer = amount.compareTo(largeTransferThreshold) >= 0;
+
+        if (isLargeTransfer) {
             Long actorClientId = principal != null ? principal.clientId() : null;
             String role = principal != null ? principal.role() : "UNKNOWN";
             auditService.log(
@@ -109,7 +116,14 @@ public class AccountTransferService {
                     "amount=" + amount + " " + from.getCurrency().getCode() + " fromIban=" + fromIban + " toIban=" + toIban);
         }
 
-        runFraudCheck(from, to, amount, principal);
+        boolean stepUpRequiredFromFraud = runFraudCheck(from, to, amount);
+        
+        if (isLargeTransfer || stepUpRequiredFromFraud) {
+            if (totpCode == null || totpCode.isBlank()) {
+                throw new StepUpRequiredException("This transaction requires two-factor authentication.");
+            }
+            verifyStepUp(from.getClientId(), totpCode);
+        }
 
         CurrencyType fromCurrency = from.getCurrency();
         CurrencyType toCurrency = to.getCurrency();
@@ -172,11 +186,39 @@ public class AccountTransferService {
         }
     }
 
+    private void verifyStepUp(Long clientId, String totpCode) {
+        try {
+            String url = authServiceUrl + "/api/internal/auth/step-up";
+            Map<String, Object> body = new HashMap<>();
+            body.put("clientId", clientId);
+            body.put("totpCode", totpCode);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set(InternalApiHeaders.SECRET, internalApiSecret);
+
+            restTemplate.postForEntity(url, new HttpEntity<>(body, headers), Void.class);
+        } catch (RestClientResponseException e) {
+            int code = e.getStatusCode().value();
+            if (code == 428) {
+                throw new StepUpRequiredException("2FA must be enabled to perform this action.");
+            }
+            if (code == 401) {
+                throw new BusinessRuleViolationException("Invalid 2FA code.");
+            }
+            log.warn("Step-up verification call failed: {} {}", code, e.getMessage());
+            throw new BusinessRuleViolationException("Could not verify 2FA code.");
+        } catch (Exception e) {
+            log.warn("Step-up verification call failed: {}", e.getMessage());
+            throw new BusinessRuleViolationException("Could not verify 2FA code.");
+        }
+    }
+
     @SuppressWarnings("unchecked")
-    private void runFraudCheck(Account from, Account to, BigDecimal amount, JwtPrincipal principal) {
+    private boolean runFraudCheck(Account from, Account to, BigDecimal amount) {
         if (fraudServiceUrl == null || fraudServiceUrl.isBlank()) {
             log.debug("Fraud service URL not configured — skipping fraud check");
-            return;
+            return false;
         }
 
         try {
@@ -208,6 +250,11 @@ public class AccountTransferService {
                 log.warn("FRAUD BLOCK: client={} amount={} reason={}", from.getClientId(), amount, explanation);
                 throw new BusinessRuleViolationException(explanation);
             }
+            
+            if (resp != null && "STEP_UP_REQUIRED".equals(resp.get("status"))) {
+                log.info("FRAUD STEP-UP: client={} amount={}", from.getClientId(), amount);
+                return true;
+            }
 
             log.info("Fraud check passed: client={} status={}", from.getClientId(),
                     resp != null ? resp.get("status") : "unknown");
@@ -217,5 +264,6 @@ public class AccountTransferService {
         } catch (Exception e) {
             log.warn("Fraud service call failed — allowing transfer (fail-open): {}", e.getMessage());
         }
+        return false;
     }
 }

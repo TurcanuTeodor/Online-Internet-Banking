@@ -19,4 +19,8 @@ public record RuleResult(
     public static RuleResult block(double riskScore, String ruleHits, String explanation) {
         return new RuleResult(FraudDecisionStatus.BLOCK, riskScore, ruleHits, explanation);
     }
+
+    public static RuleResult stepUp(double riskScore, String ruleHits, String explanation) {
+        return new RuleResult(FraudDecisionStatus.STEP_UP_REQUIRED, riskScore, ruleHits, explanation);
+    }
 }

@@ -61,8 +61,8 @@ public class AccountService {
         return accountQueryService.getBalanceByIban(iban, principal);
     }
 
-    public void transfer(String fromIban, String toIban, BigDecimal amount, JwtPrincipal principal) {
-        accountTransferService.transfer(fromIban, toIban, amount, principal);
+    public void transfer(String fromIban, String toIban, BigDecimal amount, String totpCode, JwtPrincipal principal) {
+        accountTransferService.transfer(fromIban, toIban, amount, totpCode, principal);
     }
 
     public List<?> getAllViewAccounts() {

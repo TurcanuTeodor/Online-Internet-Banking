@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
@@ -98,8 +99,9 @@ public class AccountController {
     @PostMapping("/transfer")
     public ResponseEntity<Void> transfer(
         @Valid @RequestBody TransferRequest req,
+        @RequestHeader(value = "X-TOTP-Code", required = false) String totpCode,
         @AuthenticationPrincipal JwtPrincipal principal) {
-        accountService.transfer(req.getFromIban(), req.getToIban(), req.getAmount(), principal);
+        accountService.transfer(req.getFromIban(), req.getToIban(), req.getAmount(), totpCode, principal);
         return ResponseEntity.noContent().build();
     }
 

@@ -15,9 +15,11 @@ import ro.app.fraud.security.jwt.JwtAuthenticationFilter;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final InternalApiAuthFilter internalApiAuthFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtFilter, InternalApiAuthFilter internalApiAuthFilter) {
         this.jwtFilter = jwtFilter;
+        this.internalApiAuthFilter = internalApiAuthFilter;
     }
 
     @Bean
@@ -25,7 +27,7 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers("/api/internal/**").permitAll()
+                .requestMatchers("/api/internal/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/fraud/health").permitAll()
                 // Admin-only: dashboard data, alerts, decisions
                 .requestMatchers(HttpMethod.GET, "/api/fraud/decisions/**").hasRole("ADMIN")
@@ -33,6 +35,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/fraud/decisions/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
+            .addFilterBefore(internalApiAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

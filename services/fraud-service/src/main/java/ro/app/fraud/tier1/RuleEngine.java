@@ -71,8 +71,8 @@ public class RuleEngine {
         }
 
         String ruleHits = String.join(", ", triggers);
-        String explanation = "Blocked by Tier 1 rules: " + ruleHits;
+        String explanation = "Flagged by Tier 1 rules: " + ruleHits + ". Step-up authentication required.";
 
-        return RuleResult.block(maxRisk, ruleHits, explanation);
+        return RuleResult.stepUp(maxRisk, ruleHits, explanation);
     }
 }

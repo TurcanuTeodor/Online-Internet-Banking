@@ -1,0 +1,42 @@
+@startuml System_Context
+!theme plain
+left to right direction
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 80
+skinparam ranksep 90
+skinparam packageStyle rectangle
+
+title Figure 4.1 — System Context Diagram
+
+package "People" {
+	actor "Bank Customer\n" as USER
+	actor "Bank Admin\n" as ADMIN
+
+	USER -[hidden]down-> ADMIN
+}
+
+package "CashTactics Platform" {
+	rectangle "<<Software System>>\nCashTactics\nOnline Banking Platform\n\nSpring Boot Microservices + React SPA\nAPI Gateway, 7 backend services,\nPostgreSQL with 6 isolated schemas" as SYSTEM #438DD5
+}
+
+package "External Systems" {
+	rectangle "<<External System>>\nStripe\nPayment Processing" as STRIPE #gray
+	rectangle "<<External System>>\nEuropean Central Bank\nExchange Rates API" as ECB #gray
+	rectangle "<<External System>>\nLLM Providers\n(Groq / Google Gemini)" as LLM #gray
+
+	STRIPE -[hidden]down-> ECB
+	ECB -[hidden]down-> LLM
+}
+
+USER --> SYSTEM : Manages accounts,\nmakes transfers,\ntops up via Stripe\n[HTTPS / Browser]
+ADMIN --> SYSTEM : Reviews fraud alerts,\nmanages clients,\nGDPR operations\n[HTTPS / Browser]
+
+SYSTEM --> STRIPE : Processes card\ntop-ups and webhooks\n[HTTPS / Stripe API]
+SYSTEM --> LLM : Sends pseudonymized\ntx data for fraud\nanalysis verdicts\n[HTTPS / REST API]
+SYSTEM --> ECB : Fetches daily\nexchange rates\n[HTTPS / XML]
+
+@enduml

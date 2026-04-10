@@ -28,47 +28,10 @@ export default function UserTransactionsTab({
   return (
     <div className="space-y-8">
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        {/* Header row: title + action buttons */}
+        <div className="flex items-center justify-between gap-3 mb-4">
           <h2 className="text-2xl font-bold">Recent Transactions</h2>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <select
-              value={selectedAccountFilter}
-              onChange={(e) => setSelectedAccountFilter(e.target.value)}
-              className="input-field w-full sm:w-auto sm:min-w-[200px]"
-            >
-              <option value="all">All Accounts</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.iban}>
-                  {account.iban} ({account.currencyCode})
-                </option>
-              ))}
-            </select>
-            <select
-              value={filters.type}
-              onChange={(e) => handleFilterChange('type', e.target.value)}
-              className="input-field w-full sm:w-auto sm:min-w-[170px]"
-            >
-              <option value="all">All types</option>
-              {getTransactionTypes().map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-            <input
-              type="date"
-              value={filters.dateFrom}
-              onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-              className="input-field"
-              title="Date from"
-            />
-            <input
-              type="date"
-              value={filters.dateTo}
-              onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-              className="input-field"
-              title="Date to"
-            />
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`btn-secondary flex items-center justify-center gap-2 whitespace-nowrap ${showFilters ? 'bg-emerald-500/20 border-emerald-500/30' : ''}`}
@@ -84,6 +47,51 @@ export default function UserTransactionsTab({
               <Download className="w-4 h-4" />
               Export
             </button>
+          </div>
+        </div>
+
+        {/* Filter bar row */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <select
+            value={selectedAccountFilter}
+            onChange={(e) => setSelectedAccountFilter(e.target.value)}
+            className="input-field w-full sm:w-auto sm:min-w-[200px]"
+          >
+            <option value="all">All Accounts</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.iban}>
+                {account.iban} ({account.currencyCode})
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.type}
+            onChange={(e) => handleFilterChange('type', e.target.value)}
+            className="input-field w-full sm:w-auto sm:min-w-[170px]"
+          >
+            <option value="all">All types</option>
+            {getTransactionTypes().map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={filters.dateFrom}
+              onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+              className="input-field"
+              title="Date from"
+            />
+            <span className="text-zinc-500 text-sm">to</span>
+            <input
+              type="date"
+              value={filters.dateTo}
+              onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+              className="input-field"
+              title="Date to"
+            />
           </div>
         </div>
 

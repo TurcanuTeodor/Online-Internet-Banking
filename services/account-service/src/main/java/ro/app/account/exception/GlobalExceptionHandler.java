@@ -56,6 +56,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 
+    // --- Handle StepUpRequiredException (428) ---
+    @ExceptionHandler(StepUpRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleStepUpRequired(StepUpRequiredException ex, HttpServletRequest req) {
+        ErrorResponse body = new ErrorResponse(
+            HttpStatus.PRECONDITION_REQUIRED.value(),
+            HttpStatus.PRECONDITION_REQUIRED.getReasonPhrase(),
+            ex.getMessage(),
+            req.getRequestURI()
+        );
+        return new ResponseEntity<>(body, HttpStatus.PRECONDITION_REQUIRED);
+    }
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             @NonNull MethodArgumentNotValidException ex,

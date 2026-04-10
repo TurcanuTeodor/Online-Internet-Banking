@@ -1,15 +1,24 @@
 package ro.app.client.controller;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
 import ro.app.client.internal.InternalApiHeaders;
-import ro.app.client.service.ClientService;
+import ro.app.client.internal.MigrateLegacyRequest;
+import ro.app.client.internal.ReEncryptClientRequest;
+import ro.app.client.service.ClientEncryptionLifecycleService;
 
 /**
  * Internal API for service-to-service communication.
@@ -21,13 +30,13 @@ public class InternalClientController {
 
     private static final Logger log = LoggerFactory.getLogger(InternalClientController.class);
 
-    private final ClientService clientService;
+    private final ClientEncryptionLifecycleService clientEncryptionLifecycleService;
 
     @Value("${app.internal.api-secret:change-me-internal-secret}")
     private String expectedSecret;
 
-    public InternalClientController(ClientService clientService) {
-        this.clientService = clientService;
+    public InternalClientController(ClientEncryptionLifecycleService clientEncryptionLifecycleService) {
+        this.clientEncryptionLifecycleService = clientEncryptionLifecycleService;
     }
 
     /**
@@ -37,19 +46,21 @@ public class InternalClientController {
     @PostMapping("/re-encrypt")
     public ResponseEntity<?> reEncryptClientData(
             @RequestHeader(InternalApiHeaders.SECRET) String secret,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody ReEncryptClientRequest body) {
 
-        if (!expectedSecret.equals(secret)) {
+        if (!MessageDigest.isEqual(
+                expectedSecret.getBytes(StandardCharsets.UTF_8),
+                secret.getBytes(StandardCharsets.UTF_8))) {
             log.warn("Invalid internal API secret received for re-encrypt request");
             return ResponseEntity.status(403).body(Map.of("error", "Invalid internal API secret"));
         }
 
-        Long clientId = ((Number) body.get("clientId")).longValue();
-        String oldKey = (String) body.get("oldEncryptionKey");
-        String newKey = (String) body.get("newEncryptionKey");
+        Long clientId = body.clientId();
+        String oldKey = body.oldEncryptionKey();
+        String newKey = body.newEncryptionKey();
 
         log.info("Re-encrypting data for clientId={}", clientId);
-        clientService.reEncryptClientData(clientId, oldKey, newKey);
+        clientEncryptionLifecycleService.reEncryptClientData(clientId, oldKey, newKey);
         log.info("Successfully re-encrypted data for clientId={}", clientId);
 
         return ResponseEntity.ok(Map.of("message", "Data re-encrypted successfully"));
@@ -61,18 +72,20 @@ public class InternalClientController {
     @PostMapping("/migrate-legacy")
     public ResponseEntity<?> migrateLegacy(
             @RequestHeader(InternalApiHeaders.SECRET) String secret,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody MigrateLegacyRequest body) {
 
-        if (!expectedSecret.equals(secret)) {
+        if (!MessageDigest.isEqual(
+                expectedSecret.getBytes(StandardCharsets.UTF_8),
+                secret.getBytes(StandardCharsets.UTF_8))) {
             log.warn("Invalid internal API secret for migrate-legacy");
             return ResponseEntity.status(403).body(Map.of("error", "Invalid internal API secret"));
         }
 
-        Long clientId = ((Number) body.get("clientId")).longValue();
-        String newKey = (String) body.get("newEncryptionKey");
+        Long clientId = body.clientId();
+        String newKey = body.newEncryptionKey();
 
         log.info("Migrate legacy encryption if needed for clientId={}", clientId);
-        clientService.migrateLegacyEncryption(clientId, newKey);
+        clientEncryptionLifecycleService.migrateLegacyEncryption(clientId, newKey);
         return ResponseEntity.ok(Map.of("message", "OK"));
     }
 }
