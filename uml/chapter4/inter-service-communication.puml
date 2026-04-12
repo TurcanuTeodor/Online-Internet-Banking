@@ -44,13 +44,23 @@ PAY -[hidden]down-> AUTH
 
 FRAUD -[hidden]right-> LLM
 
-' === Connections ===
+' === Core banking flows ===
 ACCOUNT -up-> TX : Create debit/credit tx records\n[JWT forwarded]
 ACCOUNT -up-> FRAUD : Fraud evaluation (sync, Tier 1)\n[X-Internal-Api-Secret]
+
+' === Fraud async flow ===
 FRAUD -left-> TX : Fetch tx history (async, Tier 2)\n[X-Internal-Api-Secret]
 FRAUD -right-> LLM : Pseudonymized scoring (Tier 3)\n[HTTPS + API key]
+
+' === Payment settlement ===
 PAY -left-> ACCOUNT : Apply Stripe top-up credit\n[X-Internal-Api-Secret]
+
+' === Encryption lifecycle & MFA ===
 AUTH -left-> CLIENT : Re-encrypt on password change\n[X-Internal-Api-Secret]
+ACCOUNT -down-> AUTH : Verify Step-Up TOTP code\n[X-Internal-Api-Secret]
+CLIENT -right-> AUTH : Verify Step-Up TOTP code\n[X-Internal-Api-Secret]
+
+' === GDPR erasure cascade ===
 CLIENT -right-> AUTH : Deactivate user\n[X-Internal-Api-Secret]
 CLIENT -up-> ACCOUNT : Close all accounts +\nfetch account IDs\n[X-Internal-Api-Secret]
 CLIENT -up-> TX : Anonymize tx details\n[X-Internal-Api-Secret]

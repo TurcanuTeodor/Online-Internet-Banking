@@ -27,7 +27,7 @@ This starts:
 
 ### App URLs
 - Frontend: `http://localhost:5173`
-- API Gateway: `http://localhost:8443`
+- API Gateway: `https://localhost:8443`
 
 Stop stack:
 
@@ -55,8 +55,8 @@ Online-Internet-Banking/
 
 ## Notes About Gateway Protocol
 
-- In the current Docker dev setup (`docker-compose.override.yml`), gateway runs on `http://localhost:8443`.
-- If you run services manually without Docker and keep SSL enabled, gateway can run on HTTPS.
+- In the current Docker dev setup (`docker-compose.override.yml`), gateway runs on `https://localhost:8443`.
+- The gateway certificate is self-signed in local dev, so tools may require trusting the cert or skipping strict verification.
 
 ## Documentation
 
@@ -70,4 +70,4 @@ Detailed docs are in `explanations/`:
 ## Postman
 
 Use `postman_collection.json` from project root and set:
-- `baseUrl = http://localhost:8443`
+- `baseUrl = https://localhost:8443`

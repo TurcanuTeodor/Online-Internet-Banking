@@ -14,7 +14,7 @@ title Figure 4.1 — System Context Diagram
 
 package "People" {
 	actor "Bank Customer\n" as USER
-	actor "Bank Admin\n" as ADMIN
+	actor "Bank Administrator\n" as ADMIN
 
 	USER -[hidden]down-> ADMIN
 }

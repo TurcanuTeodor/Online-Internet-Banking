@@ -6,26 +6,26 @@ skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
 skinparam sequenceMessageAlign center
 
-title Figure 4.6 - Async Fraud Analysis (Tier 2 + Tier 3)
+title Figure 4.6 — Async Fraud Analysis (Tier 2 + Tier 3)
 
 participant "Fraud Service\n:8086" as FRAUD
 participant "Transaction Service\n:8084" as TX
 participant "LLM Provider\n(Groq/Gemini)" as LLM
 
 == Trigger ==
-FRAUD -> FRAUD : Execute in @Async("fraudAsyncExecutor")
+FRAUD -> FRAUD : Run in @Async("fraudAsyncExecutor")
 
 == Context Fetch ==
 FRAUD -> TX : GET /api/internal/transactions/by-account/{accountId}\n[X-Internal-Api-Secret]
 TX --> FRAUD : Transaction history
 
 == Tier 2 Behavioral Scoring ==
-FRAUD -> FRAUD : Compute weighted behavioral score
+FRAUD -> FRAUD : Compute Tier 2 behavioral score
 
 alt Score >= 70
   FRAUD -> FRAUD : FLAG
 else Score 30-70 (ambiguous)
-  FRAUD -> LLM : Pseudonymized payload\n(IBANs hashed SHA-256)
+  FRAUD -> LLM : Pseudonymized payload\n(IBANs hashed with SHA-256)
   LLM --> FRAUD : verdict + confidence + reasoning
 else Score < 30
   FRAUD -> FRAUD : ALLOW

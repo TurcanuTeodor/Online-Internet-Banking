@@ -10,48 +10,68 @@ actor "User" as USER
 participant "Frontend\n(React)" as FE
 participant "API Gateway\n:8443" as GW
 participant "Account Service\n:8083" as ACC
+participant "Auth Service\n:8081" as AUTH
 participant "Fraud Service\n:8086" as FRAUD
 participant "Transaction Service\n:8084" as TX
 
 == Transfer Initiation ==
 USER -> FE : Click "Transfer"\n(fromIban, toIban, amount)
 FE -> GW : POST /api/accounts/transfer\n[Authorization: Bearer <JWT>]
-GW -> GW : JwtAuthFilter:\nvalidate signature + expiry
-GW -> ACC : Forward request\n+ JWT header
+GW -> GW : Validate JWT
+GW -> ACC : Forward request + JWT
 
 == Validation ==
 ACC -> ACC : Validate accounts exist
-ACC -> ACC : Check ownership\n(JWT clientId == account clientId)
+ACC -> ACC : Check account ownership
 ACC -> ACC : Check sufficient balance
 
 == Fraud Check (Synchronous — Tier 1) ==
-ACC -> FRAUD : POST /api/internal/fraud/evaluate\n[X-Internal-Api-Secret]\n{accountId, clientId, amount,\nsenderIban, receiverIban,\naccountAgeDays, selfTransfer}
+ACC -> FRAUD : POST /api/internal/fraud/evaluate\n[X-Internal-Api-Secret]\n{accountId, clientId, amount, ...}
 
 FRAUD -> FRAUD : Tier 1 Rule Engine:\n- LARGE_AMOUNT (>10,000)?\n- BURST (5+ tx/min)?\n- NEW_ACCOUNT + HIGH_AMOUNT?
 
 alt Tier 1: BLOCK
   FRAUD --> ACC : {status: "BLOCK",\nexplanation: "..."}
   ACC --> GW : 422 BusinessRuleViolation
-  GW --> FE : Error response
+  GW --> FE : 422 error response
   FE --> USER : "Transaction blocked"
+else Tier 1: STEP_UP_REQUIRED (or Amount > 1000)
+  FRAUD --> ACC : {status: "STEP_UP_REQUIRED"}
+  ACC -> AUTH : POST /api/internal/auth/step-up\n[X-Internal-Api-Secret]\n{clientId, totpCode}
+
+  alt TOTP valid
+      AUTH --> ACC : 200 OK
+  else TOTP invalid / missing
+      AUTH --> ACC : 401 / 428
+      ACC --> GW : 428 Precondition Required
+      GW --> FE : Prompt for 2FA
+      FE --> USER : "Please enter 2FA code"
+  end
 else Tier 1: ALLOW / REVIEW
   FRAUD --> ACC : {status: "ALLOW"}\nor {status: "MANUAL_REVIEW"}
 end
 
 == Balance Update ==
 ACC -> ACC : sender.balance -= amount
-ACC -> ACC : receiver.balance += convertedAmount\n(FX conversion if currencies differ)
+ACC -> ACC : receiver.balance += convertedAmount
 ACC -> ACC : Save both accounts (@Transactional)
 
 == Transaction Records ==
-ACC -> TX : POST /api/transactions\n[JWT forwarded]\n{sender debit, sign: "-"}
+ACC -> TX : POST /api/transactions\n[JWT]\n{sender debit, sign: "-"}
 TX --> ACC : 201 Created
 
-ACC -> TX : POST /api/transactions\n[JWT forwarded]\n{receiver credit, sign: "+"}
+ACC -> TX : POST /api/transactions\n[JWT]\n{receiver credit, sign: "+"}
 TX --> ACC : 201 Created
 
 ACC --> GW : 200 OK
 GW --> FE : Transfer successful
 FE --> USER : "Transfer complete"
+
+== Asynchronous Fraud Analysis (Background) ==
+ACC -> FRAUD : Continue with async fraud pipeline
+note right of FRAUD
+See Figure 4.6 (Chapter 5)
+for Tier 2 + Tier 3 details.
+end note
 
 @enduml

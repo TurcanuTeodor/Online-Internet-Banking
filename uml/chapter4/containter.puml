@@ -1,13 +1,13 @@
 @startuml Container_Diagram
 !theme plain
-left to right direction
+top to bottom direction
 skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
 skinparam defaultFontSize 11
 skinparam shadowing false
 skinparam linetype ortho
-skinparam nodesep 80
-skinparam ranksep 90
+skinparam nodesep 60
+skinparam ranksep 50
 skinparam packageStyle rectangle
 
 title Figure 4.2 — Container Diagram
@@ -20,12 +20,12 @@ rectangle "<<Container: API Gateway>>\nAPI Gateway\nSpring Cloud Gateway\nPort 8
 
 package "Microservices" {
 	together {
-		rectangle "<<Container>>\nAuth Service\nSpring Boot :8081" as AUTH #6DB33F
 		rectangle "<<Container>>\nClient Service\nSpring Boot :8082" as CLIENT #6DB33F
-		rectangle "<<Container>>\nAccount Service\nSpring Boot :8083" as ACCOUNT #6DB33F
-		rectangle "<<Container>>\nTransaction Service\nSpring Boot :8084" as TX #6DB33F
+		rectangle "<<Container>>\nAuth Service\nSpring Boot :8081" as AUTH #6DB33F
 		rectangle "<<Container>>\nPayment Service\nSpring Boot :8085" as PAY #6DB33F
 		rectangle "<<Container>>\nFraud Service\nSpring Boot :8086" as FRAUD #6DB33F
+		rectangle "<<Container>>\nTransaction Service\nSpring Boot :8084" as TX #6DB33F
+		rectangle "<<Container>>\nAccount Service\nSpring Boot :8083" as ACCOUNT #6DB33F
 	}
 }
 
@@ -37,19 +37,19 @@ package "Data" {
 
 package "External Systems" {
 	rectangle "<<External>>\nStripe API" as STRIPE #gray
-	rectangle "<<External>>\nEuropean Central Bank" as ECB #gray
 	rectangle "<<External>>\nLLM Providers" as LLM #gray
+	rectangle "<<External>>\nEuropean Central Bank" as ECB #gray
 }
 
 USER --> FE : HTTPS
 FE --> GW : JSON / REST
 
-' Keep the service row in a stable left-to-right order
-AUTH -[hidden]right-> CLIENT
-CLIENT -[hidden]right-> ACCOUNT
-ACCOUNT -[hidden]right-> TX
-TX -[hidden]right-> PAY
-PAY -[hidden]right-> FRAUD
+' Keep service placement stable
+CLIENT -[hidden]down-> AUTH
+AUTH -[hidden]down-> PAY
+PAY -[hidden]down-> FRAUD
+FRAUD -[hidden]down-> TX
+TX -[hidden]down-> ACCOUNT
 
 ' Keep data and external systems visually separate from the main flow
 DB -[hidden]down-> STRIPE
@@ -68,8 +68,15 @@ Each service owns one isolated schema.
 All persistence goes through PostgreSQL.
 end note
 
-PAY --> STRIPE : Stripe API
-ACCOUNT --> ECB : FX rates
-FRAUD --> LLM : scoring / explainability
+AUTH --> DB : JDBC\n(auth schema)
+CLIENT --> DB : JDBC\n(clients schema)
+ACCOUNT --> DB : JDBC\n(accounts schema)
+TX --> DB : JDBC\n(transactions schema)
+PAY --> DB : JDBC\n(payments schema)
+FRAUD --> DB : JDBC\n(fraud schema)
+
+PAY --> STRIPE
+FRAUD --> LLM
+ACCOUNT --> ECB : Daily FX rates\n[HTTPS / XML]
 
 @enduml
