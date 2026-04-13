@@ -72,4 +72,8 @@ public class AccountService {
     public Account freezeAccount(Long id) {
         return accountLifecycleService.freezeAccount(id);
     }
+
+    public Account unfreezeAccount(Long id) {
+        return accountLifecycleService.unfreezeAccount(id);
+    }
 }

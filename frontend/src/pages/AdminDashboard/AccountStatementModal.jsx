@@ -1,9 +1,9 @@
 import { X, FileText, Eye, EyeOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getTransactionsByIban } from '@/services/transactionService';
-import { maskIban } from '@/lib/maskingUtils';
+import { maskIban, maskMoneyValue } from '@/lib/maskingUtils';
 
-export default function AccountStatementModal({ account, onClose }) {
+export default function AccountStatementModal({ account, onClose, showSensitiveData = false }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [revealIban, setRevealIban] = useState(false);
@@ -70,11 +70,13 @@ export default function AccountStatementModal({ account, onClose }) {
           <div className="glass rounded-xl p-4">
             <label className="text-sm text-zinc-400">Current Balance</label>
             <p className="text-2xl font-bold text-emerald-400">
-              {(() => {
-                const raw = account.accountBalance ?? account.balance;
-                const n = parseFloat(raw);
-                return Number.isFinite(n) ? n.toFixed(2) : '—';
-              })()}{' '}
+              {showSensitiveData
+                ? (() => {
+                    const raw = account.accountBalance ?? account.balance;
+                    const n = parseFloat(raw);
+                    return Number.isFinite(n) ? n.toFixed(2) : '—';
+                  })()
+                : maskMoneyValue()}{' '}
               {account.currencyCode}
             </p>
           </div>
@@ -139,10 +141,10 @@ export default function AccountStatementModal({ account, onClose }) {
                           <td className="px-4 py-3 text-sm font-medium">
                             <span className={sg === '+' ? 'text-emerald-400' : 'text-red-400'}>
                               {sg === '+' ? '+' : sg === '-' ? '-' : ''}
-                              {amt != null ? parseFloat(amt).toFixed(2) : '—'} {cur}
+                              {showSensitiveData ? (amt != null ? parseFloat(amt).toFixed(2) : '—') : maskMoneyValue()} {cur}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-sm text-zinc-400">{tx.details || '—'}</td>
+                          <td className="px-4 py-3 text-sm text-zinc-400">{showSensitiveData ? (tx.details || '—') : 'Hidden'}</td>
                         </tr>
                       );
                     })}

@@ -29,7 +29,7 @@ const processQueue = (error, token = null) => {
 // Request interceptor - attach JWT token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('jwt_token');
+    const token = sessionStorage.getItem('jwt_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -74,8 +74,8 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        const previousAccessToken = localStorage.getItem('jwt_token');
+        const refreshToken = sessionStorage.getItem('refresh_token');
+        const previousAccessToken = sessionStorage.getItem('jwt_token');
         
         if (!refreshToken) {
           throw new Error('No refresh token available');
@@ -94,9 +94,9 @@ apiClient.interceptors.response.use(
         const { token, refreshToken: newRefreshToken } = response.data;
         
         // Update stored tokens
-        localStorage.setItem('jwt_token', token);
+        sessionStorage.setItem('jwt_token', token);
         if (newRefreshToken) {
-          localStorage.setItem('refresh_token', newRefreshToken);
+          sessionStorage.setItem('refresh_token', newRefreshToken);
         }
 
         // Update the original request with new token
@@ -109,8 +109,8 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         // Refresh failed - logout user
-        localStorage.removeItem('jwt_token');
-        localStorage.removeItem('refresh_token');
+        sessionStorage.removeItem('jwt_token');
+        sessionStorage.removeItem('refresh_token');
         
         // Process queued requests with error
         processQueue(refreshError, null);

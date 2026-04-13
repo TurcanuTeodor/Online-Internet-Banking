@@ -84,9 +84,9 @@ function TopUpPaymentForm({ clientSecret, currencyCode, amountLabel, selectedSav
 }
 
 /**
- * @param {{ account: object, onClose: () => void, onSuccess: () => void }} props
+ * @param {{ account: object, onClose: () => void, onSuccess: () => void, onError?: (message: string) => void }} props
  */
-export default function TopUpModal({ account, onClose, onSuccess }) {
+export default function TopUpModal({ account, onClose, onSuccess, onError }) {
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState('amount');
   const [intent, setIntent] = useState(null);
@@ -99,7 +99,7 @@ export default function TopUpModal({ account, onClose, onSuccess }) {
     let mounted = true;
     (async () => {
       try {
-        const token = localStorage.getItem('jwt_token');
+        const token = sessionStorage.getItem('jwt_token');
         if (!token) return;
         const payload = jwtDecode(token);
         const cid = payload?.clientId;
@@ -158,7 +158,9 @@ export default function TopUpModal({ account, onClose, onSuccess }) {
       setStep('pay');
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || err.message;
-      setLocalError(typeof msg === 'string' ? msg : 'Could not start payment');
+      const safeMsg = typeof msg === 'string' ? msg : 'Could not start payment';
+      setLocalError(safeMsg);
+      onError?.(safeMsg);
     } finally {
       setLoading(false);
     }
@@ -223,7 +225,10 @@ export default function TopUpModal({ account, onClose, onSuccess }) {
                 onSuccess();
                 onClose();
               }}
-              onError={(msg) => setLocalError(msg)}
+              onError={(msg) => {
+                setLocalError(msg);
+                onError?.(msg);
+              }}
             />
             {savedMethods.length > 0 && (
               <div className="mt-4">

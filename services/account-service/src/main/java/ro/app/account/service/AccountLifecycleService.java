@@ -99,4 +99,25 @@ public class AccountLifecycleService {
         account.setStatus(AccountStatus.SUSPENDED);
         return accountRepository.save(account);
     }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "accountsByClient", key = "#result.clientId"),
+            @CacheEvict(value = "balance", key = "#result.iban")
+    })
+    public Account unfreezeAccount(@NotNull Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Account ID cannot be null");
+        }
+
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+
+        if (AccountStatus.CLOSED.equals(account.getStatus())) {
+            throw new BusinessRuleViolationException("Cannot reactivate a closed account");
+        }
+
+        account.setStatus(AccountStatus.ACTIVE);
+        return accountRepository.save(account);
+    }
 }

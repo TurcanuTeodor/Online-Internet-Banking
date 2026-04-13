@@ -41,7 +41,7 @@ function InfoRow(props) {
 function EditContactModal({ profile, onClose, onSaved }) {
   const clientId = useMemo(() => {
     try {
-      const token = localStorage.getItem('jwt_token');
+      const token = sessionStorage.getItem('jwt_token');
       if (token) return jwtDecode(token).clientId;
     } catch { /* token decode failed */ }
     return null;

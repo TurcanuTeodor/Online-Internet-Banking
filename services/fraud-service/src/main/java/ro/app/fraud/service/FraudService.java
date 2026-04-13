@@ -1,19 +1,28 @@
 package ro.app.fraud.service;
 
+import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
+import ro.app.fraud.client.AccountSecurityClient;
 import ro.app.fraud.dto.FraudDecisionDTO;
 import ro.app.fraud.dto.FraudEvaluationRequest;
 import ro.app.fraud.dto.FraudEvaluationResponse;
 import ro.app.fraud.model.entity.FraudDecision;
 import ro.app.fraud.model.enums.FraudDecisionStatus;
 import ro.app.fraud.model.enums.FraudTier;
+import ro.app.fraud.model.enums.FraudUserResolution;
 import ro.app.fraud.repository.FraudDecisionRepository;
 import ro.app.fraud.repository.UserBehaviorProfileRepository;
 import ro.app.fraud.tier1.RuleEngine;
@@ -28,15 +37,18 @@ public class FraudService {
     private final UserBehaviorProfileRepository profileRepo;
     private final RuleEngine ruleEngine;
     private final Tier2AsyncRunner tier2Runner;
+    private final AccountSecurityClient accountSecurityClient;
 
     public FraudService(FraudDecisionRepository decisionRepo,
                         UserBehaviorProfileRepository profileRepo,
                         RuleEngine ruleEngine,
-                        Tier2AsyncRunner tier2Runner) {
+                        Tier2AsyncRunner tier2Runner,
+                        AccountSecurityClient accountSecurityClient) {
         this.decisionRepo = decisionRepo;
         this.profileRepo = profileRepo;
         this.ruleEngine = ruleEngine;
         this.tier2Runner = tier2Runner;
+        this.accountSecurityClient = accountSecurityClient;
     }
 
     /**
@@ -95,7 +107,63 @@ public class FraudService {
                 FraudDecisionStatus.BLOCK,
                 FraudDecisionStatus.MANUAL_REVIEW
         );
-        return decisionRepo.findByStatusIn(alertStatuses, pageable).map(this::toDto);
+        return decisionRepo.findByStatusInAndUserResolution(alertStatuses, FraudUserResolution.PENDING, pageable)
+            .map(this::toDto);
+    }
+
+    public Page<FraudDecisionDTO> getMyAlerts(Long clientId, Pageable pageable) {
+        Set<FraudDecisionStatus> alertStatuses = EnumSet.of(
+                FraudDecisionStatus.FLAG,
+                FraudDecisionStatus.BLOCK,
+                FraudDecisionStatus.MANUAL_REVIEW,
+                FraudDecisionStatus.STEP_UP_REQUIRED
+        );
+        List<FraudDecisionDTO> results = decisionRepo.findByClientId(clientId).stream()
+                .filter(d -> alertStatuses.contains(d.getStatus()))
+                .sorted(Comparator.comparing(FraudDecision::getCreatedAt).reversed())
+                .map(this::toDto)
+                .collect(Collectors.toList());
+
+        int start = (int) pageable.getOffset();
+        if (start >= results.size()) {
+            return new PageImpl<>(List.of(), pageable, results.size());
+        }
+        int end = Math.min(start + pageable.getPageSize(), results.size());
+        return new PageImpl<>(results.subList(start, end), pageable, results.size());
+    }
+
+    public FraudDecisionDTO resolveMyAlert(Long decisionId, Long clientId, FraudUserResolution resolution, String notes) {
+        FraudDecision d = decisionRepo.findById(decisionId)
+                .orElseThrow(() -> new RuntimeException("Decision not found: " + decisionId));
+
+        if (!clientId.equals(d.getClientId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot resolve another client's alert");
+        }
+
+        if (resolution == null || resolution == FraudUserResolution.PENDING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Resolution is required");
+        }
+
+        d.setUserResolution(resolution);
+        d.setUserResolutionNotes(notes);
+        d.setUserResolvedAt(java.time.LocalDateTime.now());
+
+        if (resolution == FraudUserResolution.LEGITIMATE) {
+            try {
+                accountSecurityClient.unfreezeAccount(d.getAccountId());
+            } catch (Exception e) {
+                log.warn("Failed to unfreeze account {} after legitimate alert resolution: {}", d.getAccountId(), e.getMessage());
+            }
+        } else if (resolution == FraudUserResolution.FRAUD_REPORTED) {
+            try {
+                accountSecurityClient.freezeAccount(d.getAccountId());
+            } catch (Exception e) {
+                log.warn("Failed to freeze account {} after fraud report: {}", d.getAccountId(), e.getMessage());
+            }
+        }
+
+        d = decisionRepo.save(d);
+        return toDto(d);
     }
 
     public FraudDecisionDTO adminReview(Long decisionId, String adminUsername, String notes, FraudDecisionStatus newStatus) {
@@ -121,6 +189,9 @@ public class FraudService {
         dto.setExplanation(d.getExplanation());
         dto.setReviewedByAdmin(d.getReviewedByAdmin());
         dto.setAdminNotes(d.getAdminNotes());
+        dto.setUserResolution(d.getUserResolution());
+        dto.setUserResolutionNotes(d.getUserResolutionNotes());
+        dto.setUserResolvedAt(d.getUserResolvedAt());
         dto.setCreatedAt(d.getCreatedAt());
         dto.setUpdatedAt(d.getUpdatedAt());
         return dto;

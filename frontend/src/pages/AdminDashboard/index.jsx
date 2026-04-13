@@ -4,6 +4,7 @@ import { logout } from '@/services/authService';
 import { getAllClientsFromView, suspendClient } from '@/services/clientService';
 import { getAllTransactionsFromView } from '@/services/transactionService';
 import { getAllAccountsFromView } from '@/services/accountService';
+import { logSensitiveDataReveal } from '@/services/adminAuditService';
 import {
   LogOut,
   Users,
@@ -13,7 +14,7 @@ import {
   Wallet,
   LayoutDashboard,
   ShieldAlert,
-  CreditCard,
+  FileText,
   Menu,
   X,
 } from 'lucide-react';
@@ -24,21 +25,22 @@ import ClientDetailsModal from './ClientDetailsModal';
 import SuspendClientModal from './SuspendClientModal';
 import AccountStatementModal from './AccountStatementModal';
 import FreezeAccountModal from './FreezeAccountModal';
+import RevealSensitiveDataModal from './RevealSensitiveDataModal';
 import DashboardOverview from './DashboardOverview';
 import FraudAlertsTab from './FraudAlertsTab';
 import FraudCommandCenter from './FraudCommandCenter';
-import PaymentsTab from './PaymentsTab';
+import RevealAuditTab from './RevealAuditTab';
 import TransactionDetailsModal from '@/components/TransactionDetailsModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
-const VALID_TABS = ['dashboard', 'clients', 'accounts', 'transactions', 'payments', 'fraud'];
+const VALID_TABS = ['dashboard', 'clients', 'accounts', 'transactions', 'fraud', 'audit'];
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'clients', label: 'Clients', icon: Users },
   { id: 'accounts', label: 'Accounts', icon: Wallet },
   { id: 'transactions', label: 'Transactions', icon: TrendingUp },
-  { id: 'payments', label: 'Payments', icon: CreditCard },
   { id: 'fraud', label: 'Fraud Center', icon: ShieldAlert },
+  { id: 'audit', label: 'Audit Logs', icon: FileText },
 ];
 
 export default function AdminDashboard() {
@@ -62,6 +64,11 @@ export default function AdminDashboard() {
   const [showCloseAccountModal, setShowCloseAccountModal] = useState(false);
   const [accountToClose, setAccountToClose] = useState(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+  const [showAccountSensitiveData, setShowAccountSensitiveData] = useState(false);
+  const [showTransactionSensitiveData, setShowTransactionSensitiveData] = useState(false);
+  const [showRevealModal, setShowRevealModal] = useState(false);
+  const [revealScope, setRevealScope] = useState(null);
+  const [revealLoading, setRevealLoading] = useState(false);
 
   const [showClientFilters, setShowClientFilters] = useState(false);
   const [clientFilters, setClientFilters] = useState({
@@ -181,6 +188,37 @@ export default function AdminDashboard() {
   const handleViewAccountStatement = (account) => {
     setSelectedAccountForStatement(account);
     setShowAccountStatementModal(true);
+  };
+
+  const handleRequestSensitiveReveal = (scope) => {
+    setRevealScope(scope);
+    setShowRevealModal(true);
+  };
+
+  const confirmSensitiveReveal = async ({ reasonCode, reasonDetails }) => {
+    if (!revealScope) return;
+    setRevealLoading(true);
+    try {
+      await logSensitiveDataReveal({
+        scope: revealScope.scope,
+        targetType: revealScope.targetType,
+        targetId: String(revealScope.targetId || 'dashboard'),
+        reasonCode,
+        reasonDetails,
+      });
+      if (revealScope.scope === 'ADMIN_ACCOUNTS') {
+        setShowAccountSensitiveData(true);
+      }
+      if (revealScope.scope === 'ADMIN_TRANSACTIONS') {
+        setShowTransactionSensitiveData(true);
+      }
+      setShowRevealModal(false);
+      setRevealScope(null);
+    } catch (err) {
+      console.error('Error logging sensitive data reveal:', err);
+    } finally {
+      setRevealLoading(false);
+    }
   };
 
   const handleFreezeAccount = (account) => {
@@ -374,6 +412,12 @@ export default function AdminDashboard() {
                   onViewStatement={handleViewAccountStatement}
                   onFreezeAccount={handleFreezeAccount}
                   onCloseAccount={handleCloseAccount}
+                  showSensitiveData={showAccountSensitiveData}
+                  onRequestSensitiveReveal={() => handleRequestSensitiveReveal({
+                    scope: 'ADMIN_ACCOUNTS',
+                    targetType: 'ACCOUNT_BALANCE',
+                    targetId: 'accounts-tab',
+                  })}
                 />
               )}
 
@@ -386,11 +430,13 @@ export default function AdminDashboard() {
                   showFilters={showTransactionFilters}
                   onToggleFilters={() => setShowTransactionFilters(!showTransactionFilters)}
                   onViewDetails={setSelectedTransactionId}
+                  showSensitiveData={showTransactionSensitiveData}
+                  onRequestSensitiveReveal={() => handleRequestSensitiveReveal({
+                    scope: 'ADMIN_TRANSACTIONS',
+                    targetType: 'TRANSACTION_AMOUNT_DETAILS',
+                    targetId: 'transactions-tab',
+                  })}
                 />
-              )}
-
-              {activeTab === 'payments' && (
-                <PaymentsTab clients={clients} />
               )}
 
               {activeTab === 'fraud' && (
@@ -398,6 +444,10 @@ export default function AdminDashboard() {
                   <FraudAlertsTab />
                   <FraudCommandCenter transactions={transactions} clients={clients} />
                 </div>
+              )}
+
+              {activeTab === 'audit' && (
+                <RevealAuditTab />
               )}
             </>
           )}
@@ -426,6 +476,7 @@ export default function AdminDashboard() {
       {showAccountStatementModal && (
         <AccountStatementModal
           account={selectedAccountForStatement}
+          showSensitiveData={showAccountSensitiveData}
           onClose={() => {
             setShowAccountStatementModal(false);
             setSelectedAccountForStatement(null);
@@ -455,7 +506,23 @@ export default function AdminDashboard() {
       />
 
       {selectedTransactionId != null && (
-        <TransactionDetailsModal id={selectedTransactionId} onClose={() => setSelectedTransactionId(null)} />
+        <TransactionDetailsModal
+          id={selectedTransactionId}
+          maskSensitiveData={!showTransactionSensitiveData}
+          onClose={() => setSelectedTransactionId(null)}
+        />
+      )}
+
+      {showRevealModal && revealScope && (
+        <RevealSensitiveDataModal
+          scopeLabel={revealScope.scope === 'ADMIN_ACCOUNTS' ? 'Account balances' : 'Transaction amounts and details'}
+          loading={revealLoading}
+          onClose={() => {
+            setShowRevealModal(false);
+            setRevealScope(null);
+          }}
+          onConfirm={confirmSensitiveReveal}
+        />
       )}
     </div>
   );

@@ -13,7 +13,7 @@ export default function GdprSection() {
 
   const clientId = useMemo(() => {
     try {
-      const token = localStorage.getItem('jwt_token');
+      const token = sessionStorage.getItem('jwt_token');
       if (token) return jwtDecode(token).clientId;
     } catch { /* ignore */ }
     return null;
@@ -49,8 +49,8 @@ export default function GdprSection() {
       setSuccess('Account deletion requested. You will be logged out.');
       setShowDeleteConfirm(false);
       setTimeout(() => {
-        localStorage.removeItem('jwt_token');
-        localStorage.removeItem('refresh_token');
+        sessionStorage.removeItem('jwt_token');
+        sessionStorage.removeItem('refresh_token');
         window.location.href = '/login';
       }, 3000);
     } catch (err) {

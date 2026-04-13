@@ -33,6 +33,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/fraud/decisions/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/fraud/alerts/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/fraud/decisions/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/fraud/user/alerts").hasRole("USER")
+                .requestMatchers(HttpMethod.POST, "/api/fraud/user/alerts/**").hasRole("USER")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(internalApiAuthFilter, UsernamePasswordAuthenticationFilter.class)

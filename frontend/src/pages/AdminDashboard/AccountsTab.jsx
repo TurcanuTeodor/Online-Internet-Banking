@@ -1,7 +1,7 @@
-import { Filter, Search } from 'lucide-react';
+import { Eye, Filter, Search } from 'lucide-react';
 import PaginationControls from './PaginationControls';
 import RowActionsMenu from './RowActionsMenu';
-import { maskIban } from '@/lib/maskingUtils';
+import { maskIban, maskMoneyValue } from '@/lib/maskingUtils';
 
 function accountStatus(acc) {
   return acc.accountStatusName ?? acc.status ?? '—';
@@ -24,6 +24,8 @@ export default function AccountsTab({
   onViewStatement,
   onFreezeAccount,
   onCloseAccount,
+  showSensitiveData,
+  onRequestSensitiveReveal,
 }) {
   const getAccountStatuses = () => {
     const statuses = new Set(accounts.map((acc) => accountStatus(acc)).filter((s) => s && s !== '—'));
@@ -69,13 +71,25 @@ export default function AccountsTab({
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <h2 className="text-lg font-semibold">Accounts ({filteredAccounts.length})</h2>
-        <button
-          onClick={onToggleFilters}
-          className={`btn-secondary flex items-center justify-center gap-2 ${showFilters ? 'bg-emerald-500/20 border-emerald-500/30' : ''}`}
-        >
-          <Filter className="w-4 h-4" />
-          {showFilters ? 'Hide' : 'Show'} Filters
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {!showSensitiveData && (
+            <button
+              type="button"
+              onClick={onRequestSensitiveReveal}
+              className="btn-secondary flex items-center justify-center gap-2 border-amber-500/30 text-amber-300"
+            >
+              <Eye className="w-4 h-4" />
+              Reveal data
+            </button>
+          )}
+          <button
+            onClick={onToggleFilters}
+            className={`btn-secondary flex items-center justify-center gap-2 ${showFilters ? 'bg-emerald-500/20 border-emerald-500/30' : ''}`}
+          >
+            <Filter className="w-4 h-4" />
+            {showFilters ? 'Hide' : 'Show'} Filters
+          </button>
+        </div>
       </div>
 
       {showFilters && (
@@ -176,7 +190,9 @@ export default function AccountsTab({
                             {acc.currencyCode}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium text-emerald-400">{formatBalance(acc)}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-emerald-400">
+                          {showSensitiveData ? formatBalance(acc) : maskMoneyValue()}
+                        </td>
                         <td className="px-4 py-3 text-sm">
                           <span
                             className={`px-2 py-1 rounded text-xs ${

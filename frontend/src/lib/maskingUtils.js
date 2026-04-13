@@ -17,3 +17,7 @@ export function maskEmail(email) {
   if (user.length <= 2) return `${user.charAt(0)}***@${domain}`;
   return `${user.substring(0, 2)}***@${domain}`;
 }
+
+export function maskMoneyValue() {
+  return '***.**';
+}

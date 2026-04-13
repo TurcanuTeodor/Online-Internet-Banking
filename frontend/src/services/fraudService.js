@@ -33,3 +33,27 @@ export const reviewFraudDecision = async (id, newStatus, notes) => {
   });
   return response.data;
 };
+
+/**
+ * Get the current user's fraud/security alerts.
+ * @param {number} page
+ * @param {number} size
+ */
+export const getMyFraudAlerts = async (page = 0, size = 20) => {
+  const response = await apiClient.get('/fraud/user/alerts', { params: { page, size } });
+  return response.data;
+};
+
+/**
+ * Resolve one of the current user's fraud alerts.
+ * @param {number|string} id
+ * @param {'LEGITIMATE'|'FRAUD_REPORTED'} resolution
+ * @param {string} notes
+ */
+export const resolveMyFraudAlert = async (id, resolution, notes = '') => {
+  const response = await apiClient.post(`/fraud/user/alerts/${id}/resolve`, {
+    resolution,
+    notes,
+  });
+  return response.data;
+};

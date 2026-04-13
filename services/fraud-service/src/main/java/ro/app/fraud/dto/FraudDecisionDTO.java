@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import ro.app.fraud.model.enums.FraudDecisionStatus;
 import ro.app.fraud.model.enums.FraudTier;
+import ro.app.fraud.model.enums.FraudUserResolution;
 
 public class FraudDecisionDTO {
 
@@ -18,6 +19,9 @@ public class FraudDecisionDTO {
     private String explanation;
     private String reviewedByAdmin;
     private String adminNotes;
+    private FraudUserResolution userResolution;
+    private String userResolutionNotes;
+    private LocalDateTime userResolvedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -53,6 +57,15 @@ public class FraudDecisionDTO {
 
     public String getAdminNotes() { return adminNotes; }
     public void setAdminNotes(String adminNotes) { this.adminNotes = adminNotes; }
+
+    public FraudUserResolution getUserResolution() { return userResolution; }
+    public void setUserResolution(FraudUserResolution userResolution) { this.userResolution = userResolution; }
+
+    public String getUserResolutionNotes() { return userResolutionNotes; }
+    public void setUserResolutionNotes(String userResolutionNotes) { this.userResolutionNotes = userResolutionNotes; }
+
+    public LocalDateTime getUserResolvedAt() { return userResolvedAt; }
+    public void setUserResolvedAt(LocalDateTime userResolvedAt) { this.userResolvedAt = userResolvedAt; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

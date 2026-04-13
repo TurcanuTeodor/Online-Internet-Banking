@@ -22,14 +22,14 @@ export const login = async (usernameOrEmail, password) => {
   
   // Only persist token when 2FA is complete (or not required)
   if (response.data.token && !response.data.twoFactorRequired) {
-    localStorage.setItem('jwt_token', response.data.token);
+    sessionStorage.setItem('jwt_token', response.data.token);
   } else {
-    localStorage.removeItem('jwt_token');
+    sessionStorage.removeItem('jwt_token');
   }
   
   // Store refresh token if provided
   if (response.data.refreshToken) {
-    localStorage.setItem('refresh_token', response.data.refreshToken);
+    sessionStorage.setItem('refresh_token', response.data.refreshToken);
   }
   
   return response.data;
@@ -52,25 +52,25 @@ export const changePassword = async (oldPassword, newPassword) => {
  * @returns {Promise} RefreshTokenResponse with new token and optional new refresh token
  */
 export const refreshAccessToken = async (refreshToken = null) => {
-  const token = refreshToken || localStorage.getItem('refresh_token');
+  const token = refreshToken || sessionStorage.getItem('refresh_token');
   
   if (!token) {
     throw new Error('No refresh token available');
   }
   
   try {
-    const previousAccess = typeof localStorage !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    const previousAccess = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('jwt_token') : null;
     const response = await apiClient.post('/auth/refresh-token', {
       refreshToken: token,
       ...(previousAccess ? { accessToken: previousAccess } : {}),
     });
     
     // Update stored tokens
-    localStorage.setItem('jwt_token', response.data.token);
+    sessionStorage.setItem('jwt_token', response.data.token);
     
     // If new refresh token provided (rotation), update it
     if (response.data.refreshToken) {
-      localStorage.setItem('refresh_token', response.data.refreshToken);
+      sessionStorage.setItem('refresh_token', response.data.refreshToken);
     }
     
     return response.data;
@@ -86,7 +86,7 @@ export const refreshAccessToken = async (refreshToken = null) => {
  * Revokes refresh token and clears local storage
  */
 export const logout = async () => {
-  const refreshToken = localStorage.getItem('refresh_token');
+  const refreshToken = sessionStorage.getItem('refresh_token');
   
   try {
     if (refreshToken) {
@@ -98,8 +98,8 @@ export const logout = async () => {
     console.warn('Failed to revoke refresh token:', error);
   }
   
-  localStorage.removeItem('jwt_token');
-  localStorage.removeItem('refresh_token');
+  sessionStorage.removeItem('jwt_token');
+  sessionStorage.removeItem('refresh_token');
   window.location.href = '/login';
 };
 
@@ -135,12 +135,12 @@ export const verify2FA = async (tempToken, code) => {
   });
   
   if (response.data.token) {
-    localStorage.setItem('jwt_token', response.data.token);
+    sessionStorage.setItem('jwt_token', response.data.token);
   }
   
   // Store refresh token if provided
   if (response.data.refreshToken) {
-    localStorage.setItem('refresh_token', response.data.refreshToken);
+    sessionStorage.setItem('refresh_token', response.data.refreshToken);
   }
   
   return response.data;
@@ -152,7 +152,7 @@ export const verify2FA = async (tempToken, code) => {
  * @returns {boolean} Authentication status
  */
 export const isAuthenticated = () => {
-  const token = localStorage.getItem('jwt_token');
+  const token = sessionStorage.getItem('jwt_token');
   if (!token) {
     return false;
   }
@@ -172,7 +172,7 @@ export const isAuthenticated = () => {
  * @returns {boolean}
  */
 export const isAdmin = () => {
-  const token = localStorage.getItem('jwt_token');
+  const token = sessionStorage.getItem('jwt_token');
   if (!token) return false;
 
   try {

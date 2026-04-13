@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Receipt } from 'lucide-react';
 import { getTransactionDetails } from '@/services/transactionService';
 import ModalShell from './ModalShell';
+import { maskIban, maskMoneyValue } from '@/lib/maskingUtils';
 
 const LABELS = {
   transactionId: 'Transaction ID',
@@ -56,7 +57,8 @@ function formatMaybeDate(v) {
   return d.toLocaleString();
 }
 
-function formatMoney(amount, currency) {
+function formatMoney(amount, currency, maskSensitiveData = false) {
+  if (maskSensitiveData) return maskMoneyValue();
   if (isEmpty(amount)) return null;
   const n = typeof amount === 'number' ? amount : Number.parseFloat(amount);
   if (!Number.isFinite(n)) return null;
@@ -67,7 +69,15 @@ function formatMoney(amount, currency) {
   }
 }
 
-function formatValue(key, value, all) {
+function formatValue(key, value, all, maskSensitiveData = false) {
+  if (maskSensitiveData) {
+    if (['amount', 'originalAmount'].includes(key)) return maskMoneyValue();
+    if (['accountIban', 'senderIban', 'receiverIban', 'fromIban', 'toIban', 'destinationIban', 'destinationAccountIban'].includes(key)) {
+      return maskIban(value);
+    }
+    if (['merchant', 'reference', 'description', 'details'].includes(key)) return 'Hidden';
+  }
+
   if (isEmpty(value)) return null;
 
   if (['transactionDate', 'createdAt', 'updatedAt'].includes(key)) {
@@ -107,7 +117,7 @@ function ReceiptField({ label, value, mono = false }) {
   );
 }
 
-export default function TransactionDetailsModal({ id, onClose }) {
+export default function TransactionDetailsModal({ id, onClose, maskSensitiveData = false }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -171,7 +181,7 @@ export default function TransactionDetailsModal({ id, onClose }) {
 
     const addRow = (key) => {
       if (used.has(key) || !(key in data)) return;
-      const formatted = formatValue(key, data[key], data);
+      const formatted = formatValue(key, data[key], data, maskSensitiveData);
       if (formatted === null) return;
       used.add(key);
       rows.push({
@@ -189,7 +199,7 @@ export default function TransactionDetailsModal({ id, onClose }) {
       .sort()
       .forEach(addRow);
 
-    const amount = formatMoney(data.amount, data.currencyCode || data.originalCurrencyCode);
+    const amount = formatMoney(data.amount, data.currencyCode || data.originalCurrencyCode, maskSensitiveData);
     const sign = data.sign === '+' ? '+' : data.sign === '-' ? '-' : '';
 
     return {
@@ -197,7 +207,7 @@ export default function TransactionDetailsModal({ id, onClose }) {
       sign,
       headerAmount: amount ? `${sign}${amount}` : null,
     };
-  }, [data]);
+  }, [data, maskSensitiveData]);
 
   return (
     <ModalShell

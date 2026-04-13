@@ -15,7 +15,7 @@ export default function useDashboardData() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const token = localStorage.getItem('jwt_token');
+    const token = sessionStorage.getItem('jwt_token');
     if (token) {
       try {
         const decoded = jwtDecode(token);

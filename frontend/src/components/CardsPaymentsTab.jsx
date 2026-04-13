@@ -142,11 +142,12 @@ export default function CardsPaymentsTab({ clientId, accounts, onRefresh, onOpen
     <div className="space-y-8">
       {confirmDeleteId && (
         <ConfirmDialog
+          open
           title="Remove Card"
-          message="Are you sure you want to remove this card from your profile?"
+          description="Are you sure you want to remove this card from your profile?"
           onConfirm={handleDelete}
           onCancel={() => setConfirmDeleteId(null)}
-          confirmText="Remove"
+          confirmLabel="Remove"
           danger
         />
       )}

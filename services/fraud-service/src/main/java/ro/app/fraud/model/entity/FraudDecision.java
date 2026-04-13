@@ -5,7 +5,15 @@ import java.time.LocalDateTime;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import ro.app.fraud.model.enums.FraudDecisionStatus;
 import ro.app.fraud.model.enums.FraudTier;
 
@@ -52,6 +60,16 @@ public class FraudDecision {
     @Column(name = "ADMIN_NOTES")
     private String adminNotes;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "USER_RESOLUTION", nullable = false)
+    private ro.app.fraud.model.enums.FraudUserResolution userResolution = ro.app.fraud.model.enums.FraudUserResolution.PENDING;
+
+    @Column(name = "USER_RESOLUTION_NOTES")
+    private String userResolutionNotes;
+
+    @Column(name = "USER_RESOLVED_AT")
+    private LocalDateTime userResolvedAt;
+
     @Column(name = "CREATED_AT", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -95,6 +113,15 @@ public class FraudDecision {
 
     public String getAdminNotes() { return adminNotes; }
     public void setAdminNotes(String adminNotes) { this.adminNotes = adminNotes; }
+
+    public ro.app.fraud.model.enums.FraudUserResolution getUserResolution() { return userResolution; }
+    public void setUserResolution(ro.app.fraud.model.enums.FraudUserResolution userResolution) { this.userResolution = userResolution; }
+
+    public String getUserResolutionNotes() { return userResolutionNotes; }
+    public void setUserResolutionNotes(String userResolutionNotes) { this.userResolutionNotes = userResolutionNotes; }
+
+    public LocalDateTime getUserResolvedAt() { return userResolvedAt; }
+    public void setUserResolvedAt(LocalDateTime userResolvedAt) { this.userResolvedAt = userResolvedAt; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

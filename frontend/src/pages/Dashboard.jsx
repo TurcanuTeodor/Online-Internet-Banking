@@ -1,10 +1,11 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { logout, setup2FA } from '@/services/authService';
-import { LogOut, Wallet, Shield, CreditCard, LayoutDashboard, ArrowLeftRight, UserCircle, Search } from 'lucide-react';
+import { LogOut, Wallet, Shield, ShieldAlert, CreditCard, LayoutDashboard, ArrowLeftRight, UserCircle, Search } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import useDashboardData from '@/hooks/useDashboardData';
 import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts';
+import { getMyFraudAlerts, resolveMyFraudAlert } from '@/services/fraudService';
 
 import TopUpModal from '../components/TopUpModal';
 import CardsPaymentsTab from '../components/CardsPaymentsTab';
@@ -16,13 +17,14 @@ import UserPaymentsTab from '../components/UserPaymentsTab';
 import OnboardingCard from '../components/OnboardingCard';
 import SearchOverlay from '../components/SearchOverlay';
 import NotificationCenter, { useNotifications } from '../components/NotificationCenter';
+import SecurityCenterTab from '../components/SecurityCenterTab';
 import TableSkeleton from '../components/TableSkeleton';
 
 import OpenAccountModal from '../components/Modals/OpenAccountModal';
 import TransferModal from '../components/Modals/TransferModal';
 import SetupTwoFaModal from '../components/Modals/SetupTwoFaModal';
 
-const USER_SECTIONS = ['accounts', 'transactions', 'payments', 'cards', 'profile'];
+const USER_SECTIONS = ['accounts', 'transactions', 'payments', 'cards', 'security', 'profile'];
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -43,6 +45,9 @@ export default function Dashboard() {
   const [twoFaSetup, setTwoFaSetup] = useState(null);
   const [topUpAccount, setTopUpAccount] = useState(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+  const [fraudAlerts, setFraudAlerts] = useState([]);
+  const [fraudAlertsLoading, setFraudAlertsLoading] = useState(false);
+  const [fraudAlertsError, setFraudAlertsError] = useState('');
 
   // Transaction filtering
   const [showFilters, setShowFilters] = useState(false);
@@ -71,10 +76,46 @@ export default function Dashboard() {
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+  const fetchFraudAlerts = async () => {
+    if (!clientId) return;
+    setFraudAlertsLoading(true);
+    setFraudAlertsError('');
+    try {
+      const result = await getMyFraudAlerts(0, 20);
+      setFraudAlerts(Array.isArray(result?.content) ? result.content : []);
+    } catch (err) {
+      setFraudAlerts([]);
+      setFraudAlertsError(err?.response?.data?.message || err?.message || 'Failed to load security alerts');
+    } finally {
+      setFraudAlertsLoading(false);
+    }
+  };
+
   // Filtering logic
   const getFilteredTransactions = () => {
     let filtered = [...ledgerTransactions];
-    if (selectedAccountFilter !== 'all') filtered = filtered.filter(tx => tx.accountIban === selectedAccountFilter);
+    if (selectedAccountFilter !== 'all') {
+      const selectedAccount = accounts.find((account) => account.iban === selectedAccountFilter);
+      const selectedAccountId = selectedAccount?.id;
+      const selectedCurrency = selectedAccount?.currencyCode;
+
+      filtered = filtered.filter((tx) => {
+        const txIban = tx.accountIban || tx.iban || tx.senderIban || tx.receiverIban || tx.fromIban || tx.toIban;
+        if (txIban) return txIban === selectedAccountFilter;
+
+        const txAccountId = tx.accountId ?? tx.sourceAccountId ?? tx.originAccountId;
+        if (selectedAccountId != null && txAccountId != null) {
+          return String(txAccountId) === String(selectedAccountId);
+        }
+
+        const txCurrency = tx.currencyCode || tx.originalCurrencyCode;
+        if (selectedCurrency && txCurrency) {
+          return String(txCurrency).toUpperCase() === String(selectedCurrency).toUpperCase();
+        }
+
+        return false;
+      });
+    }
     if (filters.type !== 'all') filtered = filtered.filter(tx => tx.transactionTypeName === filters.type);
     if (filters.sign !== 'all') filtered = filtered.filter(tx => tx.sign === filters.sign);
     if (filters.dateFrom) { const d = new Date(filters.dateFrom); d.setHours(0,0,0,0); filtered = filtered.filter(tx => new Date(tx.transactionDate) >= d); }
@@ -106,13 +147,19 @@ export default function Dashboard() {
 
   useEffect(() => { if (!section || !USER_SECTIONS.includes(section)) navigate('/dashboard/accounts', { replace: true }); }, [section, navigate]);
 
+  useEffect(() => {
+    if (clientId) fetchFraudAlerts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
   const kbShortcuts = useMemo(() => [
     { key: 'k', ctrl: true, action: () => setShowSearch(true) },
     { key: '1', ctrl: false, action: () => navigate('/dashboard/accounts') },
     { key: '2', ctrl: false, action: () => navigate('/dashboard/transactions') },
     { key: '3', ctrl: false, action: () => navigate('/dashboard/payments') },
     { key: '4', ctrl: false, action: () => navigate('/dashboard/cards') },
-    { key: '5', ctrl: false, action: () => navigate('/dashboard/profile') },
+    { key: '5', ctrl: false, action: () => navigate('/dashboard/security') },
+    { key: '6', ctrl: false, action: () => navigate('/dashboard/profile') },
   ], [navigate, setShowSearch]);
   useKeyboardShortcuts(kbShortcuts);
 
@@ -122,8 +169,25 @@ export default function Dashboard() {
     { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'cards', label: 'Cards', icon: Wallet },
+    { id: 'security', label: 'Security', icon: ShieldAlert },
     { id: 'profile', label: 'Profile', icon: UserCircle },
   ];
+
+  const pendingFraudAlerts = fraudAlerts.filter((alert) => !alert.userResolution || alert.userResolution === 'PENDING');
+
+  const handleResolveFraudAlert = async (alert, resolution) => {
+    try {
+      await resolveMyFraudAlert(alert.id, resolution, resolution === 'LEGITIMATE' ? 'Confirmed by client' : 'Client reported fraud');
+      toast.success(
+        resolution === 'LEGITIMATE'
+          ? 'Alert marked legitimate. Security review updated.'
+          : 'Alert reported as fraud. Protective action sent.'
+      );
+      await Promise.all([fetchFraudAlerts(), fetchData()]);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to resolve alert');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -184,6 +248,23 @@ export default function Dashboard() {
           </div>
         )}
 
+        {mainTab !== 'security' && pendingFraudAlerts.length > 0 && (
+          <div className="mb-6 glass rounded-2xl border border-amber-500/15 bg-amber-500/8 p-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-amber-300 font-semibold">Security attention needed</p>
+                <p className="text-sm text-zinc-400">
+                  You have {pendingFraudAlerts.length} unresolved fraud alert{pendingFraudAlerts.length !== 1 ? 's' : ''}. Review them in Security Center.
+                </p>
+              </div>
+              <button type="button" onClick={() => navigate('/dashboard/security')} className="btn-primary flex items-center gap-2 self-start md:self-auto">
+                <ShieldAlert className="w-4 h-4" />
+                Review alerts
+              </button>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="space-y-6 animate-fade-in">
             <div className="glass rounded-2xl p-6"><div className="skeleton h-8 w-48 mb-2" /><div className="skeleton h-4 w-72" /></div>
@@ -206,6 +287,14 @@ export default function Dashboard() {
             <div className="glass rounded-2xl p-6"><h2 className="text-2xl font-bold">Profile</h2><p className="text-zinc-500 text-sm mt-1">Your personal details and account profile information.</p></div>
             <ProfileTab />
           </div>
+        ) : mainTab === 'security' ? (
+          <SecurityCenterTab
+            alerts={fraudAlerts}
+            loading={fraudAlertsLoading}
+            error={fraudAlertsError}
+            onRefresh={fetchFraudAlerts}
+            onResolve={handleResolveFraudAlert}
+          />
         ) : mainTab === 'transactions' ? (
           <UserTransactionsTab
             accounts={accounts} selectedAccountFilter={selectedAccountFilter} setSelectedAccountFilter={setSelectedAccountFilter}
@@ -235,7 +324,8 @@ export default function Dashboard() {
         <TopUpModal
           account={topUpAccount}
           onClose={() => setTopUpAccount(null)}
-          onSuccess={() => { toast.success('Top-up submitted. Balance updates when Stripe confirms payment.'); fetchData(); }}
+          onSuccess={() => { toast.success('Top-up completed successfully.'); fetchData(); }}
+          onError={(msg) => toast.error(msg)}
         />
       )}
 
