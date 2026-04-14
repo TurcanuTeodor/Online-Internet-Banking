@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import ro.app.payment.dto.PaymentDTO;
 import ro.app.payment.dto.request.CreatePaymentRequest;
 import ro.app.payment.dto.request.CreateTopUpIntentRequest;
+import ro.app.payment.dto.request.ConfirmTopUpRequest;
 import ro.app.payment.dto.response.TopUpIntentResponse;
 import ro.app.payment.service.payment.PaymentService;
 import ro.app.payment.security.JwtPrincipal;
@@ -43,6 +44,18 @@ public class PaymentController {
         String authorization = httpRequest.getHeader(HttpHeaders.AUTHORIZATION);
         TopUpIntentResponse body = paymentService.createTopUpIntent(request, principal, authorization);
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
+    }
+
+    /**
+     * Local/dev fallback: confirm settlement after Stripe.js success without relying on webhooks.
+     * Idempotent: repeated calls won't double-credit.
+     */
+    @PostMapping("/top-up/confirm")
+    public ResponseEntity<Void> confirmTopUp(
+            @Valid @RequestBody ConfirmTopUpRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        paymentService.confirmTopUpSucceeded(request.getStripePaymentIntentId(), principal);
+        return ResponseEntity.noContent().build();
     }
 
     // Create payment — ownership check pe clientId din request

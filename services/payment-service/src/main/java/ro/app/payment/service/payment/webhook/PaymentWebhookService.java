@@ -60,6 +60,16 @@ public class PaymentWebhookService {
             log.info("Webhook: idempotent skip for intent {}", payment.getStripePaymentIntentId());
             return;
         }
+        settleSucceededIntent(payment);
+    }
+
+    /**
+     * Shared settlement logic (used by webhook and the manual confirm endpoint).
+     */
+    public void settleSucceededIntent(Payment payment) {
+        if (payment.getStatus() == PaymentStatus.COMPLETED) {
+            return;
+        }
         paymentCreditService.applyCreditViaAccountService(payment);
         payment.setStatus(PaymentStatus.COMPLETED);
     }

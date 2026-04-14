@@ -12,6 +12,16 @@ export const getFraudAlerts = async (page = 0, size = 20) => {
 };
 
 /**
+ * Convenience for charts: fetch a larger slice of alerts.
+ * Note: still uses the paginated endpoint; increase size if needed.
+ */
+export const getFraudAlertsForCharts = async (size = 500) => {
+  const safeSize = Number.isFinite(Number(size)) ? Math.max(1, Math.min(5000, Number(size))) : 500;
+  const response = await apiClient.get('/fraud/alerts', { params: { page: 0, size: safeSize } });
+  return response.data;
+};
+
+/**
  * Get a single fraud decision by ID.
  * @param {number|string} id
  */

@@ -18,8 +18,8 @@ import {
 import {
   filterTransactionsByLastDays,
   prepareClientRiskDistributionData,
-  prepareHighRiskOverTimeData,
-  prepareScatterAnomalyData,
+  prepareScatterAnomalyDataWithAlerts,
+  prepareHighRiskOverTimeDataWithAlerts,
 } from '@/lib/analyticsTransforms';
 
 const RISK_COLORS = {
@@ -46,18 +46,87 @@ function formatDate(value) {
 
 const RANGE_OPTIONS = [7, 30, 90];
 
-export default function FraudCommandCenter({ transactions = [], clients = [] }) {
+function formatAmountWithSign(sign, amount) {
+  const n = Number(amount);
+  const safe = Number.isFinite(n) ? n : 0;
+  const prefix = sign === '-' ? '-' : '+';
+  return `${prefix}${safe.toFixed(2)}`;
+}
+
+function ScatterTooltip({ active, payload }) {
+  if (!active || !Array.isArray(payload) || payload.length === 0) return null;
+  const point = payload[0]?.payload;
+  if (!point) return null;
+
+  const title = `${point.type || 'Transaction'} • ${point.date ? formatDate(point.date) : '—'}`;
+  const risk = Number.isFinite(Number(point.riskScore)) ? Number(point.riskScore).toFixed(1) : '—';
+  const amount = formatAmountWithSign(point.sign, point.amount);
+
+  return (
+    <div style={{ ...tooltipStyle(), padding: 12, minWidth: 220 }}>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 12, opacity: 0.9, lineHeight: 1.5 }}>
+        <div><span style={{ opacity: 0.7 }}>Amount:</span> {amount}</div>
+        <div><span style={{ opacity: 0.7 }}>Risk score:</span> {risk}%</div>
+        <div><span style={{ opacity: 0.7 }}>Flagged:</span> {point.flagged ? 'Yes' : 'No'}</div>
+        {point.accountId != null && <div><span style={{ opacity: 0.7 }}>Account:</span> {point.accountId}</div>}
+        {point.destinationAccountId != null && <div><span style={{ opacity: 0.7 }}>Destination:</span> {point.destinationAccountId}</div>}
+        {point.merchant && <div><span style={{ opacity: 0.7 }}>Merchant:</span> {String(point.merchant)}</div>}
+        {point.id && <div><span style={{ opacity: 0.7 }}>Tx ID:</span> {String(point.id)}</div>}
+      </div>
+    </div>
+  );
+}
+
+function PieTooltip({ active, payload, total }) {
+  if (!active || !Array.isArray(payload) || payload.length === 0) return null;
+  const item = payload[0]?.payload;
+  if (!item) return null;
+  const level = item.level || '—';
+  const count = Number.isFinite(Number(item.value)) ? Number(item.value) : 0;
+  const safeTotal = Number.isFinite(Number(total)) ? Number(total) : 0;
+  const pct = safeTotal > 0 ? ((count / safeTotal) * 100).toFixed(1) : '0.0';
+
+  return (
+    <div style={{ ...tooltipStyle(), padding: 12 }}>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>{level}</div>
+      <div style={{ fontSize: 12, opacity: 0.9, lineHeight: 1.5 }}>
+        <div><span style={{ opacity: 0.7 }}>Clients:</span> {count}</div>
+        <div><span style={{ opacity: 0.7 }}>Share:</span> {pct}%</div>
+      </div>
+    </div>
+  );
+}
+
+export default function FraudCommandCenter({ transactions = [], clients = [], fraudAlerts = [] }) {
   const [rangeDays, setRangeDays] = useState(30);
 
   const rangedTransactions = useMemo(
     () => filterTransactionsByLastDays(transactions, rangeDays),
     [transactions, rangeDays]
   );
-  const scatterData = useMemo(() => prepareScatterAnomalyData(rangedTransactions), [rangedTransactions]);
+  // Fraud alerts/decisions are not necessarily reflected in the transaction view as `flagged`.
+  // We overlay the latest alerts by transactionId so charts match the Fraud Alerts table.
+  const alertedTransactionIds = useMemo(
+    () => new Set((Array.isArray(fraudAlerts) ? fraudAlerts : []).map((a) => a?.transactionId).filter((x) => x != null)),
+    [fraudAlerts]
+  );
+
+  const scatterData = useMemo(
+    () => prepareScatterAnomalyDataWithAlerts(rangedTransactions, alertedTransactionIds),
+    [rangedTransactions, alertedTransactionIds]
+  );
   const highRiskPoints = useMemo(() => scatterData.filter((x) => x.highRisk), [scatterData]);
   const normalPoints = useMemo(() => scatterData.filter((x) => !x.highRisk), [scatterData]);
-  const riskTimeData = useMemo(() => prepareHighRiskOverTimeData(rangedTransactions), [rangedTransactions]);
+  const riskTimeData = useMemo(
+    () => prepareHighRiskOverTimeDataWithAlerts(rangedTransactions, rangeDays, alertedTransactionIds),
+    [rangedTransactions, rangeDays, alertedTransactionIds]
+  );
   const riskDistribution = useMemo(() => prepareClientRiskDistributionData(clients), [clients]);
+  const riskDistributionTotal = useMemo(
+    () => (Array.isArray(riskDistribution) ? riskDistribution.reduce((acc, x) => acc + (Number(x?.value) || 0), 0) : 0),
+    [riskDistribution]
+  );
 
   return (
     <div className="space-y-4">
@@ -97,22 +166,11 @@ export default function FraudCommandCenter({ transactions = [], clients = [] }) 
               <YAxis type="number" dataKey="riskScore" name="Risk score" domain={[0, 100]} tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} />
               <Tooltip
                 cursor={{ strokeDasharray: '3 3' }}
-                contentStyle={tooltipStyle()}
-                formatter={(value, name) => {
-                  if (name === 'Amount') return [`${Number(value).toFixed(2)}`, 'Amount'];
-                  return [`${Number(value).toFixed(1)}%`, 'Risk score'];
-                }}
-                labelFormatter={(_, payload) => {
-                  const point = Array.isArray(payload) && payload[0]?.payload ? payload[0].payload : null;
-                  if (!point) return 'Transaction';
-                  const type = point.type || 'Transaction';
-                  const dateText = point.date ? formatDate(point.date) : 'Unknown date';
-                  return `${type} | ${dateText}`;
-                }}
+                content={<ScatterTooltip />}
               />
               <Legend />
               <Scatter name="Normal" data={normalPoints} fill="#60a5fa" />
-              <Scatter name="High Risk (>70)" data={highRiskPoints} fill="#f97316" />
+              <Scatter name="Flagged / High Risk" data={highRiskPoints} fill="#f97316" />
             </ScatterChart>
           </ResponsiveContainer>
         </div>
@@ -145,7 +203,7 @@ export default function FraudCommandCenter({ transactions = [], clients = [] }) 
                   ))}
                 </Pie>
                 <Legend />
-                <Tooltip contentStyle={tooltipStyle()} />
+                <Tooltip content={<PieTooltip total={riskDistributionTotal} />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -155,8 +213,8 @@ export default function FraudCommandCenter({ transactions = [], clients = [] }) 
       <div className="glass rounded-2xl p-4">
         <h3 className="text-sm font-semibold text-zinc-300 mb-2">Analyst hints</h3>
         <ul className="text-xs text-zinc-400 space-y-1">
-          <li>Orange points in the scatter chart indicate transactions with risk score above 70%.</li>
-          <li>Sharp spikes in the red line can indicate coordinated fraud activity.</li>
+          <li>Orange points indicate transactions that are flagged by the fraud engine and/or have a risk score above 70%.</li>
+          <li>Spikes in the red line can indicate coordinated fraud activity or a burst of flagged transactions.</li>
           <li>Risk distribution helps prioritize KYC and account monitoring workflows.</li>
         </ul>
         <p className="text-xs text-zinc-500 mt-2">

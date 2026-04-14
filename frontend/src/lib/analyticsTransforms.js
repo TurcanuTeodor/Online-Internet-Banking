@@ -110,38 +110,95 @@ export function prepareExpenseCompositionData(transactions) {
 }
 
 export function prepareScatterAnomalyData(transactions) {
+  // Kept for backward compatibility (older imports). Prefer passing alerted ids via the new signature.
+  return prepareScatterAnomalyDataWithAlerts(transactions, new Set());
+}
+
+function txIdForJoin(tx) {
+  return tx?.transactionId ?? tx?.id ?? null;
+}
+
+export function prepareScatterAnomalyDataWithAlerts(transactions, alertedTransactionIds) {
+  const alertedIds = alertedTransactionIds instanceof Set ? alertedTransactionIds : new Set();
   return (Array.isArray(transactions) ? transactions : []).map((tx) => {
     const amount = Math.abs(txAmount(tx));
     const riskScore = normalizeRiskScore(tx?.riskScore);
+    const flagged = Boolean(tx?.flagged);
+    const txId = txIdForJoin(tx);
+    const alerted = txId != null && alertedIds.has(txId);
     return {
-      id: tx?.transactionId ?? tx?.id ?? `${tx?.transactionDate || 'tx'}-${amount}-${riskScore}`,
+      id: txId ?? `${tx?.transactionDate || 'tx'}-${amount}-${riskScore}`,
       amount,
       riskScore,
-      highRisk: riskScore > 70,
+      flagged,
+      alerted,
+      highRisk: riskScore > 70 || flagged || alerted,
       type: normalizeTransactionType(tx),
       date: tx?.transactionDate || null,
       sign: txSign(tx),
+      accountId: tx?.accountId ?? null,
+      destinationAccountId: tx?.destinationAccountId ?? null,
+      merchant: tx?.merchant ?? null,
     };
   });
 }
 
-export function prepareHighRiskOverTimeData(transactions) {
-  const counts = new Map();
-  (Array.isArray(transactions) ? transactions : []).forEach((tx) => {
-    const risk = normalizeRiskScore(tx?.riskScore);
-    if (risk <= 70) return;
-    const key = dayKey(tx?.transactionDate);
-    if (!key) return;
-    counts.set(key, (counts.get(key) || 0) + 1);
+export function prepareHighRiskOverTimeData(transactions, days = 30) {
+  const safeDays = Number.isInteger(days) && days > 0 ? days : 30;
+  const now = new Date();
+  const dayList = Array.from({ length: safeDays }, (_, idx) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - (safeDays - 1 - idx));
+    const iso = d.toISOString().slice(0, 10);
+    return {
+      date: iso,
+      label: formatDayLabel(iso),
+      highRiskCount: 0,
+    };
   });
 
-  return Array.from(counts.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([date, count]) => ({
-      date,
-      label: formatDayLabel(date),
-      highRiskCount: count,
-    }));
+  const byDay = new Map(dayList.map((x) => [x.date, x]));
+  (Array.isArray(transactions) ? transactions : []).forEach((tx) => {
+    const risk = normalizeRiskScore(tx?.riskScore);
+    const flagged = Boolean(tx?.flagged);
+    if (risk <= 70 && !flagged) return;
+    const key = dayKey(tx?.transactionDate);
+    if (!byDay.has(key)) return;
+    byDay.get(key).highRiskCount += 1;
+  });
+
+  return dayList;
+}
+
+export function prepareHighRiskOverTimeDataWithAlerts(transactions, days = 30, alertedTransactionIds) {
+  const safeDays = Number.isInteger(days) && days > 0 ? days : 30;
+  const alertedIds = alertedTransactionIds instanceof Set ? alertedTransactionIds : new Set();
+
+  const now = new Date();
+  const dayList = Array.from({ length: safeDays }, (_, idx) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - (safeDays - 1 - idx));
+    const iso = d.toISOString().slice(0, 10);
+    return {
+      date: iso,
+      label: formatDayLabel(iso),
+      highRiskCount: 0,
+    };
+  });
+
+  const byDay = new Map(dayList.map((x) => [x.date, x]));
+  (Array.isArray(transactions) ? transactions : []).forEach((tx) => {
+    const risk = normalizeRiskScore(tx?.riskScore);
+    const flagged = Boolean(tx?.flagged);
+    const txId = txIdForJoin(tx);
+    const alerted = txId != null && alertedIds.has(txId);
+    if (risk <= 70 && !flagged && !alerted) return;
+    const key = dayKey(tx?.transactionDate);
+    if (!byDay.has(key)) return;
+    byDay.get(key).highRiskCount += 1;
+  });
+
+  return dayList;
 }
 
 export function prepareClientRiskDistributionData(clients) {

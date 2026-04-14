@@ -32,6 +32,7 @@ import FraudCommandCenter from './FraudCommandCenter';
 import RevealAuditTab from './RevealAuditTab';
 import TransactionDetailsModal from '@/components/TransactionDetailsModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import { getFraudAlertsForCharts } from '@/services/fraudService';
 
 const VALID_TABS = ['dashboard', 'clients', 'accounts', 'transactions', 'fraud', 'audit'];
 const NAV = [
@@ -52,6 +53,7 @@ export default function AdminDashboard() {
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fraudAlertsForCharts, setFraudAlertsForCharts] = useState([]);
 
   const [showClientDetailsModal, setShowClientDetailsModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
@@ -103,6 +105,21 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchAllData();
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (activeTab !== 'fraud') return;
+      try {
+        const page = await getFraudAlertsForCharts(1000);
+        const arr = Array.isArray(page?.content) ? page.content : [];
+        if (mounted) setFraudAlertsForCharts(arr);
+      } catch {
+        if (mounted) setFraudAlertsForCharts([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [activeTab]);
 
   useEffect(() => {
     if (!tab || !VALID_TABS.includes(tab)) {
@@ -442,7 +459,7 @@ export default function AdminDashboard() {
               {activeTab === 'fraud' && (
                 <div className="space-y-6">
                   <FraudAlertsTab />
-                  <FraudCommandCenter transactions={transactions} clients={clients} />
+                  <FraudCommandCenter transactions={transactions} clients={clients} fraudAlerts={fraudAlertsForCharts} />
                 </div>
               )}
 

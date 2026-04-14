@@ -12,6 +12,10 @@ export async function createTopUpIntent(accountId, amount) {
   return data;
 }
 
+export async function confirmTopUp(stripePaymentIntentId) {
+  await apiClient.post('/payments/top-up/confirm', { stripePaymentIntentId });
+}
+
 export async function getPaymentMethodsByClient(clientId) {
   const { data } = await apiClient.get(`/payment-methods/by-client/${clientId}`);
   return data;

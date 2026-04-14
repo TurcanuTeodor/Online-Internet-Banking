@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { X, CreditCard, Loader2 } from 'lucide-react';
-import { createTopUpIntent, getPaymentMethodsByClient } from '@/services/paymentService';
+import { createTopUpIntent, getPaymentMethodsByClient, confirmTopUp } from '@/services/paymentService';
 import { stripeElementsAppearance } from '@/lib/stripeAppearance';
 import { jwtDecode } from 'jwt-decode';
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
-function TopUpPaymentForm({ clientSecret, currencyCode, amountLabel, selectedSavedMethodId, onSuccess, onError }) {
+function TopUpPaymentForm({ clientSecret, stripePaymentIntentId, currencyCode, amountLabel, selectedSavedMethodId, onSuccess, onError }) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -17,8 +17,8 @@ function TopUpPaymentForm({ clientSecret, currencyCode, amountLabel, selectedSav
   const handlePay = async (e) => {
     e.preventDefault();
     if (!stripe || !elements) return;
-    const card = elements.getElement(CardElement);
-    if (!card) return;
+    const card = selectedSavedMethodId ? null : elements.getElement(CardElement);
+    if (!selectedSavedMethodId && !card) return;
 
     setProcessing(true);
     try {
@@ -31,6 +31,17 @@ function TopUpPaymentForm({ clientSecret, currencyCode, amountLabel, selectedSav
         return;
       }
       if (paymentIntent?.status === 'succeeded') {
+        // In local/dev, webhook delivery may not be configured. Confirm settlement explicitly.
+        const intentId = stripePaymentIntentId || paymentIntent?.id;
+        if (intentId) {
+          try {
+            await confirmTopUp(intentId);
+          } catch (err) {
+            const msg = err?.response?.data?.message || err?.message || 'Top-up settlement failed';
+            onError(typeof msg === 'string' ? msg : 'Top-up settlement failed');
+            return;
+          }
+        }
         onSuccess();
       } else {
         onError(`Payment status: ${paymentIntent?.status || 'unknown'}`);
@@ -95,6 +106,9 @@ export default function TopUpModal({ account, onClose, onSuccess, onError }) {
   const [savedMethods, setSavedMethods] = useState([]);
   const [selectedSavedMethodId, setSelectedSavedMethodId] = useState('');
 
+  const isUsableStripePaymentMethodId = (id) =>
+    typeof id === 'string' && id.startsWith('pm_') && !id.startsWith('pm_test_');
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -108,10 +122,9 @@ export default function TopUpModal({ account, onClose, onSuccess, onError }) {
         if (mounted) {
           const arr = Array.isArray(methods) ? methods : [];
           setSavedMethods(arr);
-          const def = arr.find((m) => m.isDefault);
-          if (def?.stripePaymentMethodId || def?.paymentMethodId || def?.id) {
-            setSelectedSavedMethodId(def.stripePaymentMethodId || def.paymentMethodId || def.id);
-          }
+          const usable = arr.filter((m) => isUsableStripePaymentMethodId(m?.stripePaymentMethodId));
+          const def = usable.find((m) => m.isDefault) || usable[0];
+          if (def?.stripePaymentMethodId) setSelectedSavedMethodId(def.stripePaymentMethodId);
         }
       } catch {
         // keep silent; fallback to manual card entry still works
@@ -218,6 +231,7 @@ export default function TopUpModal({ account, onClose, onSuccess, onError }) {
           >
             <TopUpPaymentForm
               clientSecret={intent.clientSecret}
+              stripePaymentIntentId={intent.stripePaymentIntentId}
               currencyCode={intent.currencyCode}
               amountLabel={amountLabel}
               selectedSavedMethodId={selectedSavedMethodId}
@@ -239,8 +253,10 @@ export default function TopUpModal({ account, onClose, onSuccess, onError }) {
                   onChange={(e) => setSelectedSavedMethodId(e.target.value)}
                 >
                   <option value="">Use manual card entry</option>
-                  {savedMethods.map((m) => {
-                    const methodId = m.stripePaymentMethodId || m.paymentMethodId || m.id;
+                  {savedMethods
+                    .filter((m) => isUsableStripePaymentMethodId(m?.stripePaymentMethodId))
+                    .map((m) => {
+                    const methodId = m.stripePaymentMethodId;
                     return (
                       <option key={m.id} value={methodId}>
                         {(m.cardBrand || 'Card').toUpperCase()} •••• {m.cardLast4}
@@ -249,6 +265,11 @@ export default function TopUpModal({ account, onClose, onSuccess, onError }) {
                     );
                   })}
                 </select>
+                {savedMethods.some((m) => m?.stripePaymentMethodId?.startsWith?.('pm_test_')) && (
+                  <p className="text-xs text-amber-400 mt-2">
+                    Some demo/seeded cards can’t be charged. Select a real saved card (added by you) or use manual entry.
+                  </p>
+                )}
               </div>
             )}
           </Elements>

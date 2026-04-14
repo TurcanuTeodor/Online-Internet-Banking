@@ -26,6 +26,7 @@ import ro.app.payment.model.enums.PaymentStatus;
 import ro.app.payment.repository.PaymentRepository;
 import ro.app.payment.security.JwtPrincipal;
 import ro.app.payment.security.OwnershipChecker;
+import ro.app.payment.service.stripe.StripeCustomerService;
 
 /**
  * Creates Stripe PaymentIntents and persists local {@link Payment} rows (top-up and saved-card flows).
@@ -40,14 +41,17 @@ public class PaymentCreationService {
     private final PaymentRepository paymentRepository;
     private final AccountRestClient accountRestClient;
     private final OwnershipChecker ownershipChecker;
+    private final StripeCustomerService stripeCustomerService;
 
     public PaymentCreationService(
             PaymentRepository paymentRepository,
             AccountRestClient accountRestClient,
-            OwnershipChecker ownershipChecker) {
+            OwnershipChecker ownershipChecker,
+            StripeCustomerService stripeCustomerService) {
         this.paymentRepository = paymentRepository;
         this.accountRestClient = accountRestClient;
         this.ownershipChecker = ownershipChecker;
+        this.stripeCustomerService = stripeCustomerService;
     }
 
     /**
@@ -88,10 +92,12 @@ public class PaymentCreationService {
 
         try {
             long amountInMinorUnits = amount.movePointRight(2).longValueExact();
+            String customerId = stripeCustomerService.getOrCreateCustomerId(account.getClientId());
 
             PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                     .setAmount(amountInMinorUnits)
                     .setCurrency(currencyCode.toLowerCase())
+                    .setCustomer(customerId)
                     .setAutomaticPaymentMethods(
                             PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
                                     .setEnabled(true)

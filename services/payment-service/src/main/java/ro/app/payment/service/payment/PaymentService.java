@@ -13,6 +13,7 @@ import ro.app.payment.service.payment.creation.PaymentCreationService;
 import ro.app.payment.service.payment.query.PaymentQueryService;
 import ro.app.payment.service.payment.refund.PaymentRefundService;
 import ro.app.payment.service.payment.webhook.PaymentWebhookService;
+import ro.app.payment.service.payment.settlement.PaymentSettlementService;
 
 /**
  * Facade for payment operations. Delegates to {@code service.payment.creation}, {@code service.payment.query}, etc.
@@ -24,16 +25,19 @@ public class PaymentService {
     private final PaymentQueryService paymentQueryService;
     private final PaymentRefundService paymentRefundService;
     private final PaymentWebhookService paymentWebhookService;
+    private final PaymentSettlementService paymentSettlementService;
 
     public PaymentService(
             PaymentCreationService paymentCreationService,
             PaymentQueryService paymentQueryService,
             PaymentRefundService paymentRefundService,
-            PaymentWebhookService paymentWebhookService) {
+            PaymentWebhookService paymentWebhookService,
+            PaymentSettlementService paymentSettlementService) {
         this.paymentCreationService = paymentCreationService;
         this.paymentQueryService = paymentQueryService;
         this.paymentRefundService = paymentRefundService;
         this.paymentWebhookService = paymentWebhookService;
+        this.paymentSettlementService = paymentSettlementService;
     }
 
     public TopUpIntentResponse createTopUpIntent(
@@ -61,5 +65,9 @@ public class PaymentService {
 
     public void handleWebhookEvent(String eventType, String paymentIntentId) {
         paymentWebhookService.handleWebhookEvent(eventType, paymentIntentId);
+    }
+
+    public void confirmTopUpSucceeded(String stripePaymentIntentId, JwtPrincipal principal) {
+        paymentSettlementService.confirmTopUpSucceeded(stripePaymentIntentId, principal);
     }
 }
