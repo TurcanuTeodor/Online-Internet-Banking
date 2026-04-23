@@ -1,5 +1,8 @@
 package ro.app.client.service;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
@@ -81,13 +84,28 @@ public class ClientEncryptionLifecycleService {
         } catch (Exception ignored) {
         }
 
-        try {
-            encryptionService.decrypt(client.getFirstName(), keyResolver.fallbackKey());
-        } catch (Exception e) {
-            return;
+        for (String candidateLegacyKey : legacyCandidates()) {
+            try {
+                encryptionService.decrypt(client.getFirstName(), candidateLegacyKey);
+                reEncryptClientData(clientId, candidateLegacyKey, newKey);
+                return;
+            } catch (Exception ignored) {
+            }
         }
+    }
 
-        reEncryptClientData(clientId, keyResolver.fallbackKey(), newKey);
+    private List<String> legacyCandidates() {
+        List<String> candidates = new ArrayList<>();
+        String active = keyResolver.fallbackKey();
+        String previous = keyResolver.previousFallbackKey();
+
+        if (active != null && !active.isBlank()) {
+            candidates.add(active);
+        }
+        if (previous != null && !previous.isBlank() && !previous.equals(active)) {
+            candidates.add(previous);
+        }
+        return candidates;
     }
 
     private String reEncryptField(String encryptedValue, String oldKey, String newKey) throws Exception {

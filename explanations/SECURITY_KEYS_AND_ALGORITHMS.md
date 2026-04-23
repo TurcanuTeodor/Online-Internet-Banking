@@ -127,6 +127,8 @@ Fiecare microserviciu are propriul `.env.properties`:
 - Semnare/verificare JWT (HS256)
 - Generare/verificare cod TOTP (SHA256)
 - Criptare transport (TLS la nivel gateway)
+- Criptare câmpuri PII în `client-service` prin `EncryptionService` (AES/GCM + PBKDF2)
+- Re-encrypt și migrate legacy key prin `InternalClientController`
 
 ### Nu există explicit în cod (la nivel aplicație)
 - Criptare/decriptare simetrică explicită a datelor business (ex: AES pe câmpuri)
@@ -169,6 +171,47 @@ Fiecare serviciu (auth, client, account, transaction, payment) are:
 3. Menține `JWT_SECRET` lung și aleator (cel puțin 256 biți).
 4. Păstrează TLS activ și certificatele gestionate corect.
 5. Evaluează mutarea token-urilor din `localStorage` în cookie-uri `HttpOnly` (pentru reducere risc XSS).
+
+---
+
+## 10) Key Management Centralizat (client-service)
+
+### 10.1 Principiu
+
+Cheile pentru fallback encryption sunt rezolvate doar în `client-service` prin:
+- `ClientKeyResolver`
+- `KeyManagementProvider` (strategie)
+
+Astfel, nu se introduc utilitare crypto/key lookup în alte microservicii.
+
+### 10.2 Moduri suportate
+
+1. `env` (default local/demo)
+- `KEY_MANAGEMENT_MODE=env`
+- `ENCRYPTION_KEY` = cheia activă
+- `ENCRYPTION_KEY_PREVIOUS` = cheia anterioară (opțional, pentru rotație)
+- `ENCRYPTION_KEY_VERSION` = etichetă versiunii active (ex: `v2-2026q2`)
+
+2. `kms` (producție)
+- `KEY_MANAGEMENT_MODE=kms`
+- `KMS_ACTIVE_KEY_URI`, `KMS_PREVIOUS_KEY_URI`, `KMS_ACTIVE_KEY_VERSION`
+- Implementarea concretă a clientului KMS se face în `KmsKeyManagementProvider`
+
+### 10.3 Runbook standard de rotație chei
+
+1. Provisionezi cheia nouă în KMS (sau local env pentru demo).
+2. Setezi:
+- cheia nouă ca activă (`ENCRYPTION_KEY` sau `KMS_ACTIVE_KEY_URI`)
+- cheia veche ca previous (`ENCRYPTION_KEY_PREVIOUS` sau `KMS_PREVIOUS_KEY_URI`)
+3. Rulezi migrarea/re-encrypt pentru date legacy prin fluxul intern existent.
+4. Monitorizezi erori decrypt/re-encrypt.
+5. După stabilizare, elimini cheia veche din `previous`.
+
+### 10.4 Ce nu se face
+
+- Nu se copiază cod crypto în `account-service`, `payment-service`, `fraud-service`.
+- Nu se gestionează direct chei hardcodate în cod sursă.
+- Nu se rotește cheia fără fereastră `active + previous`.
 
 ---
 

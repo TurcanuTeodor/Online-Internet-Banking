@@ -32,7 +32,7 @@ export default function UserAccountsTab({
       <div className="glass rounded-2xl p-6">
         <h2 className="text-2xl font-bold">Accounts</h2>
         <p className="text-zinc-500 text-sm mt-1">
-          Manage balances, open new accounts, and initiate transfers.
+          Manage balances, open new accounts, initiate transfers, and review monthly spending analytics.
         </p>
       </div>
 

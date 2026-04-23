@@ -5,6 +5,7 @@ export default function TransferConfirmation({
   toIban,
   amount,
   loading,
+  errorMessage,
   onConfirm,
   onBack,
 }) {
@@ -39,6 +40,12 @@ export default function TransferConfirmation({
           {formatCurrency(amount, fromAccount?.currencyCode)}
         </p>
       </div>
+
+      {errorMessage ? (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          {errorMessage}
+        </div>
+      ) : null}
 
       <div className="flex gap-3">
         <button type="button" onClick={onBack} disabled={loading} className="btn-secondary flex-1">

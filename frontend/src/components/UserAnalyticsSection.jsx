@@ -111,8 +111,8 @@ export default function UserAnalyticsSection({ transactions, onExpenseTypeSelect
   return (
     <section className="space-y-4">
       <div>
-        <h3 className="text-xl font-bold">Analytics</h3>
-        <p className="text-sm text-zinc-500">Insights from your latest transactions and spending behavior.</p>
+        <h3 className="text-xl font-bold">Spending Analytics</h3>
+        <p className="text-sm text-zinc-500">Use the period selector to change charts and merchant breakdowns. Your budget stays monthly.</p>
         <div className="flex items-center gap-2 mt-3">
           {RANGE_OPTIONS.map((d) => (
             <button
@@ -225,7 +225,7 @@ export default function UserAnalyticsSection({ transactions, onExpenseTypeSelect
         {/* Budget Tracker */}
         <div className="glass rounded-2xl p-6 flex flex-col justify-center">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-semibold text-zinc-300">Target Budget ({rangeDays}d)</h4>
+            <h4 className="text-sm font-semibold text-zinc-300">Monthly Budget</h4>
             {!isEditingBudget ? (
               <button
                 onClick={() => { setBudgetInput(String(budget)); setIsEditingBudget(true); }}
@@ -254,7 +254,7 @@ export default function UserAnalyticsSection({ transactions, onExpenseTypeSelect
             <span className={`text-3xl font-bold tracking-tight ${isOverBudget ? 'text-red-400' : 'text-emerald-400'}`}>
               {formatMoney(totalSpent)}
             </span>
-            <span className="text-zinc-500 text-sm mb-1">/ {formatMoney(budget)}</span>
+            <span className="text-zinc-500 text-sm mb-1">/ {formatMoney(budget)} per month</span>
           </div>
 
           <div className="w-full bg-zinc-800/80 rounded-full h-3 overflow-hidden shadow-inner border border-zinc-700/50">
@@ -266,7 +266,7 @@ export default function UserAnalyticsSection({ transactions, onExpenseTypeSelect
           {isOverBudget ? (
             <p className="text-xs text-red-500 mt-3 font-medium">You have exceeded your target budget by {formatMoney(totalSpent - budget)}.</p>
           ) : (
-            <p className="text-xs text-zinc-400 mt-3">You have {formatMoney(budget - totalSpent)} left in your budget.</p>
+            <p className="text-xs text-zinc-400 mt-3">You have {formatMoney(budget - totalSpent)} left in this month’s budget.</p>
           )}
         </div>
 
