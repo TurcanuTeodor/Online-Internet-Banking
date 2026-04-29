@@ -15,6 +15,7 @@ This is a college project demonstrating a full-stack online banking application 
 - **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** - Implementation details for key features
 - **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - How to test the application
 - **[DATABASE.md](DATABASE.md)** - Database schema, migrations, schema-per-service
+- **[REDIS_CACHING.md](REDIS_CACHING.md)** - Redis cache, Pub/Sub, Redisson locks, gateway blacklist and rate limiting
 - **[SECURITY_KEYS_AND_ALGORITHMS.md](SECURITY_KEYS_AND_ALGORITHMS.md)** - Keys, tokens, encryption/hashing algorithms
 - **[STRIPE_TOP_UP_SEQUENCE.md](STRIPE_TOP_UP_SEQUENCE.md)** - Thesis-oriented sequence diagram: Stripe card top-up (Browser → Gateway → services)
 
@@ -23,6 +24,7 @@ This is a college project demonstrating a full-stack online banking application 
 ### Architecture
 - **Microservices** — 5 business services + API Gateway
 - **API Gateway** — Spring Cloud Gateway with JWT validation, rate limiting, circuit breaker
+- **Redis** — L2 cache, Pub/Sub invalidation, distributed locks, token blacklist and rate limiting
 - **Schema-per-service** — Each service owns its database schema
 - **Inter-service communication** — REST with JWT forwarding
 

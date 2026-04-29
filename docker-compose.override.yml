@@ -1,0 +1,57 @@
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql/data
+
+  frontend:
+    build:
+      target: build
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_PROXY_TARGET: http://api-gateway:8080
+    ports:
+      - "5173:5173"
+
+  auth-service:
+    environment:
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+  client-service:
+    environment:
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+  account-service:
+    environment:
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+  transaction-service:
+    environment:
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+  payment-service:
+    environment:
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+  fraud-service:
+    environment:
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+  api-gateway:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+    ports:
+      - "8080:8080"
+
+volumes:
+  frontend-node-modules:
+  postgres-dev-data:

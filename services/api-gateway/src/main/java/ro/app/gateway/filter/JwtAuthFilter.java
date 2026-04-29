@@ -5,16 +5,20 @@ import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFac
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+
 import ro.app.gateway.security.JwtService;
+import ro.app.gateway.service.TokenBlacklistService;
 
 @Component
 public class JwtAuthFilter extends AbstractGatewayFilterFactory<JwtAuthFilter.Config> {
 
     private final JwtService jwtService;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    public JwtAuthFilter(JwtService jwtService){
+    public JwtAuthFilter(JwtService jwtService, TokenBlacklistService tokenBlacklistService){
         super(Config.class);
         this.jwtService = jwtService;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     @Override
@@ -32,14 +36,29 @@ public class JwtAuthFilter extends AbstractGatewayFilterFactory<JwtAuthFilter.Co
 
             String token = authHeader.substring(7);
 
-            // token invalid
-            if(!jwtService.isValid(token)){
-                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                return exchange.getResponse().setComplete();
-            }
+            return tokenBlacklistService.isBlacklisted(token)
+                    .flatMap(blacklisted -> {
+                        if (Boolean.TRUE.equals(blacklisted)) {
+                            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                            return exchange.getResponse().setComplete();
+                        }
 
-            // token valid -> continua catre serviciu
-            return chain.filter(exchange);
+                        // token valid -> continua catre serviciu
+                        if(!jwtService.isValid(token)){
+                            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                            return exchange.getResponse().setComplete();
+                        }
+
+                        return chain.filter(exchange);
+                    })
+                    .onErrorResume(ex -> {
+                        // fail-open on Redis issues to preserve availability
+                        if(!jwtService.isValid(token)){
+                            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                            return exchange.getResponse().setComplete();
+                        }
+                        return chain.filter(exchange);
+                    });
         };
     }
 

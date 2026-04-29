@@ -1,0 +1,47 @@
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-prod-data:/var/lib/postgresql/data
+
+  auth-service:
+    ports:
+      - "8081:8081"
+
+  client-service:
+    ports:
+      - "8082:8082"
+
+  account-service:
+    ports:
+      - "8083:8083"
+
+  transaction-service:
+    ports:
+      - "8084:8084"
+
+  payment-service:
+    ports:
+      - "8085:8085"
+
+  fraud-service:
+    expose:
+      - "8086"
+
+  api-gateway:
+    environment:
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+    ports:
+      - "8443:8443"
+
+  frontend:
+    build:
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres-prod-data:

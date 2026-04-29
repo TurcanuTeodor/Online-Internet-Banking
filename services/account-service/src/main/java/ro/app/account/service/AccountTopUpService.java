@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import ro.app.account.config.redis.CacheInvalidationPublisher;
 import ro.app.account.exception.BusinessRuleViolationException;
 import ro.app.account.exception.ResourceNotFoundException;
 import ro.app.account.internal.InternalApiHeaders;
@@ -34,22 +35,26 @@ public class AccountTopUpService {
     private final RestTemplate restTemplate;
     private final String transactionServiceUrl;
     private final String internalApiSecret;
+    private final CacheInvalidationPublisher cacheInvalidationPublisher;
 
     public AccountTopUpService(
             AccountRepository accountRepository,
             RestTemplate restTemplate,
+            CacheInvalidationPublisher cacheInvalidationPublisher,
             @Value("${app.services.transaction.url}") String transactionServiceUrl,
             @Value("${app.internal.api-secret}") String internalApiSecret) {
         this.accountRepository = accountRepository;
         this.restTemplate = restTemplate;
+        this.cacheInvalidationPublisher = cacheInvalidationPublisher;
         this.transactionServiceUrl = transactionServiceUrl.replaceAll("/$", "");
         this.internalApiSecret = internalApiSecret;
     }
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "balance", key = "#result.iban"),
-            @CacheEvict(value = "accountsByClient", key = "#result.clientId")
+            @CacheEvict(value = "balance", key = "'iban:' + #result.iban"),
+            @CacheEvict(value = "accountsByClient", key = "'client:' + #result.clientId"),
+            @CacheEvict(value = "accountDetails", allEntries = true)
     })
     public Account applyStripeTopUpCredit(StripeTopUpApplyRequest req) {
         Account account = accountRepository.findById(req.getAccountId())
@@ -69,9 +74,17 @@ public class AccountTopUpService {
 
         account.setBalance(account.getBalance().add(amount));
         accountRepository.save(account);
+        publishInvalidations(account, "topup");
 
         postInternalStripeDeposit(account, amount, req.getStripePaymentIntentId());
         return account;
+    }
+
+    private void publishInvalidations(Account account, String reason) {
+        cacheInvalidationPublisher.publish("balance", "iban:" + account.getIban(), reason);
+        cacheInvalidationPublisher.publish("accountsByClient", "client:" + account.getClientId(), reason);
+        cacheInvalidationPublisher.publish("accountDetails", "id:" + account.getId(), reason);
+        cacheInvalidationPublisher.publish("accountDetails", "iban:" + account.getIban(), reason);
     }
 
     private void postInternalStripeDeposit(Account account, BigDecimal amount, String stripePaymentIntentId) {

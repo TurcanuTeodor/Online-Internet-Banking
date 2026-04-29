@@ -6,7 +6,10 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +27,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
 import ro.app.account.audit.AuditService;
+import ro.app.account.config.redis.CacheInvalidationPublisher;
 import ro.app.account.exception.BusinessRuleViolationException;
 import ro.app.account.exception.InsufficientFundsException;
 import ro.app.account.exception.ResourceNotFoundException;
@@ -48,6 +52,8 @@ public class AccountTransferService {
     private final RestTemplate restTemplate;
     private final OwnershipChecker ownershipChecker;
     private final AuditService auditService;
+    private final CacheInvalidationPublisher cacheInvalidationPublisher;
+    private final RedissonClient redissonClient;
     private final String transactionServiceUrl;
     private final String fraudServiceUrl;
     private final String authServiceUrl;
@@ -60,6 +66,8 @@ public class AccountTransferService {
             RestTemplate restTemplate,
             OwnershipChecker ownershipChecker,
             AuditService auditService,
+            CacheInvalidationPublisher cacheInvalidationPublisher,
+            RedissonClient redissonClient,
             @Value("${app.services.transaction.url}") String transactionServiceUrl,
             @Value("${app.services.auth.url:http://auth-service:8081}") String authServiceUrl,
             @Value("${app.services.fraud.url:}") String fraudServiceUrl,
@@ -70,6 +78,8 @@ public class AccountTransferService {
         this.restTemplate = restTemplate;
         this.ownershipChecker = ownershipChecker;
         this.auditService = auditService;
+        this.cacheInvalidationPublisher = cacheInvalidationPublisher;
+        this.redissonClient = redissonClient;
         this.transactionServiceUrl = transactionServiceUrl.replaceAll("/$", "");
         this.authServiceUrl = authServiceUrl.replaceAll("/$", "");
         this.fraudServiceUrl = fraudServiceUrl != null ? fraudServiceUrl.replaceAll("/$", "") : "";
@@ -79,9 +89,10 @@ public class AccountTransferService {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "balance", key = "#fromIban"),
-            @CacheEvict(value = "balance", key = "#toIban"),
-            @CacheEvict(value = "accountsByClient", allEntries = true)
+            @CacheEvict(value = "balance", key = "'iban:' + #fromIban.trim().toUpperCase()"),
+            @CacheEvict(value = "balance", key = "'iban:' + #toIban.trim().toUpperCase()"),
+            @CacheEvict(value = "accountsByClient", allEntries = true),
+            @CacheEvict(value = "accountDetails", allEntries = true)
     })
     public void transfer(String fromIban, String toIban, BigDecimal amount, String totpCode, JwtPrincipal principal) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
@@ -92,98 +103,146 @@ public class AccountTransferService {
             throw new IllegalArgumentException("Cannot transfer to the same account");
         }
 
-        Account from = accountRepository.findByIban(fromIban)
+        String normalizedFromIban = fromIban.trim().toUpperCase();
+        String normalizedToIban = toIban.trim().toUpperCase();
+
+        String firstLockKey = normalizedFromIban.compareTo(normalizedToIban) <= 0
+                ? "lock:account:" + normalizedFromIban
+                : "lock:account:" + normalizedToIban;
+        String secondLockKey = normalizedFromIban.compareTo(normalizedToIban) <= 0
+                ? "lock:account:" + normalizedToIban
+                : "lock:account:" + normalizedFromIban;
+
+        RLock firstLock = redissonClient.getLock(firstLockKey);
+        RLock secondLock = redissonClient.getLock(secondLockKey);
+
+        boolean firstLocked = false;
+        boolean secondLocked = false;
+
+        try {
+            firstLocked = firstLock.tryLock(500, 10, TimeUnit.SECONDS);
+            if (!firstLocked) {
+                throw new BusinessRuleViolationException("Could not acquire transfer lock for first account");
+            }
+
+            secondLocked = secondLock.tryLock(500, 10, TimeUnit.SECONDS);
+            if (!secondLocked) {
+                throw new BusinessRuleViolationException("Could not acquire transfer lock for second account");
+            }
+
+            Account from = accountRepository.findByIban(normalizedFromIban)
                 .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
         ownershipChecker.checkOwnership(principal, from.getClientId());
 
-        Account to = accountRepository.findByIban(toIban)
+            Account to = accountRepository.findByIban(normalizedToIban)
                 .orElseThrow(() -> new ResourceNotFoundException("Destination account not found"));
 
-        if (from.getBalance().compareTo(amount) < 0) {
-            throw new InsufficientFundsException("Insufficient funds");
-        }
+            if (from.getBalance().compareTo(amount) < 0) {
+                throw new InsufficientFundsException("Insufficient funds");
+            }
 
-        boolean isLargeTransfer = amount.compareTo(largeTransferThreshold) >= 0;
+            boolean isLargeTransfer = amount.compareTo(largeTransferThreshold) >= 0;
 
-        if (isLargeTransfer) {
-            Long actorClientId = principal != null ? principal.clientId() : null;
-            String role = principal != null ? principal.role() : "UNKNOWN";
-            auditService.log(
-                    "LARGE_TRANSFER",
-                    actorClientId,
-                    role,
-                    from.getClientId(),
-                    "amount=" + amount + " " + from.getCurrency().getCode() + " fromIban=" + fromIban + " toIban=" + toIban);
-        }
-
-        boolean stepUpRequiredFromFraud = runFraudCheck(from, to, amount);
+            if (isLargeTransfer) {
+                Long actorClientId = principal != null ? principal.clientId() : null;
+                String role = principal != null ? principal.role() : "UNKNOWN";
+                auditService.log(
+                        "LARGE_TRANSFER",
+                        actorClientId,
+                        role,
+                        from.getClientId(),
+                        "amount=" + amount + " " + from.getCurrency().getCode() + " fromIban=" + normalizedFromIban + " toIban=" + normalizedToIban);
+            }
         
-        if (isLargeTransfer || stepUpRequiredFromFraud) {
-            if (totpCode == null || totpCode.isBlank()) {
-                throw new StepUpRequiredException("This transaction requires two-factor authentication.");
-            }
-            verifyStepUp(from.getClientId(), totpCode);
-        }
+            boolean stepUpRequiredFromFraud = runFraudCheck(from, to, amount);
 
-        CurrencyType fromCurrency = from.getCurrency();
-        CurrencyType toCurrency = to.getCurrency();
-        BigDecimal convertedAmount = amount;
-        if (fromCurrency != toCurrency) {
-            BigDecimal rate = exchangeRateService.getRate(fromCurrency, toCurrency);
-            convertedAmount = amount.multiply(rate).setScale(2, RoundingMode.HALF_UP);
-        }
-
-        from.setBalance(from.getBalance().subtract(amount));
-        to.setBalance(to.getBalance().add(convertedAmount));
-
-        accountRepository.save(from);
-        accountRepository.save(to);
-
-        try {
-            String txUrl = transactionServiceUrl + "/api/transactions";
-            LocalDateTime now = LocalDateTime.now();
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attrs != null) {
-                HttpServletRequest request = attrs.getRequest();
-                String authHeader = request.getHeader("Authorization");
-                if (authHeader != null) {
-                    headers.set("Authorization", authHeader);
+            if (isLargeTransfer || stepUpRequiredFromFraud) {
+                if (totpCode == null || totpCode.isBlank()) {
+                    throw new StepUpRequiredException("This transaction requires two-factor authentication.");
                 }
+                verifyStepUp(from.getClientId(), totpCode);
             }
 
-            Map<String, Object> debit = new HashMap<>();
-            debit.put("accountId", from.getId());
-            debit.put("destinationAccountId", to.getId());
-            debit.put("transactionTypeCode", "TRANSFER_INTERNAL");
-            debit.put("categoryCode", "OTHERS");
-            debit.put("amount", amount);
-            debit.put("originalAmount", amount);
-            debit.put("originalCurrencyCode", fromCurrency.getCode());
-            debit.put("sign", "-");
-            debit.put("details", "Transfer to " + toIban);
-            debit.put("transactionDate", now.toString());
+            CurrencyType fromCurrency = from.getCurrency();
+            CurrencyType toCurrency = to.getCurrency();
+            BigDecimal convertedAmount = amount;
+            if (fromCurrency != toCurrency) {
+                BigDecimal rate = exchangeRateService.getRate(fromCurrency, toCurrency);
+                convertedAmount = amount.multiply(rate).setScale(2, RoundingMode.HALF_UP);
+            }
 
-            Map<String, Object> credit = new HashMap<>();
-            credit.put("accountId", to.getId());
-            credit.put("destinationAccountId", from.getId());
-            credit.put("transactionTypeCode", "TRANSFER_INTERNAL");
-            credit.put("categoryCode", "OTHERS");
-            credit.put("amount", convertedAmount);
-            credit.put("originalAmount", amount);
-            credit.put("originalCurrencyCode", fromCurrency.getCode());
-            credit.put("sign", "+");
-            credit.put("details", "Transfer from " + fromIban);
-            credit.put("transactionDate", now.toString());
+            from.setBalance(from.getBalance().subtract(amount));
+            to.setBalance(to.getBalance().add(convertedAmount));
 
-            restTemplate.postForObject(txUrl, new HttpEntity<>(debit, headers), Map.class);
-            restTemplate.postForObject(txUrl, new HttpEntity<>(credit, headers), Map.class);
+            accountRepository.save(from);
+            accountRepository.save(to);
+            publishInvalidations(from, "transfer");
+            publishInvalidations(to, "transfer");
 
-        } catch (Exception e) {
-            log.warn("Failed to create transaction records in transaction-service: {}", e.getMessage());
+            try {
+                String txUrl = transactionServiceUrl + "/api/transactions";
+                LocalDateTime now = LocalDateTime.now();
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+                if (attrs != null) {
+                    HttpServletRequest request = attrs.getRequest();
+                    String authHeader = request.getHeader("Authorization");
+                    if (authHeader != null) {
+                        headers.set("Authorization", authHeader);
+                    }
+                }
+
+                Map<String, Object> debit = new HashMap<>();
+                debit.put("accountId", from.getId());
+                debit.put("destinationAccountId", to.getId());
+                debit.put("transactionTypeCode", "TRANSFER_INTERNAL");
+                debit.put("categoryCode", "OTHERS");
+                debit.put("amount", amount);
+                debit.put("originalAmount", amount);
+                debit.put("originalCurrencyCode", fromCurrency.getCode());
+                debit.put("sign", "-");
+                debit.put("details", "Transfer to " + normalizedToIban);
+                debit.put("transactionDate", now.toString());
+
+                Map<String, Object> credit = new HashMap<>();
+                credit.put("accountId", to.getId());
+                credit.put("destinationAccountId", from.getId());
+                credit.put("transactionTypeCode", "TRANSFER_INTERNAL");
+                credit.put("categoryCode", "OTHERS");
+                credit.put("amount", convertedAmount);
+                credit.put("originalAmount", amount);
+                credit.put("originalCurrencyCode", fromCurrency.getCode());
+                credit.put("sign", "+");
+                credit.put("details", "Transfer from " + normalizedFromIban);
+                credit.put("transactionDate", now.toString());
+
+                restTemplate.postForObject(txUrl, new HttpEntity<>(debit, headers), Map.class);
+                restTemplate.postForObject(txUrl, new HttpEntity<>(credit, headers), Map.class);
+
+            } catch (Exception e) {
+                log.warn("Failed to create transaction records in transaction-service: {}", e.getMessage());
+            }
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BusinessRuleViolationException("Transfer interrupted while waiting for lock");
+        } finally {
+            if (secondLocked && secondLock.isHeldByCurrentThread()) {
+                secondLock.unlock();
+            }
+            if (firstLocked && firstLock.isHeldByCurrentThread()) {
+                firstLock.unlock();
+            }
         }
+    }
+
+    private void publishInvalidations(Account account, String reason) {
+        cacheInvalidationPublisher.publish("balance", "iban:" + account.getIban(), reason);
+        cacheInvalidationPublisher.publish("accountsByClient", "client:" + account.getClientId(), reason);
+        cacheInvalidationPublisher.publish("accountDetails", "id:" + account.getId(), reason);
+        cacheInvalidationPublisher.publish("accountDetails", "iban:" + account.getIban(), reason);
     }
 
     private void verifyStepUp(Long clientId, String totpCode) {

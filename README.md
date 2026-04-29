@@ -13,43 +13,45 @@ Full-stack microservices banking project (Java/Spring Boot + React/Vite).
 - Admin: `admin@cashtactics.com` / `password`
 - User: `user@cashtactics.com` / `password`
 
-### Start everything with Docker Compose (Thesis / Demo mode)
-From project root:
+### Start everything with Docker Compose
+
+Dev:
 
 ```bash
-docker compose -f docker-compose.yml up -d --build
+docker compose -p online-internet-banking-dev -f docker-compose.yml -f docker-compose.override.yml up -d --build
 ```
 
-This starts:
-- `postgres` (5432)
-- `auth-service` (8081)
-- `client-service` (8082)
-- `account-service` (8083)
-- `transaction-service` (8084)
-- `payment-service` (8085)
-- `api-gateway` (8443)
-- `frontend` (3000)
-
-### App URLs
-- Frontend: `http://localhost:3000`
-- API Gateway: `https://localhost:8443`
-
-Stop stack:
+Prod:
 
 ```bash
-docker compose -f docker-compose.yml down
+docker compose -p online-internet-banking-prod -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+### App URLs
+- Dev Frontend: `http://localhost:5173`
+- Dev API Gateway: `http://localhost:8080`
+- Prod Frontend: `http://localhost:3000`
+- Prod API Gateway: `https://localhost:8443`
+
+### Redis in the project
+- `account-service` uses Caffeine (L1) + Redis (L2) for cache.
+- Redis Pub/Sub keeps local caches in sync across instances.
+- `api-gateway` uses Redis for token blacklist and rate limiting.
+
+Stop dev stack:
+
+```bash
+docker compose -p online-internet-banking-dev -f docker-compose.yml -f docker-compose.override.yml down
+```
+
+Stop prod stack:
+
+```bash
+docker compose -p online-internet-banking-prod -f docker-compose.yml -f docker-compose.prod.yml down
 ```
 
 ### Development mode (hot reload)
-Use this when actively coding frontend/backend and you want live reload.
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
-```
-
-Development URLs:
-- Frontend (Vite): `http://localhost:5173`
-- API Gateway: `https://localhost:8443`
+Use the dev command above when actively coding frontend/backend and you want live reload.
 
 ## Project Structure
 
@@ -66,13 +68,14 @@ Online-Internet-Banking/
 ├── explanations/
 ├── docker-compose.yml
 ├── docker-compose.override.yml
-├── docker-compose.dev.yml
+├── docker-compose.prod.yml
 └── postman_collection.json
 ```
 
 ## Notes About Gateway Protocol
 
-- In both thesis/demo and dev setup, gateway runs on `https://localhost:8443`.
+- Dev gateway runs on `http://localhost:8080`.
+- Prod gateway runs on `https://localhost:8443`.
 - The gateway certificate is self-signed in local dev, so tools may require trusting the cert or skipping strict verification.
 
 ## Documentation
@@ -83,6 +86,7 @@ Detailed docs are in `explanations/`:
 - `explanations/IMPLEMENTATION_GUIDE.md`
 - `explanations/TESTING_GUIDE.md`
 - `explanations/DATABASE.md`
+- `explanations/REDIS_CACHING.md`
 
 ## Postman
 
@@ -96,7 +100,7 @@ Use this sequence to demonstrate the implemented privacy and fraud flows clearly
 ### 1. Start stack
 
 ```bash
-docker compose -f docker-compose.yml up -d --build
+docker compose -p online-internet-banking-prod -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
 Open:

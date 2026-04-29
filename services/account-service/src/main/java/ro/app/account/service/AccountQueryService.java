@@ -34,7 +34,7 @@ public class AccountQueryService {
         this.ownershipChecker = ownershipChecker;
     }
 
-    @Cacheable(value = "accountsByClient", key = "#clientId")
+    @Cacheable(value = "accountsByClient", key = "'client:' + #clientId")
     public List<Account> getAccountsByClient(Long clientId) {
         return accountRepository.findByClientId(clientId);
     }
@@ -42,6 +42,7 @@ public class AccountQueryService {
     /**
      * Single account by id for authenticated user (or admin). Used by payment top-up flow.
      */
+    @Cacheable(value = "accountDetails", key = "'id:' + #accountId")
     public AccountDTO getAccountDtoForPrincipal(Long accountId, JwtPrincipal principal) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
@@ -52,6 +53,7 @@ public class AccountQueryService {
     /**
      * Account by IBAN for authenticated user (or admin). Used by transaction-service for statement-by-IBAN.
      */
+    @Cacheable(value = "accountDetails", key = "'iban:' + #iban.trim().toUpperCase()")
     public AccountDTO getAccountDtoByIban(String iban, JwtPrincipal principal) {
         String normalized = iban != null ? iban.trim().toUpperCase() : "";
         Account account = accountRepository.findByIban(normalized)
@@ -60,7 +62,7 @@ public class AccountQueryService {
         return AccountMapper.toDTO(account);
     }
 
-    @Cacheable(value = "balance", key = "#iban")
+    @Cacheable(value = "balance", key = "'iban:' + #iban.trim().toUpperCase()")
     public BigDecimal getBalanceByIban(String iban, JwtPrincipal principal) {
         Account account = accountRepository.findByIban(iban)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
