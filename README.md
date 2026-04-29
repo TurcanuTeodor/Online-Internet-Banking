@@ -18,13 +18,13 @@ Full-stack microservices banking project (Java/Spring Boot + React/Vite).
 Dev:
 
 ```bash
-docker compose -p online-internet-banking-dev -f docker-compose.yml -f docker-compose.override.yml up -d --build
+docker compose --env-file .env -p online-internet-banking-dev -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
 ```
 
 Prod:
 
 ```bash
-docker compose -p online-internet-banking-prod -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env -p online-internet-banking-prod -f deploy/docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
 ```
 
 ### App URLs
@@ -41,13 +41,13 @@ docker compose -p online-internet-banking-prod -f docker-compose.yml -f docker-c
 Stop dev stack:
 
 ```bash
-docker compose -p online-internet-banking-dev -f docker-compose.yml -f docker-compose.override.yml down
+docker compose --env-file .env -p online-internet-banking-dev -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml down
 ```
 
 Stop prod stack:
 
 ```bash
-docker compose -p online-internet-banking-prod -f docker-compose.yml -f docker-compose.prod.yml down
+docker compose --env-file .env -p online-internet-banking-prod -f deploy/docker-compose.yml -f deploy/docker-compose.prod.yml down
 ```
 
 ### Development mode (hot reload)
@@ -65,11 +65,10 @@ Online-Internet-Banking/
 │   ├── transaction-service/
 │   └── payment-service/
 ├── frontend/
-├── explanations/
-├── docker-compose.yml
-├── docker-compose.override.yml
-├── docker-compose.prod.yml
-└── postman_collection.json
+├── deploy/ (docker compose overlays)
+├── docs/ (project documentation and UML)
+├── data/
+└── postman collection: docs/postman/postman_collection.json
 ```
 
 ## Notes About Gateway Protocol
@@ -80,17 +79,17 @@ Online-Internet-Banking/
 
 ## Documentation
 
-Detailed docs are in `explanations/`:
-- `explanations/QUICK_START.md`
-- `explanations/ARCHITECTURE.md`
-- `explanations/IMPLEMENTATION_GUIDE.md`
-- `explanations/TESTING_GUIDE.md`
-- `explanations/DATABASE.md`
-- `explanations/REDIS_CACHING.md`
+Detailed docs are in `docs/`:
+- `docs/QUICK_START.md`
+- `docs/ARCHITECTURE.md`
+- `docs/IMPLEMENTATION_GUIDE.md`
+- `docs/TESTING_GUIDE.md`
+- `docs/DATABASE.md`
+- `docs/REDIS_CACHING.md`
 
 ## Postman
 
-Use `postman_collection.json` from project root and set:
+Use `docs/postman/postman_collection.json` and set:
 - `baseUrl = https://localhost:8443`
 
 ## Thesis Demo Checklist (5 Minutes)
@@ -100,7 +99,7 @@ Use this sequence to demonstrate the implemented privacy and fraud flows clearly
 ### 1. Start stack
 
 ```bash
-docker compose -p online-internet-banking-prod -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env -p online-internet-banking-prod -f deploy/docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
 ```
 
 Open:

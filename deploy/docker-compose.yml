@@ -16,10 +16,11 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
 
   auth-service:
-    build: ./services/auth-service
+    build: ../services/auth-service
     env_file:
-      - ./services/auth-service/.env.properties
+      - ../services/auth-service/.env.properties
     environment:
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_URL: jdbc:postgresql://postgres:5432/banking?currentSchema=auth
       APP_SERVICES_CLIENT_URL: http://client-service:8082
     depends_on:
@@ -29,10 +30,11 @@ services:
       - "8081:8081"
 
   client-service:
-    build: ./services/client-service
+    build: ../services/client-service
     env_file:
-      - ./services/client-service/.env.properties
+      - ../services/client-service/.env.properties
     environment:
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_URL: jdbc:postgresql://postgres:5432/banking?currentSchema=clients
       AUTH_SERVICE_URL: http://auth-service:8081
       ACCOUNT_SERVICE_URL: http://account-service:8083
@@ -44,10 +46,11 @@ services:
       - "8082:8082"
 
   account-service:
-    build: ./services/account-service
+    build: ../services/account-service
     env_file:
-      - ./services/account-service/.env.properties
+      - ../services/account-service/.env.properties
     environment:
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_URL: jdbc:postgresql://postgres:5432/banking?currentSchema=accounts
       TRANSACTION_SERVICE_URL: http://transaction-service:8084
       FRAUD_SERVICE_URL: http://fraud-service:8086
@@ -58,10 +61,11 @@ services:
       - "8083:8083"
 
   transaction-service:
-    build: ./services/transaction-service
+    build: ../services/transaction-service
     env_file:
-      - ./services/transaction-service/.env.properties
+      - ../services/transaction-service/.env.properties
     environment:
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_URL: jdbc:postgresql://postgres:5432/banking?currentSchema=transactions
       ACCOUNT_SERVICE_URL: http://account-service:8083
     depends_on:
@@ -71,10 +75,11 @@ services:
       - "8084:8084"
 
   payment-service:
-    build: ./services/payment-service
+    build: ../services/payment-service
     env_file:
-      - ./services/payment-service/.env.properties
+      - ../services/payment-service/.env.properties
     environment:
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_URL: jdbc:postgresql://postgres:5432/banking?currentSchema=payments
       ACCOUNT_SERVICE_URL: http://account-service:8083
     depends_on:
@@ -84,10 +89,11 @@ services:
       - "8085:8085"
 
   fraud-service:
-    build: ./services/fraud-service
+    build: ../services/fraud-service
     env_file:
-      - ./services/fraud-service/.env.properties
+      - ../services/fraud-service/.env.properties
     environment:
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_URL: jdbc:postgresql://postgres:5432/banking?currentSchema=fraud
       TRANSACTION_SERVICE_URL: http://transaction-service:8084
       ACCOUNT_SERVICE_URL: http://account-service:8083
@@ -98,9 +104,9 @@ services:
       - "8086"
 
   api-gateway:
-    build: ./services/api-gateway
+    build: ../services/api-gateway
     env_file:
-      - ./services/api-gateway/.env.properties
+      - ../services/api-gateway/.env.properties
     environment:
       AUTH_SERVICE_URL: http://auth-service:8081
       CLIENT_SERVICE_URL: http://client-service:8082
@@ -124,7 +130,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ../frontend
     depends_on:
       api-gateway:
         condition: service_started
