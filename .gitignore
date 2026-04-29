@@ -43,3 +43,4 @@ frontend/dist/
 frontend/build_log_2.txt
 frontend/build_output.txt
 frontend/err.txt
+out/
