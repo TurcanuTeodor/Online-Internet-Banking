@@ -1,9 +1,11 @@
 package ro.app.fraud.tier2;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -43,12 +45,14 @@ public class BehavioralScoringService {
         double categoryScore  = scoreCategoryRisk(req.getTransactionType());
         double velocityScore  = scoreVelocity(req.getAmount(), history);
 
-        components.put("amount_anomaly", amountScore);
+        // NOTE: these key names are coupled to FeatureVectorBuilder in tier3 —
+        // if you rename a key here, update FeatureVectorBuilder.build() accordingly.
+        components.put("amount_anomaly",    amountScore);
         components.put("frequency_anomaly", frequencyScore);
-        components.put("time_anomaly", timeScore);
+        components.put("time_anomaly",      timeScore);
         components.put("recipient_anomaly", recipientScore);
-        components.put("category_risk", categoryScore);
-        components.put("velocity_24h", velocityScore);
+        components.put("category_risk",     categoryScore);
+        components.put("velocity_24h",      velocityScore);
 
         double total = amountScore    * W_AMOUNT
                      + frequencyScore * W_FREQUENCY
@@ -98,22 +102,16 @@ public class BehavioralScoringService {
      * Frequency Anomaly (0–100): tx count today vs. average daily.
      */
     private double scoreFrequency(List<ExternalTransactionDto> history) {
+        if (history.isEmpty()) return 10.0;
+
         LocalDateTime startOfDay = LocalDateTime.now().with(LocalTime.MIN);
         long todayCount = history.stream()
                 .filter(tx -> tx.getTransactionDate() != null && tx.getTransactionDate().isAfter(startOfDay))
                 .count();
 
-        if (history.isEmpty()) return todayCount > 3 ? 50.0 : 10.0;
-
-        Set<java.time.LocalDate> uniqueDays = history.stream()
-                .filter(tx -> tx.getTransactionDate() != null)
-                .map(tx -> tx.getTransactionDate().toLocalDate())
-                .collect(Collectors.toSet());
-
-        double avgDaily = uniqueDays.isEmpty() ? 1.0 : (double) history.size() / uniqueDays.size();
-        if (avgDaily <= 0) avgDaily = 1.0;
-
+        double avgDaily = computeAvgDailyCount(history);
         double ratio = todayCount / avgDaily;
+
         if (ratio <= 1.5) return 5.0;
         if (ratio <= 2.5) return 35.0;
         if (ratio <= 4.0) return 65.0;
@@ -186,13 +184,11 @@ public class BehavioralScoringService {
      */
     private double scoreVelocity(double currentAmount, List<ExternalTransactionDto> history) {
         LocalDateTime cutoff24h = LocalDateTime.now().minusHours(24);
-
         double sum24h = history.stream()
                 .filter(tx -> tx.getTransactionDate() != null && tx.getTransactionDate().isAfter(cutoff24h))
                 .filter(tx -> "-".equals(tx.getSign()))
                 .mapToDouble(tx -> tx.getAmount().doubleValue())
-                .sum();
-        sum24h += currentAmount;
+                .sum() + currentAmount;
 
         LocalDateTime cutoff30d = LocalDateTime.now().minusDays(30);
         List<ExternalTransactionDto> last30d = history.stream()
@@ -204,19 +200,34 @@ public class BehavioralScoringService {
             return currentAmount > 1000 ? 50.0 : 15.0;
         }
 
-        Set<java.time.LocalDate> days = last30d.stream()
-                .map(tx -> tx.getTransactionDate().toLocalDate())
-                .collect(Collectors.toSet());
-
-        double totalSpent30d = last30d.stream().mapToDouble(tx -> tx.getAmount().doubleValue()).sum();
-        double avgDailySpend = days.isEmpty() ? totalSpent30d : totalSpent30d / days.size();
-        if (avgDailySpend <= 0) avgDailySpend = 1.0;
-
+        double avgDailySpend = computeAvgDailySpend(last30d);
         double ratio = sum24h / avgDailySpend;
+
         if (ratio <= 1.5) return 5.0;
         if (ratio <= 3.0) return 35.0;
         if (ratio <= 5.0) return 65.0;
         return Math.min(100.0, 75.0 + (ratio - 5.0) * 5.0);
+    }
+
+    // ── Shared computation helpers ────────────────────────────────────────────
+
+    /** Average number of transactions per active day in the given history. */
+    private double computeAvgDailyCount(List<ExternalTransactionDto> history) {
+        Set<java.time.LocalDate> uniqueDays = history.stream()
+                .filter(tx -> tx.getTransactionDate() != null)
+                .map(tx -> tx.getTransactionDate().toLocalDate())
+                .collect(Collectors.toSet());
+        return uniqueDays.isEmpty() ? 1.0 : Math.max(1.0, (double) history.size() / uniqueDays.size());
+    }
+
+    /** Average daily outgoing spend across active days in the given list. */
+    private double computeAvgDailySpend(List<ExternalTransactionDto> outgoing) {
+        Set<java.time.LocalDate> days = outgoing.stream()
+                .map(tx -> tx.getTransactionDate().toLocalDate())
+                .collect(Collectors.toSet());
+        double total = outgoing.stream().mapToDouble(tx -> tx.getAmount().doubleValue()).sum();
+        double avg = days.isEmpty() ? total : total / days.size();
+        return Math.max(1.0, avg);
     }
 
     private double computeStdDev(List<ExternalTransactionDto> history, double mean) {

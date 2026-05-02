@@ -1,5 +1,6 @@
 package ro.app.fraud.service;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
@@ -102,12 +103,12 @@ public class FraudService {
     }
 
     public Page<FraudDecisionDTO> getAlerts(Pageable pageable) {
-        List<FraudDecisionStatus> alertStatuses = List.of(
+        Set<FraudDecisionStatus> alertStatuses = EnumSet.of(
                 FraudDecisionStatus.FLAG,
                 FraudDecisionStatus.BLOCK,
                 FraudDecisionStatus.MANUAL_REVIEW
         );
-        return decisionRepo.findByStatusInAndUserResolution(alertStatuses, FraudUserResolution.PENDING, pageable)
+        return decisionRepo.findByStatusInAndUserResolution(List.copyOf(alertStatuses), FraudUserResolution.PENDING, pageable)
             .map(this::toDto);
     }
 
@@ -146,24 +147,27 @@ public class FraudService {
 
         d.setUserResolution(resolution);
         d.setUserResolutionNotes(notes);
-        d.setUserResolvedAt(java.time.LocalDateTime.now());
-
-        if (resolution == FraudUserResolution.LEGITIMATE) {
-            try {
-                accountSecurityClient.unfreezeAccount(d.getAccountId());
-            } catch (Exception e) {
-                log.warn("Failed to unfreeze account {} after legitimate alert resolution: {}", d.getAccountId(), e.getMessage());
-            }
-        } else if (resolution == FraudUserResolution.FRAUD_REPORTED) {
-            try {
-                accountSecurityClient.freezeAccount(d.getAccountId());
-            } catch (Exception e) {
-                log.warn("Failed to freeze account {} after fraud report: {}", d.getAccountId(), e.getMessage());
-            }
-        }
+        d.setUserResolvedAt(LocalDateTime.now());
+        applyAccountStatusChange(resolution, d.getAccountId());
 
         d = decisionRepo.save(d);
         return toDto(d);
+    }
+
+    private void applyAccountStatusChange(FraudUserResolution resolution, Long accountId) {
+        if (resolution == FraudUserResolution.LEGITIMATE) {
+            try {
+                accountSecurityClient.unfreezeAccount(accountId);
+            } catch (Exception e) {
+                log.warn("Failed to unfreeze account {} after legitimate resolution: {}", accountId, e.getMessage());
+            }
+        } else if (resolution == FraudUserResolution.FRAUD_REPORTED) {
+            try {
+                accountSecurityClient.freezeAccount(accountId);
+            } catch (Exception e) {
+                log.warn("Failed to freeze account {} after fraud report: {}", accountId, e.getMessage());
+            }
+        }
     }
 
     public FraudDecisionDTO adminReview(Long decisionId, String adminUsername, String notes, FraudDecisionStatus newStatus) {
@@ -176,6 +180,12 @@ public class FraudService {
         return toDto(d);
     }
 
+    /**
+     * Maps a FraudDecision entity to its DTO.
+     * Manual mapping is intentional — MapStruct is not on the classpath and
+     * all fields are explicitly listed so any new field added to the entity
+     * is immediately visible as a compilation gap here.
+     */
     private FraudDecisionDTO toDto(FraudDecision d) {
         FraudDecisionDTO dto = new FraudDecisionDTO();
         dto.setId(d.getId());

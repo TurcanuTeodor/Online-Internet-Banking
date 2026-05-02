@@ -109,6 +109,13 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- ==================== ML ENGINE(TIER3) ==================== -->
+        <dependency>
+            <groupId>com.github.haifengl</groupId>
+            <artifactId>smile-core</artifactId>
+            <version>3.1.1</version>
+        </dependency>
+
     </dependencies>
 
     <build>

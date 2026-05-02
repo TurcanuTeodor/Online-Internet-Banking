@@ -1,6 +1,6 @@
 package ro.app.fraud.tier3;
 
-public record LlmVerdict(
+public record MlVerdict(
         String verdict,
         double confidence,
         String reasoning

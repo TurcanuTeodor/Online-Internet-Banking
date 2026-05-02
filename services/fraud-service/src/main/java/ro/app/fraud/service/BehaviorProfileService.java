@@ -2,7 +2,9 @@ package ro.app.fraud.service;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.DoubleSummaryStatistics;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -48,52 +50,22 @@ public class BehaviorProfileService {
             return profileRepo.save(profile);
         }
 
-        double sum = outgoing.stream().mapToDouble(tx -> tx.getAmount().doubleValue()).sum();
-        double max = outgoing.stream().mapToDouble(tx -> tx.getAmount().doubleValue()).max().orElse(0.0);
-        double avg = sum / outgoing.size();
+        DoubleSummaryStatistics stats = outgoing.stream()
+                .mapToDouble(tx -> tx.getAmount().doubleValue())
+                .summaryStatistics();
+        double avg = stats.getAverage();
+        double max = stats.getMax();
 
         profile.setAvgTransactionAmount(avg);
         profile.setMaxTransactionAmount(max);
         profile.setTransactionCount(outgoing.size());
+        profile.setAvgDailyTransactions(computeAvgDaily(outgoing));
 
-        Set<java.time.LocalDate> uniqueDays = outgoing.stream()
-                .filter(tx -> tx.getTransactionDate() != null)
-                .map(tx -> tx.getTransactionDate().toLocalDate())
-                .collect(Collectors.toSet());
-        double avgDaily = uniqueDays.isEmpty() ? outgoing.size() : (double) outgoing.size() / uniqueDays.size();
-        profile.setAvgDailyTransactions(avgDaily);
-
-        int[] hourBuckets = new int[24];
-        outgoing.stream()
-                .filter(tx -> tx.getTransactionDate() != null)
-                .forEach(tx -> hourBuckets[tx.getTransactionDate().getHour()]++);
-
-        int peakStart = 8, peakEnd = 22;
-        int maxCount = 0;
-        for (int h = 0; h < 24; h++) {
-            if (hourBuckets[h] > maxCount) {
-                maxCount = hourBuckets[h];
-                peakStart = h;
-            }
-        }
-        peakEnd = Math.min(23, peakStart + 6);
-        if (peakStart > 3) peakStart = Math.max(0, peakStart - 2);
+        int peakStart = computePeakHourStart(outgoing);
         profile.setTypicalHourStart(peakStart);
-        profile.setTypicalHourEnd(peakEnd);
+        profile.setTypicalHourEnd(Math.min(23, peakStart + 6));
 
-        Set<String> frequentIbans = outgoing.stream()
-                .filter(tx -> tx.getDetails() != null)
-                .map(tx -> {
-                    String d = tx.getDetails();
-                    int idx = d.indexOf("RO");
-                    if (idx >= 0 && d.length() >= idx + 24) {
-                        return d.substring(idx, Math.min(d.length(), idx + 24));
-                    }
-                    return null;
-                })
-                .filter(iban -> iban != null)
-                .collect(Collectors.toSet());
-
+        Set<String> frequentIbans = extractFrequentIbans(outgoing);
         if (!frequentIbans.isEmpty()) {
             profile.setCommonIbans(String.join(",", frequentIbans));
         }
@@ -103,8 +75,54 @@ public class BehaviorProfileService {
 
         log.info("Profile updated: client={} avg={} max={} txCount={} avgDaily={}",
                 clientId, String.format("%.2f", avg), String.format("%.2f", max),
-                outgoing.size(), String.format("%.1f", avgDaily));
+                outgoing.size(), String.format("%.1f", profile.getAvgDailyTransactions()));
 
         return profile;
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    private double computeAvgDaily(List<ExternalTransactionDto> outgoing) {
+        Set<java.time.LocalDate> uniqueDays = outgoing.stream()
+                .filter(tx -> tx.getTransactionDate() != null)
+                .map(tx -> tx.getTransactionDate().toLocalDate())
+                .collect(Collectors.toSet());
+        return uniqueDays.isEmpty() ? outgoing.size() : (double) outgoing.size() / uniqueDays.size();
+    }
+
+    /** Finds the hour of day with the most transactions, then widens it into a ±2h window. */
+    private int computePeakHourStart(List<ExternalTransactionDto> outgoing) {
+        int[] hourBuckets = new int[24];
+        outgoing.stream()
+                .filter(tx -> tx.getTransactionDate() != null)
+                .forEach(tx -> hourBuckets[tx.getTransactionDate().getHour()]++);
+
+        int peakHour = 8;
+        int maxCount = 0;
+        for (int h = 0; h < 24; h++) {
+            if (hourBuckets[h] > maxCount) {
+                maxCount = hourBuckets[h];
+                peakHour = h;
+            }
+        }
+        return peakHour > 3 ? Math.max(0, peakHour - 2) : peakHour;
+    }
+
+    private Set<String> extractFrequentIbans(List<ExternalTransactionDto> outgoing) {
+        return outgoing.stream()
+                .filter(tx -> tx.getDetails() != null)
+                .map(this::parseIbanFromDetails)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
+    /** Extracts a Romanian IBAN (24 chars starting with "RO") from a free-text details field. */
+    private String parseIbanFromDetails(ExternalTransactionDto tx) {
+        String details = tx.getDetails();
+        int idx = details.indexOf("RO");
+        if (idx >= 0 && details.length() >= idx + 24) {
+            return details.substring(idx, Math.min(details.length(), idx + 24));
+        }
+        return null;
     }
 }
