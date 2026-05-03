@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import io.micrometer.observation.annotation.Observed;
+
 import ro.app.fraud.client.ExternalTransactionDto;
 import ro.app.fraud.dto.FraudEvaluationRequest;
 import ro.app.fraud.model.entity.UserBehaviorProfile;
@@ -32,6 +34,7 @@ public class BehavioralScoringService {
     private static final double W_CATEGORY  = 0.10;
     private static final double W_VELOCITY  = 0.10;
 
+    @Observed(name = "fraud.tier2.latency", contextualName = "tier2-scoring")
     public ScoringResult score(FraudEvaluationRequest req,
                                List<ExternalTransactionDto> history,
                                UserBehaviorProfile profile) {

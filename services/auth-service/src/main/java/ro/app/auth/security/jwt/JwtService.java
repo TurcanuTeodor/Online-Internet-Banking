@@ -2,6 +2,7 @@ package ro.app.auth.security.jwt;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import io.micrometer.observation.annotation.Observed;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,6 +41,7 @@ public class JwtService { //creates/verifies and extracts info(claims) from jwt
         this.issuer= issuer;
     }
 
+    @Observed(name = "auth.jwt.generate", contextualName = "jwt-generate")
     public String generateToken(String subject, Map<String, Object> claims){ //subject= name/email of user, claims= extra (role etc)
         return buildToken(subject, claims , expirationMs);
     }

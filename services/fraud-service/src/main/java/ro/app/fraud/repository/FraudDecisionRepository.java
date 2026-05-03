@@ -27,4 +27,6 @@ public interface FraudDecisionRepository extends JpaRepository<FraudDecision, Lo
     long countByStatus(FraudDecisionStatus status);
 
     long countByClientIdAndCreatedAtAfter(Long clientId, LocalDateTime after);
+    
+    long countByAccountIdAndCreatedAtAfter(Long accountId, LocalDateTime after);
 }

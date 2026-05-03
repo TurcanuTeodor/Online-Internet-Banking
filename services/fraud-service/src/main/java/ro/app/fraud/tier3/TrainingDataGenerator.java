@@ -31,22 +31,22 @@ public final class TrainingDataGenerator {
         // This forces the Isolation Forest to learn subtle patterns rather than obvious outliers,
         // resulting in a more realistic and academically credible model.
         for (int i = normalCount; i < normalCount + anomalyCount; i++) {
-            // Amount: plausible "high-end" amounts, not obviously huge (std 2.0)
-            double logAmount = 6.2 + 2.0 * random.nextGaussian();          // higher mean, reduced extremes
+            // Corelație: recipient nou
+            double isNewRecipient = random.nextDouble() < 0.6 ? 1.0 : 0.0;
+            data[i][3] = isNewRecipient;
+            
+            // Corelație: sumele sunt mai mari când recipientul e nou
+            double baseAmount = isNewRecipient == 1.0 ? 6.8 : 5.5;
+            double logAmount = baseAmount + 1.8 * random.nextGaussian();
             data[i][0] = Math.min(1.0, Math.exp(logAmount) / 5000.0);      // amount_ratio
+            
+            // Corelație: ora e mai deviantă când suma e mare
+            double amountHighMultiplier = data[i][0] > 0.6 ? 0.5 : 0.2;
+            data[i][4] = Math.max(0, Math.min(1.0, amountHighMultiplier + 0.2 * random.nextGaussian())); // hour_deviation
 
-            // Tier2/behavioral score: closer to normal zone (0.4)
+            // Restul rămân similare cu ce aveai:
             data[i][1] = Math.max(0, Math.min(1.0, 0.4 + 0.3 * random.nextGaussian())); // tier2_score
-
-            // Frequency: reduced to 0.35 — overlaps with high-normal users
             data[i][2] = Math.max(0, Math.min(1.0, 0.35 + 0.2 * random.nextGaussian())); // frequency_24h
-
-            // New recipient: 60% unknown (not always 100%) — adds noise, harder to isolate
-            data[i][3] = random.nextDouble() < 0.6 ? 1.0 : 0.0;            // new_recipient
-
-            // Hour deviation: spread across the day, not only night (0.35)
-            data[i][4] = Math.max(0, Math.min(1.0, 0.35 + 0.2 * random.nextGaussian())); // hour_deviation
-
             data[i][5] = random.nextDouble() < 0.5 ? 1.0 : 0.0;            // new_account: 50% fraud
         }
 

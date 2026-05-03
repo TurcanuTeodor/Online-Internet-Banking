@@ -289,6 +289,7 @@ public class AccountTransferService {
             Map<String, Object> body = new HashMap<>();
             body.put("accountId", from.getId());
             body.put("clientId", from.getClientId());
+            body.put("transactionId", null);
             body.put("amount", amount.doubleValue());
             body.put("currency", from.getCurrency().getCode());
             body.put("senderIban", from.getIban());

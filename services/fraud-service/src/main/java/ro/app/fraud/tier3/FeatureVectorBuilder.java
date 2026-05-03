@@ -14,7 +14,7 @@ public final class FeatureVectorBuilder {
         double amountRatio = Math.min(1.0, req.getAmount() / 5000.0); // cap at 1.0 for amounts >= 5000
         double tier2Norm = scoring.totalScore() / 100.0; // normalize to [0,1]  
         double freq24h = Math.min(1.0, scoring.componentScores()
-                    .getOrDefault("velocity_24h", 0.0) / 100.0); // normalize and cap
+                    .getOrDefault("frequency_anomaly", 0.0) / 100.0); // normalize and cap
         double newRecipient = scoring.componentScores()
                     .getOrDefault("recipient_anomaly", 0.0) > 50.0 ? 1.0 : 0.0; // binary feature based on threshold
         double hourDeviation = Math.min(1.0, scoring.componentScores()

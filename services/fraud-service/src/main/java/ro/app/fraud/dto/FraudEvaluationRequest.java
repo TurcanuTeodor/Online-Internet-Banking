@@ -10,6 +10,8 @@ public class FraudEvaluationRequest {
     @NotNull
     private Long clientId;
 
+    private Long transactionId;
+
     @NotNull
     private Double amount;
 
@@ -25,6 +27,9 @@ public class FraudEvaluationRequest {
 
     public Long getClientId() { return clientId; }
     public void setClientId(Long clientId) { this.clientId = clientId; }
+
+    public Long getTransactionId() { return transactionId; }
+    public void setTransactionId(Long transactionId) { this.transactionId = transactionId; }
 
     public Double getAmount() { return amount; }
     public void setAmount(Double amount) { this.amount = amount; }

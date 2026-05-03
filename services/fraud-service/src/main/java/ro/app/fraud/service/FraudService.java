@@ -67,6 +67,7 @@ public class FraudService {
         FraudDecision decision = new FraudDecision();
         decision.setAccountId(req.getAccountId());
         decision.setClientId(req.getClientId());
+        decision.setTransactionId(req.getTransactionId());
         decision.setStatus(tier1.status());
         decision.setDecidedByTier(FraudTier.TIER1_RULES);
         decision.setRiskScore(tier1.riskScore());
@@ -75,7 +76,7 @@ public class FraudService {
 
         decision = decisionRepo.save(decision);
 
-        if (tier1.status() == FraudDecisionStatus.MANUAL_REVIEW) {
+        if (tier1.status() == FraudDecisionStatus.MANUAL_REVIEW || tier1.status() == FraudDecisionStatus.ALLOW) {
             tier2Runner.run(decision.getId(), req);
         }
 

@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import io.micrometer.observation.annotation.Observed;
+
 import ro.app.fraud.dto.FraudEvaluationRequest;
 import ro.app.fraud.repository.FraudDecisionRepository;
 
@@ -31,6 +33,7 @@ public class RuleEngine {
         this.decisionRepo = decisionRepo;
     }
 
+    @Observed(name = "fraud.tier1.latency", contextualName = "tier1-evaluation")
     public RuleResult evaluate(FraudEvaluationRequest req) {
         log.info("Tier1 evaluating: client={} amount={} account={}", req.getClientId(), req.getAmount(), req.getAccountId());
 
@@ -50,13 +53,13 @@ public class RuleEngine {
             log.info("Rule hit: LARGE_AMOUNT — {} > {}", req.getAmount(), LARGE_AMOUNT_THRESHOLD);
         }
 
-        // Rule 2: Burst — 5+ evaluations for same client in last 60 seconds
+        // Rule 2: Burst — 5+ evaluations for same account in last 60 seconds
         LocalDateTime oneMinuteAgo = LocalDateTime.now().minusMinutes(1);
-        long recentCount = decisionRepo.countByClientIdAndCreatedAtAfter(req.getClientId(), oneMinuteAgo);
+        long recentCount = decisionRepo.countByAccountIdAndCreatedAtAfter(req.getAccountId(), oneMinuteAgo);
         if (recentCount >= BURST_LIMIT) {
             maxRisk = Math.max(maxRisk, 90.0);
             triggers.add("BURST(" + (recentCount + 1) + " tx/min)");
-            log.info("Rule hit: BURST — {} recent transactions for client {}", recentCount, req.getClientId());
+            log.info("Rule hit: BURST — {} recent transactions for account {}", recentCount, req.getAccountId());
         }
 
         // Rule 3: New account + large-ish amount
@@ -67,7 +70,7 @@ public class RuleEngine {
         }
 
         if (triggers.isEmpty()) {
-            return RuleResult.review("none", "No hard rules triggered — forwarding to Tier 2 for behavioral analysis");
+            return RuleResult.allow(); //no suspicious rules hit in Tier 1
         }
 
         String ruleHits = String.join(", ", triggers);

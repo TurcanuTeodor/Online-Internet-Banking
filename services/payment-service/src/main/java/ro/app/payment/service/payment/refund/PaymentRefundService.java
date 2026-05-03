@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import io.micrometer.observation.annotation.Observed;
+
 import com.stripe.exception.StripeException;
 import com.stripe.model.Refund;
 import com.stripe.param.RefundCreateParams;
@@ -34,6 +36,7 @@ public class PaymentRefundService {
         this.paymentQueryService = paymentQueryService;
     }
 
+    @Observed(name = "stripe.refund.create", contextualName = "refund")
     public PaymentDTO refundPayment(Long id) {
         Payment payment = paymentQueryService.requirePaymentById(id);
 

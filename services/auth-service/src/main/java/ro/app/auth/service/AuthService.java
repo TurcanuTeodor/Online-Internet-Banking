@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import io.micrometer.observation.annotation.Observed;
+
 import ro.app.auth.dto.auth.ChangePasswordRequest;
 import ro.app.auth.dto.auth.LoginRequest;
 import ro.app.auth.dto.auth.LoginResponse;
@@ -97,6 +99,7 @@ public class AuthService {
 
     // ======================== LOGIN ========================
 
+    @Observed(name = "auth.login", contextualName = "login")
     public LoginResponse login(LoginRequest req) {
         User user = userRepo.findByUsernameOrEmail(req.getUsernameOrEmail())
                 .orElseThrow(() -> new AuthenticationException("Invalid credentials"));

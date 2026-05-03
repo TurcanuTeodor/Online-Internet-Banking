@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.micrometer.observation.annotation.Observed;
+
 import com.stripe.exception.StripeException;
 import com.stripe.model.Customer;
 import com.stripe.param.CustomerCreateParams;
@@ -29,8 +31,11 @@ public class StripeCustomerService {
     /**
      * Returns a stable Stripe Customer id for an internal client.
      * Creates the Customer on-demand (Stripe test/live mode depends on API key).
+     * 
+     * Metrics: stripe.customer.create latency and success/failure counts
      */
     @Transactional
+    @Observed(name = "stripe.customer.create", contextualName = "stripe-customer")
     public String getOrCreateCustomerId(Long clientId) {
         if (clientId == null) throw new IllegalArgumentException("clientId is required");
 

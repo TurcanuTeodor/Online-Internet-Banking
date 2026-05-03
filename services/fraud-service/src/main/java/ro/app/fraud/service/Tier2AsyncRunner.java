@@ -97,7 +97,14 @@ public class Tier2AsyncRunner {
     private void applyAmbiguousVerdict(Long decisionId, FraudDecision decision,
                                        FraudEvaluationRequest req, ScoringResult scoring) {
         if (tier3 != null) {
-            MlVerdict mlVerdict = tier3.analyze(decisionId, req, scoring);
+            MlVerdict mlVerdict;
+            try {
+                mlVerdict = tier3.analyze(decisionId, req, scoring);
+            } catch (Exception e) {
+                log.error("Tier3 analysis failed for decision {}: {} — falling back to Tier2 decision", decisionId, e.getMessage());
+                applyTier3KillSwitchFallback(decisionId, decision, scoring);
+                return;
+            }
             decision.setDecidedByTier(FraudTier.TIER3_ML);
             applyMlVerdict(decisionId, decision, mlVerdict);
         } else {
