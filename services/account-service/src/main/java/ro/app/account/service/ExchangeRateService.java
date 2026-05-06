@@ -12,24 +12,23 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
-import ro.app.account.model.enums.CurrencyType;
 import ro.app.account.exception.BusinessRuleViolationException;
+import ro.app.account.model.enums.CurrencyType;
 
 @Service
 public class ExchangeRateService {
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final String ecbUrl;
 
-    public ExchangeRateService(RestTemplate restTemplate, @Value("${app.fx.ecb-url}") String ecbUrl) {
-        this.restTemplate = restTemplate;
+    public ExchangeRateService(RestClient restClient, @Value("${app.fx.ecb-url}") String ecbUrl) {
+        this.restClient = restClient;
         this.ecbUrl = ecbUrl;
     }
 
@@ -61,8 +60,11 @@ public class ExchangeRateService {
     private Map<CurrencyType, BigDecimal> fetchRates() {
         String xml;
         try {
-            xml = restTemplate.getForObject(ecbUrl, String.class);
-        } catch (RestClientException e) {
+            xml = restClient.get()
+                    .uri(ecbUrl)
+                    .retrieve()
+                    .body(String.class);
+        } catch (Exception e) {
             throw new BusinessRuleViolationException("Could not retrieve the exchange rate: external service unavailable");
         }
 

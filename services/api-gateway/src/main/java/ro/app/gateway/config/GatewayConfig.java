@@ -2,7 +2,6 @@ package ro.app.gateway.config;
 
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,19 +20,14 @@ public class GatewayConfig {
 
     public GatewayConfig(
             JwtAuthFilter jwtAuthFilter,
-            @Value("${services.auth.url:http://localhost:8081}") String authServiceUrl,
-            @Value("${services.client.url:http://localhost:8082}") String clientServiceUrl,
-            @Value("${services.account.url:http://localhost:8083}") String accountServiceUrl,
-            @Value("${services.transaction.url:http://localhost:8084}") String transactionServiceUrl,
-            @Value("${services.payment.url:http://localhost:8085}") String paymentServiceUrl,
-            @Value("${services.fraud.url:http://localhost:8086}") String fraudServiceUrl) {
+            RoutingProperties routingProperties) {
         this.jwtAuthFilter = jwtAuthFilter;
-        this.authServiceUrl = authServiceUrl;
-        this.clientServiceUrl = clientServiceUrl;
-        this.accountServiceUrl = accountServiceUrl;
-        this.transactionServiceUrl = transactionServiceUrl;
-        this.paymentServiceUrl = paymentServiceUrl;
-        this.fraudServiceUrl = fraudServiceUrl;
+        this.authServiceUrl = routingProperties.getAuth().getUrl();
+        this.clientServiceUrl = routingProperties.getClient().getUrl();
+        this.accountServiceUrl = routingProperties.getAccount().getUrl();
+        this.transactionServiceUrl = routingProperties.getTransaction().getUrl();
+        this.paymentServiceUrl = routingProperties.getPayment().getUrl();
+        this.fraudServiceUrl = routingProperties.getFraud().getUrl();
     }
 
     @Bean

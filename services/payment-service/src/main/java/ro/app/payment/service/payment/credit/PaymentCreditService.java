@@ -5,11 +5,11 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import ro.app.payment.config.PaymentProperties;
 import ro.app.payment.model.entity.Payment;
 
 /**
@@ -23,15 +23,14 @@ public class PaymentCreditService {
     private static final Logger log = LoggerFactory.getLogger(PaymentCreditService.class);
 
     private final RestClient restClient;
+    private final String accountServiceBaseUrl;
+    private final String internalApiSecret;
 
-    @Value("${app.services.account.url}")
-    private String accountServiceBaseUrl;
-
-    @Value("${app.internal.api-secret}")
-    private String internalApiSecret;
-
-    public PaymentCreditService(RestClient restClient) {
+    public PaymentCreditService(RestClient restClient, PaymentProperties paymentProperties) {
         this.restClient = restClient;
+        PaymentProperties.Services servicesConfig = paymentProperties.getServices();
+        this.accountServiceBaseUrl = servicesConfig.getAccountServiceUrl();
+        this.internalApiSecret = servicesConfig.getInternalApiSecret();
     }
 
     public void applyCreditViaAccountService(Payment payment) {

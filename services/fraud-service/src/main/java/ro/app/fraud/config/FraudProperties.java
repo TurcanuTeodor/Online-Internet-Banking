@@ -13,10 +13,26 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "fraud")
 public class FraudProperties {
 
+    private Jwt jwt = new Jwt();
     private Tier1 tier1 = new Tier1();
     private Tier2 tier2 = new Tier2();
     private Tier3 tier3 = new Tier3();
     private Services services = new Services();
+
+    public static class Jwt {
+        /**
+         * JWT signing secret key for token validation
+         */
+        private String secret;
+
+        public String getSecret() {
+            return secret;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
+    }
 
     public static class Tier1 {
         /**
@@ -245,6 +261,14 @@ public class FraudProperties {
         public void setTransactionServiceUrl(String transactionServiceUrl) {
             this.transactionServiceUrl = transactionServiceUrl;
         }
+    }
+
+    public Jwt getJwt() {
+        return jwt;
+    }
+
+    public void setJwt(Jwt jwt) {
+        this.jwt = jwt;
     }
 
     public Tier1 getTier1() {

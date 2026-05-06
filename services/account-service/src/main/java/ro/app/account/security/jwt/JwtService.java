@@ -1,16 +1,18 @@
 package ro.app.account.security.jwt;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-
-import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Value;
-
 import java.nio.charset.StandardCharsets;
 
 import javax.crypto.SecretKey;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import ro.app.account.config.AccountProperties;
 
 @Service
 public class JwtService { // validate-only — no token generation
@@ -18,8 +20,8 @@ public class JwtService { // validate-only — no token generation
     private final SecretKey key;
     private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
-    public JwtService(@Value("${app.jwt.secret}") String secret) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    public JwtService(AccountProperties accountProperties) {
+        this.key = Keys.hmacShaKeyFor(accountProperties.getJwt().getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
     public Claims parseClaims(String token) {

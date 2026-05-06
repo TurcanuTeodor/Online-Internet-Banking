@@ -7,8 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import io.micrometer.observation.annotation.Observed;
-
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;
@@ -58,10 +56,7 @@ public class PaymentCreationService {
 
     /**
      * Card top-up: local {@link Payment} row + Stripe PaymentIntent (unconfirmed).
-     * 
-     * Metrics: stripe.payment.intent.create latency, success rate, and failures
      */
-    @Observed(name = "stripe.payment.intent.create", contextualName = "payment-intent")
     public TopUpIntentResponse createTopUpIntent(
             CreateTopUpIntentRequest req,
             JwtPrincipal principal,

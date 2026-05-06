@@ -5,7 +5,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +16,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import ro.app.auth.config.AuthProperties;
 import ro.app.auth.internal.InternalApiHeaders;
 
 @Component
@@ -24,8 +25,8 @@ public class InternalApiAuthFilter extends OncePerRequestFilter {
 
     private final byte[] expectedSecret;
 
-    public InternalApiAuthFilter(@Value("${app.internal.api-secret}") String secret) {
-        this.expectedSecret = secret.getBytes(StandardCharsets.UTF_8);
+    public InternalApiAuthFilter(AuthProperties authProperties) {
+        this.expectedSecret = authProperties.getServices().getInternalApiSecret().getBytes(StandardCharsets.UTF_8);
     }
 
     @Override

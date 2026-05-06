@@ -10,18 +10,13 @@ import javax.crypto.spec.PBEKeySpec;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
-import io.micrometer.observation.annotation.Observed;
-
+import ro.app.auth.config.AuthProperties;
 import ro.app.auth.dto.auth.ChangePasswordRequest;
 import ro.app.auth.dto.auth.LoginRequest;
 import ro.app.auth.dto.auth.LoginResponse;
@@ -43,26 +38,29 @@ public class AuthService {
     private final PasswordEncoder encoder;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
-
-    @Value("${app.services.client.url:http://localhost:8082}")
-    private String clientServiceUrl;
-
-    @Value("${app.internal.api-secret:change-me-internal-secret}")
-    private String internalApiSecret;
-
-    /** Must match client-service {@code encryption.key} for sign-up + legacy DB rows. */
-    @Value("${encryption.legacy-key:}")
-    private String legacyEncryptionKey;
+    private final RestClient restClient;
+    
+    private final String clientServiceUrl;
+    private final String internalApiSecret;
+    private final String legacyEncryptionKey;
 
     public AuthService(
             UserRepository userRepo,
             PasswordEncoder encoder,
             JwtService jwtService,
-            RefreshTokenService refreshTokenService) {
+            RefreshTokenService refreshTokenService,
+            RestClient restClient,
+            AuthProperties authProperties) {
         this.userRepo = userRepo;
         this.encoder = encoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
+        this.restClient = restClient;
+        
+        AuthProperties.Services servicesConfig = authProperties.getServices();
+        this.clientServiceUrl = servicesConfig.getClientServiceUrl();
+        this.internalApiSecret = servicesConfig.getInternalApiSecret();
+        this.legacyEncryptionKey = authProperties.getEncryption().getLegacyKey();
     }
 
     // ======================== REGISTRATION ========================
@@ -99,7 +97,6 @@ public class AuthService {
 
     // ======================== LOGIN ========================
 
-    @Observed(name = "auth.login", contextualName = "login")
     public LoginResponse login(LoginRequest req) {
         User user = userRepo.findByUsernameOrEmail(req.getUsernameOrEmail())
                 .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
@@ -228,21 +225,17 @@ public class AuthService {
             return;
         }
         try {
-            RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("X-Internal-Api-Secret", internalApiSecret);
-
             Map<String, Object> body = Map.of(
                     "clientId", clientId,
                     "newEncryptionKey", encryptionKey
             );
 
-            restTemplate.postForEntity(
-                    clientServiceUrl + "/api/internal/clients/migrate-legacy",
-                    new HttpEntity<>(body, headers),
-                    Void.class
-            );
+            restClient.post()
+                    .uri(clientServiceUrl + "/api/internal/clients/migrate-legacy")
+                    .header("X-Internal-Api-Secret", internalApiSecret)
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (Exception e) {
             log.warn("Legacy migration failed for clientId={}: {}", clientId, e.getMessage());
         }
@@ -250,22 +243,18 @@ public class AuthService {
 
     private void reEncryptClientData(Long clientId, String oldKey, String newKey) {
         try {
-            RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("X-Internal-Api-Secret", internalApiSecret);
-
             Map<String, Object> body = Map.of(
                     "clientId", clientId,
                     "oldEncryptionKey", oldKey,
                     "newEncryptionKey", newKey
             );
 
-            restTemplate.postForEntity(
-                    clientServiceUrl + "/api/internal/clients/re-encrypt",
-                    new HttpEntity<>(body, headers),
-                    Void.class
-            );
+            restClient.post()
+                    .uri(clientServiceUrl + "/api/internal/clients/re-encrypt")
+                    .header("X-Internal-Api-Secret", internalApiSecret)
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (Exception e) {
             log.error("Failed to re-encrypt client data for clientId={}: {}", clientId, e.getMessage());
             throw new RuntimeException("Password change failed: could not re-encrypt personal data. Please try again.", e);

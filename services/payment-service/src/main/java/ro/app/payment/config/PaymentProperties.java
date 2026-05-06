@@ -13,10 +13,26 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app.payment")
 public class PaymentProperties {
 
+    private Jwt jwt = new Jwt();
     private Stripe stripe = new Stripe();
     private Webhook webhook = new Webhook();
     private Processing processing = new Processing();
     private Services services = new Services();
+
+    public static class Jwt {
+        /**
+         * JWT signing secret key for token validation
+         */
+        private String secret;
+
+        public String getSecret() {
+            return secret;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
+    }
 
     public static class Stripe {
         /**
@@ -198,6 +214,14 @@ public class PaymentProperties {
         public void setFraudServiceUrl(String fraudServiceUrl) {
             this.fraudServiceUrl = fraudServiceUrl;
         }
+    }
+
+    public Jwt getJwt() {
+        return jwt;
+    }
+
+    public void setJwt(Jwt jwt) {
+        this.jwt = jwt;
     }
 
     public Stripe getStripe() {

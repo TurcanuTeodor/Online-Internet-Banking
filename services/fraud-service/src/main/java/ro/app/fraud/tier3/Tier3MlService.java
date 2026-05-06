@@ -2,13 +2,11 @@ package ro.app.fraud.tier3;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
-import io.micrometer.observation.annotation.Observed;
-
 import jakarta.annotation.PostConstruct;
+import ro.app.fraud.config.FraudProperties;
 import ro.app.fraud.dto.FraudEvaluationRequest;
 import ro.app.fraud.tier2.ScoringResult;
 import smile.anomaly.IsolationForest;
@@ -20,17 +18,25 @@ public class Tier3MlService {
     private static final Logger log = LoggerFactory.getLogger(Tier3MlService.class);
     private static final String MODEL_VERSION = "isolation-forest-v1.0-seed";
 
-    @Value("${fraud.tier3.ml.contamination:0.05}")
-    private double contamination;
-    @Value("${fraud.tier3.ml.seed:42}")
-    private int seed;
-    @Value("${fraud.tier3.ml.threshold:0.62}")
+    private final double contamination;
+    private final int seed;
     private double threshold;
-    @Value("${fraud.tier3.ml.training-samples:1000}")
-    private int trainingSamples;
+    private final int trainingSamples;
 
     private IsolationForest model;
     private double[] featureMeans; // stored for perturbation method
+
+    /**
+     * Dependency injection of FraudProperties for centralized ML configuration.
+     * Extracts Tier3-specific parameters in constructor for clarity and testability.
+     */
+    public Tier3MlService(FraudProperties fraudProperties) {
+        FraudProperties.Tier3 tier3Config = fraudProperties.getTier3();
+        this.contamination = tier3Config.getMlContamination();
+        this.seed = tier3Config.getMlSeed();
+        this.threshold = tier3Config.getMlThreshold();
+        this.trainingSamples = tier3Config.getMlTrainingSamples();
+    }
 
     @PostConstruct // App starts → @PostConstruct fires → trainModel() runs → model is ready
     void trainModel() {
@@ -55,7 +61,6 @@ public class Tier3MlService {
         this.threshold = findOptimalThreshold(data, normalCount);
     }
 
-    @Observed(name = "fraud.tier3.latency", contextualName = "tier3-ml")
     public MlVerdict analyze(Long decisionId, FraudEvaluationRequest req, ScoringResult scoring) {
 
         double[] features = FeatureVectorBuilder.build(req, scoring);

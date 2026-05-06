@@ -8,8 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import io.micrometer.observation.annotation.Observed;
-
+import ro.app.fraud.config.FraudProperties;
 import ro.app.fraud.dto.FraudEvaluationRequest;
 import ro.app.fraud.repository.FraudDecisionRepository;
 
@@ -21,19 +20,21 @@ import ro.app.fraud.repository.FraudDecisionRepository;
 public class RuleEngine {
 
     private static final Logger log = LoggerFactory.getLogger(RuleEngine.class);
-
-    private static final double LARGE_AMOUNT_THRESHOLD = 10_000.0;
-    private static final int BURST_LIMIT = 5;
-    private static final int NEW_ACCOUNT_DAYS = 30;
     private static final double NEW_ACCOUNT_AMOUNT_THRESHOLD = 2_000.0;
 
     private final FraudDecisionRepository decisionRepo;
+    private final double largeAmountThreshold;
+    private final int burstLimit;
+    private final int newAccountAgeDays;
 
-    public RuleEngine(FraudDecisionRepository decisionRepo) {
+    public RuleEngine(FraudDecisionRepository decisionRepo, FraudProperties fraudProperties) {
         this.decisionRepo = decisionRepo;
+        FraudProperties.Tier1 tier1Config = fraudProperties.getTier1();
+        this.largeAmountThreshold = tier1Config.getLargeAmountThreshold();
+        this.burstLimit = tier1Config.getBurstLimit();
+        this.newAccountAgeDays = tier1Config.getNewAccountAgeDays();
     }
 
-    @Observed(name = "fraud.tier1.latency", contextualName = "tier1-evaluation")
     public RuleResult evaluate(FraudEvaluationRequest req) {
         log.info("Tier1 evaluating: client={} amount={} account={}", req.getClientId(), req.getAmount(), req.getAccountId());
 
@@ -46,24 +47,24 @@ public class RuleEngine {
         double maxRisk = 0.0;
 
         // Rule 1: Very large amount
-        if (req.getAmount() > LARGE_AMOUNT_THRESHOLD) {
-            double risk = Math.min(100.0, 70.0 + (req.getAmount() - LARGE_AMOUNT_THRESHOLD) / 1000.0);
+        if (req.getAmount() > largeAmountThreshold) {
+            double risk = Math.min(100.0, 70.0 + (req.getAmount() - largeAmountThreshold) / 1000.0);
             maxRisk = Math.max(maxRisk, risk);
-            triggers.add("LARGE_AMOUNT(>" + LARGE_AMOUNT_THRESHOLD + ")");
-            log.info("Rule hit: LARGE_AMOUNT — {} > {}", req.getAmount(), LARGE_AMOUNT_THRESHOLD);
+            triggers.add("LARGE_AMOUNT(>" + largeAmountThreshold + ")");
+            log.info("Rule hit: LARGE_AMOUNT — {} > {}", req.getAmount(), largeAmountThreshold);
         }
 
-        // Rule 2: Burst — 5+ evaluations for same account in last 60 seconds
+        // Rule 2: Burst — threshold evaluations for same account in last 60 seconds
         LocalDateTime oneMinuteAgo = LocalDateTime.now().minusMinutes(1);
         long recentCount = decisionRepo.countByAccountIdAndCreatedAtAfter(req.getAccountId(), oneMinuteAgo);
-        if (recentCount >= BURST_LIMIT) {
+        if (recentCount >= burstLimit) {
             maxRisk = Math.max(maxRisk, 90.0);
             triggers.add("BURST(" + (recentCount + 1) + " tx/min)");
             log.info("Rule hit: BURST — {} recent transactions for account {}", recentCount, req.getAccountId());
         }
 
         // Rule 3: New account + large-ish amount
-        if (req.getAccountAgeDays() < NEW_ACCOUNT_DAYS && req.getAmount() > NEW_ACCOUNT_AMOUNT_THRESHOLD) {
+        if (req.getAccountAgeDays() < newAccountAgeDays && req.getAmount() > NEW_ACCOUNT_AMOUNT_THRESHOLD) {
             maxRisk = Math.max(maxRisk, 75.0);
             triggers.add("NEW_ACCOUNT_HIGH_AMOUNT(age=" + req.getAccountAgeDays() + "d,amount=" + req.getAmount() + ")");
             log.info("Rule hit: NEW_ACCOUNT_HIGH_AMOUNT — age {}d, amount {}", req.getAccountAgeDays(), req.getAmount());

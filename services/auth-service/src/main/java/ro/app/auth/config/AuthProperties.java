@@ -18,6 +18,7 @@ public class AuthProperties {
     private Redis redis = new Redis();
     private RateLimit rateLimit = new RateLimit();
     private Services services = new Services();
+    private Encryption encryption = new Encryption();
 
     public static class Jwt {
         /**
@@ -222,6 +223,21 @@ public class AuthProperties {
         }
     }
 
+    public static class Encryption {
+        /**
+         * Legacy encryption key for backwards compatibility with old database rows
+         */
+        private String legacyKey;
+
+        public String getLegacyKey() {
+            return legacyKey;
+        }
+
+        public void setLegacyKey(String legacyKey) {
+            this.legacyKey = legacyKey;
+        }
+    }
+
     public Jwt getJwt() {
         return jwt;
     }
@@ -252,5 +268,13 @@ public class AuthProperties {
 
     public void setServices(Services services) {
         this.services = services;
+    }
+
+    public Encryption getEncryption() {
+        return encryption;
+    }
+
+    public void setEncryption(Encryption encryption) {
+        this.encryption = encryption;
     }
 }
