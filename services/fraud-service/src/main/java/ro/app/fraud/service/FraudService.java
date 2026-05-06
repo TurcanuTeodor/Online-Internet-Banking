@@ -65,9 +65,10 @@ public class FraudService {
                 tier1.status(), tier1.riskScore(), tier1.ruleHits());
 
         FraudDecision decision = new FraudDecision();
-        decision.setAccountId(req.getAccountId());
+        decision.setAccountId(req.getAccountId()); 
         decision.setClientId(req.getClientId());
         decision.setTransactionId(req.getTransactionId());
+        decision.setCorrelationId(req.getCorrelationId());
         decision.setStatus(tier1.status());
         decision.setDecidedByTier(FraudTier.TIER1_RULES);
         decision.setRiskScore(tier1.riskScore());
@@ -82,6 +83,8 @@ public class FraudService {
 
         FraudEvaluationResponse resp = new FraudEvaluationResponse();
         resp.setDecisionId(decision.getId());
+        resp.setTransactionId(decision.getTransactionId());
+        resp.setCorrelationId(decision.getCorrelationId());
         resp.setStatus(decision.getStatus());
         resp.setDecidedByTier(decision.getDecidedByTier());
         resp.setRiskScore(decision.getRiskScore());
@@ -100,6 +103,12 @@ public class FraudService {
     public FraudDecisionDTO getByTransactionId(Long transactionId) {
         FraudDecision d = decisionRepo.findByTransactionId(transactionId)
                 .orElseThrow(() -> new RuntimeException("No decision for txn: " + transactionId));
+        return toDto(d);
+    }
+
+    public FraudDecisionDTO getByCorrelationId(String correlationId) {
+        FraudDecision d = decisionRepo.findByCorrelationId(correlationId)
+                .orElseThrow(() -> new RuntimeException("No decision for correlationId: " + correlationId));
         return toDto(d);
     }
 
@@ -191,6 +200,7 @@ public class FraudService {
         FraudDecisionDTO dto = new FraudDecisionDTO();
         dto.setId(d.getId());
         dto.setTransactionId(d.getTransactionId());
+        dto.setCorrelationId(d.getCorrelationId());
         dto.setAccountId(d.getAccountId());
         dto.setClientId(d.getClientId());
         dto.setStatus(d.getStatus());

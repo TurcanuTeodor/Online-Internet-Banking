@@ -10,6 +10,7 @@ public class FraudDecisionDTO {
 
     private Long id;
     private Long transactionId;
+    private String correlationId;
     private Long accountId;
     private Long clientId;
     private FraudDecisionStatus status;
@@ -30,6 +31,9 @@ public class FraudDecisionDTO {
 
     public Long getTransactionId() { return transactionId; }
     public void setTransactionId(Long transactionId) { this.transactionId = transactionId; }
+
+    public String getCorrelationId() { return correlationId; }
+    public void setCorrelationId(String correlationId) { this.correlationId = correlationId; }
 
     public Long getAccountId() { return accountId; }
     public void setAccountId(Long accountId) { this.accountId = accountId; }

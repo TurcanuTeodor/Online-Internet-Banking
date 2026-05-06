@@ -7,6 +7,7 @@ public class FraudEvaluationResponse {
 
     private Long decisionId;
     private Long transactionId;
+    private String correlationId;
     private FraudDecisionStatus status;
     private FraudTier decidedByTier;
     private double riskScore;
@@ -18,6 +19,9 @@ public class FraudEvaluationResponse {
 
     public Long getTransactionId() { return transactionId; }
     public void setTransactionId(Long transactionId) { this.transactionId = transactionId; }
+
+    public String getCorrelationId() { return correlationId; }
+    public void setCorrelationId(String correlationId) { this.correlationId = correlationId; }
 
     public FraudDecisionStatus getStatus() { return status; }
     public void setStatus(FraudDecisionStatus status) { this.status = status; }

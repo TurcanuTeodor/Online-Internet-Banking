@@ -108,8 +108,13 @@ public class ClientController {
 
     // 5) Soft delete (active=false)
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            @AuthenticationPrincipal JwtPrincipal principal) {
         clientProfileService.deleteClient(id);
+        Long actorClientId = principal != null ? principal.clientId() : null;
+        String role = principal != null ? principal.role() : "UNKNOWN";
+        auditService.log(AuditService.CLIENT_DELETE, actorClientId, role, id, "Client soft-deleted (active=false)");
         return ResponseEntity.noContent().build();
     }
 
@@ -121,7 +126,7 @@ public class ClientController {
         clientProfileService.suspendClient(id);
         Long actorClientId = principal != null ? principal.clientId() : null;
         String role = principal != null ? principal.role() : "UNKNOWN";
-        auditService.log("ACCOUNT_FREEZE", actorClientId, role, id, "Client suspended (active=false)");
+        auditService.log(AuditService.ACCOUNT_FREEZE, actorClientId, role, id, "Client suspended (active=false)");
         return ResponseEntity.noContent().build();
     }
 
@@ -135,9 +140,12 @@ public class ClientController {
         return ResponseEntity.ok(clientViewProjectionService.getViewClientForSelf(principal.clientId(), ek));
     }
 
-    // 6) View read-only clients (ADMIN only — masked PII; protejat în SecurityConfig)
+    // 6) View read-only clients (ADMIN only — analytic fields only, no PII; protejat în SecurityConfig)
     @GetMapping("/view")
-    public ResponseEntity<List<ViewClientDTO>> viewAll() {
+    public ResponseEntity<List<ViewClientDTO>> viewAll(
+        @AuthenticationPrincipal JwtPrincipal principal
+    ) {
+        auditService.log(AuditService.ADMIN_CLIENT_LIST, principal.clientId(), principal.role(), null, "Admin accessed client analytic list");
         return ResponseEntity.ok(clientViewProjectionService.getAllViewClients());
     }
 

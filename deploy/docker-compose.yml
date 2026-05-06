@@ -23,6 +23,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_URL: jdbc:postgresql://postgres:5432/banking?currentSchema=auth
       APP_SERVICES_CLIENT_URL: http://client-service:8082
+      SERVICE_ENCRYPTION_KEY: ${SERVICE_ENCRYPTION_KEY}
     depends_on:
       postgres:
         condition: service_healthy

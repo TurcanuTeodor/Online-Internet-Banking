@@ -41,23 +41,15 @@ public class ClientViewProjectionService {
         return toOwnerViewDto(v, key);
     }
 
+    /**
+     * Admin analytic view — returns only non-PII operational fields.
+     * firstName, lastName, email, phone, address, city, postalCode are intentionally null.
+     * Compliant with GDPR data minimisation principle (Art. 5(1)(c)).
+     */
     private ViewClientDTO toAdminListViewDto(ViewClient v) {
-        ViewClientDTO dto = baseViewFields(v);
-        dto.setEmail(PII_MASK);
-        dto.setPhone(PII_MASK);
-        dto.setAddress(PII_MASK);
-        dto.setCity(PII_MASK);
-        dto.setPostalCode(PII_MASK);
-
-        try {
-            dto.setFirstName(encryptionService.decrypt(v.getClientFirstName(), keyResolver.fallbackKey()));
-            dto.setLastName(encryptionService.decrypt(v.getClientLastName(), keyResolver.fallbackKey()));
-        } catch (Exception e) {
-            dto.setFirstName(v.getClientFirstName());
-            dto.setLastName(v.getClientLastName());
-        }
-        return dto;
+        return baseViewFields(v);
     }
+
 
     private ViewClientDTO toOwnerViewDto(ViewClient v, String encryptionKey) {
         ViewClientDTO dto = baseViewFields(v);

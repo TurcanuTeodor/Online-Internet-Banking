@@ -16,6 +16,8 @@ public interface FraudDecisionRepository extends JpaRepository<FraudDecision, Lo
 
     Optional<FraudDecision> findByTransactionId(Long transactionId);
 
+    Optional<FraudDecision> findByCorrelationId(String correlationId);
+
     List<FraudDecision> findByClientId(Long clientId);
 
     Page<FraudDecision> findByStatusInAndUserResolution(List<FraudDecisionStatus> statuses, FraudUserResolution userResolution, Pageable pageable);

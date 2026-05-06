@@ -41,24 +41,33 @@ public class Tier3MlService {
     @PostConstruct // App starts → @PostConstruct fires → trainModel() runs → model is ready
     void trainModel() {
         int normalCount = (int) (trainingSamples * (1 - contamination)); // 950
-        int anomalyCount = trainingSamples - normalCount; // 50
+        int anomalyCount = trainingSamples - normalCount;                 // 50
 
-        double[][] data = TrainingDataGenerator.generate(normalCount, anomalyCount, seed);
-        
-        // PENTRU PERTURBARE - calculăm media DOAR pe datele normale, evitând contaminarea
-        double[][] normalData = java.util.Arrays.copyOfRange(data, 0, normalCount);
-        featureMeans = MlUtils.computeMeans(normalData);
+        double[][] allData = TrainingDataGenerator.generate(normalCount, anomalyCount, seed);
 
-        model = IsolationForest.fit(data, 100, 256, contamination, 0);
+        // ── TRAIN/TEST SPLIT 80/20 ──────────────────────────────────────────
+        int trainSize = (int) (allData.length * 0.8);   // 800
+        int trainNormal = (int) (normalCount * 0.8);    // 760
 
-        log.info("Tier3-ML model trained: version={}{} samples={} normal={} anomalies={} initial_threshold={}",
-                MODEL_VERSION, seed, trainingSamples, normalCount, anomalyCount, threshold);
+        double[][] trainData = java.util.Arrays.copyOfRange(allData, 0, trainSize);
+        double[][] testData  = java.util.Arrays.copyOfRange(allData, trainSize, allData.length);
+        int testNormalCount  = normalCount - trainNormal; // 190
 
-        // Evaluarea pe pragul fix initial
-        evaluateModel(data, normalCount);
-        
-        // Calibrarea pragului prin maximizarea scorului F1
-        this.threshold = findOptimalThreshold(data, normalCount);
+        // ── ANTRENARE DOAR PE TRAIN ──────────────────────────────────────────
+        model = IsolationForest.fit(trainData, 100, 256, contamination, 0);
+
+        // ── featureMeans DOAR PE DATE NORMALE DIN TRAIN ──────────────────────
+        double[][] normalTrainData = java.util.Arrays.copyOfRange(trainData, 0, trainNormal);
+        featureMeans = MlUtils.computeMeans(normalTrainData);
+
+        log.info("Tier3-ML model trained: version={}{} samples={} normal={} anomalies={}",
+                MODEL_VERSION, seed, trainSize, trainNormal, trainSize - trainNormal);
+
+        // ── EVALUARE PE TEST (date nevăzute) ─────────────────────────────────
+        evaluateModel(testData, testNormalCount);
+
+        // ── CALIBRARE PRAG ────────────────────────────────────────────────────
+        this.threshold = findOptimalThreshold(testData, testNormalCount);
     }
 
     public MlVerdict analyze(Long decisionId, FraudEvaluationRequest req, ScoringResult scoring) {
@@ -71,12 +80,12 @@ public class Tier3MlService {
 
         boolean flagged = anomalyScore > threshold;
         String reasoning = ReasoningBuilder.build(flagged, anomalyScore, importances);
-        double confidence = Math.min(1.0, Math.abs(anomalyScore - 0.5) * 2.0); // simple confidence heuristic
+        double decisionMargin = Math.min(1.0, Math.abs(anomalyScore - threshold) * 2.0); // simple confidence heuristic
 
         log.info("Tier3-ML: decisionId={} score={} threshold={} verdict={}",
                 decisionId, String.format("%.4f", anomalyScore), threshold, flagged ? "FLAG" : "ALLOW");
 
-        return new MlVerdict(flagged ? "FLAG" : "ALLOW", confidence, reasoning);
+        return new MlVerdict(flagged ? "FLAG" : "ALLOW", decisionMargin, reasoning);
     }
 
     private void evaluateModel(double[][] testData, int normalCount) {

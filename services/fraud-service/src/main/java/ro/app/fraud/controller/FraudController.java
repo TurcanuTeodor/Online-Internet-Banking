@@ -46,6 +46,11 @@ public class FraudController {
         return ResponseEntity.ok(fraudService.getByTransactionId(transactionId));
     }
 
+    @GetMapping("/decisions/by-correlation/{correlationId}")
+    public ResponseEntity<FraudDecisionDTO> getByCorrelation(@PathVariable String correlationId) {
+        return ResponseEntity.ok(fraudService.getByCorrelationId(correlationId));
+    }
+
     @GetMapping("/alerts")
     public ResponseEntity<Page<FraudDecisionDTO>> getAlerts(Pageable pageable) {
         return ResponseEntity.ok(fraudService.getAlerts(pageable));

@@ -29,6 +29,9 @@ public class FraudDecision {
     @Column(name = "TRANSACTION_ID")
     private Long transactionId;
 
+    @Column(name = "CORRELATION_ID", length = 64)
+    private String correlationId;
+
     @Column(name = "ACCOUNT_ID", nullable = false)
     private Long accountId;
 
@@ -86,6 +89,9 @@ public class FraudDecision {
 
     public Long getTransactionId() { return transactionId; }
     public void setTransactionId(Long transactionId) { this.transactionId = transactionId; }
+
+    public String getCorrelationId() { return correlationId; }
+    public void setCorrelationId(String correlationId) { this.correlationId = correlationId; }
 
     public Long getAccountId() { return accountId; }
     public void setAccountId(Long accountId) { this.accountId = accountId; }

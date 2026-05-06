@@ -11,6 +11,7 @@ public class FraudEvaluationRequest {
     private Long clientId;
 
     private Long transactionId;
+    private String correlationId;
 
     @NotNull
     private Double amount;
@@ -30,6 +31,9 @@ public class FraudEvaluationRequest {
 
     public Long getTransactionId() { return transactionId; }
     public void setTransactionId(Long transactionId) { this.transactionId = transactionId; }
+
+    public String getCorrelationId() { return correlationId; }
+    public void setCorrelationId(String correlationId) { this.correlationId = correlationId; }
 
     public Double getAmount() { return amount; }
     public void setAmount(Double amount) { this.amount = amount; }

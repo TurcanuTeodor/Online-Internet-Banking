@@ -19,6 +19,7 @@ public class AuthProperties {
     private RateLimit rateLimit = new RateLimit();
     private Services services = new Services();
     private Encryption encryption = new Encryption();
+    private Security security = new Security();
 
     public static class Jwt {
         /**
@@ -238,6 +239,23 @@ public class AuthProperties {
         }
     }
 
+    public static class Security {
+        /**
+         * AES-256 service-level encryption key used to encrypt TOTP secrets at rest.
+         * Must be set via SERVICE_ENCRYPTION_KEY environment variable.
+         * Generate with: openssl rand -base64 32
+         */
+        private String serviceKey;
+
+        public String getServiceKey() {
+            return serviceKey;
+        }
+
+        public void setServiceKey(String serviceKey) {
+            this.serviceKey = serviceKey;
+        }
+    }
+
     public Jwt getJwt() {
         return jwt;
     }
@@ -276,5 +294,13 @@ public class AuthProperties {
 
     public void setEncryption(Encryption encryption) {
         this.encryption = encryption;
+    }
+
+    public Security getSecurity() {
+        return security;
+    }
+
+    public void setSecurity(Security security) {
+        this.security = security;
     }
 }

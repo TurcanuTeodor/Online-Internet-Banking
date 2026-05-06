@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.redisson.api.RLock;
@@ -282,6 +283,7 @@ public class AccountTransferService {
 
         try {
             String url = fraudServiceUrl + "/api/internal/fraud/evaluate";
+            String correlationId = UUID.randomUUID().toString();
 
             int accountAgeDays = (int) ChronoUnit.DAYS.between(from.getCreatedAt(), LocalDateTime.now());
             boolean selfTransfer = from.getClientId().equals(to.getClientId());
@@ -290,6 +292,7 @@ public class AccountTransferService {
             body.put("accountId", from.getId());
             body.put("clientId", from.getClientId());
             body.put("transactionId", null);
+            body.put("correlationId", correlationId);
             body.put("amount", amount.doubleValue());
             body.put("currency", from.getCurrency().getCode());
             body.put("senderIban", from.getIban());

@@ -20,18 +20,21 @@ public class TwoFaService {
     private final TotpService totpService;
     private final RefreshTokenService refreshTokenService;
     private final AuthService authService;
+    private final ServiceEncryptionService serviceEncryption;
 
     public TwoFaService(
             UserRepository userRepo,
             JwtService jwtService,
             TotpService totpService,
             RefreshTokenService refreshTokenService,
-            AuthService authService) {
+            AuthService authService,
+            ServiceEncryptionService serviceEncryption) {
         this.userRepo = userRepo;
         this.jwtService = jwtService;
         this.totpService = totpService;
         this.refreshTokenService = refreshTokenService;
         this.authService = authService;
+        this.serviceEncryption = serviceEncryption;
     }
 
     @Transactional
@@ -42,7 +45,8 @@ public class TwoFaService {
         String secret = totpService.generateSecret();
         String otpauth = totpService.buildOtpAuthUrl(user.getUsernameOrEmail(), secret);
 
-        user.setTwoFactorSecret(secret);
+        // Encrypt before persisting — plaintext secret never touches the DB
+        user.setTwoFactorSecret(serviceEncryption.encrypt(secret));
         user.setTwoFactorEnabled(false);
         userRepo.save(user);
 
@@ -58,9 +62,16 @@ public class TwoFaService {
             throw new IllegalStateException("2FA not initialized for user");
         }
 
-        boolean ok = totpService.verifyCode(user.getTwoFactorSecret(), code);
+        // decryptOrLegacy handles legacy plaintext rows that pre-date encryption rollout
+        String plainSecret = serviceEncryption.decryptOrLegacy(user.getTwoFactorSecret());
+        boolean ok = totpService.verifyCode(plainSecret, code);
         if (!ok) {
             throw new AuthenticationException("Invalid 2FA code");
+        }
+
+        // Re-encrypt if secret was still stored as legacy plaintext
+        if (plainSecret.equals(user.getTwoFactorSecret())) {
+            user.setTwoFactorSecret(serviceEncryption.encrypt(plainSecret));
         }
 
         user.setTwoFactorEnabled(true);
@@ -87,9 +98,16 @@ public class TwoFaService {
             throw new IllegalStateException("2FA not initialized for user");
         }
 
-        boolean ok = totpService.verifyCode(user.getTwoFactorSecret(), code);
+        String plainSecret = serviceEncryption.decryptOrLegacy(user.getTwoFactorSecret());
+        boolean ok = totpService.verifyCode(plainSecret, code);
         if (!ok) {
             throw new AuthenticationException("Invalid 2FA code");
+        }
+
+        // Re-encrypt legacy plaintext secret opportunistically
+        if (plainSecret.equals(user.getTwoFactorSecret())) {
+            user.setTwoFactorSecret(serviceEncryption.encrypt(plainSecret));
+            userRepo.save(user);
         }
 
         Long clientId = user.getClientId();
@@ -125,7 +143,8 @@ public class TwoFaService {
             throw new PreconditionRequiredException("2FA must be enabled to perform this action");
         }
 
-        boolean ok = totpService.verifyCode(user.getTwoFactorSecret(), code);
+        String plainSecret = serviceEncryption.decryptOrLegacy(user.getTwoFactorSecret());
+        boolean ok = totpService.verifyCode(plainSecret, code);
         if (!ok) {
             throw new AuthenticationException("Invalid 2FA code");
         }
