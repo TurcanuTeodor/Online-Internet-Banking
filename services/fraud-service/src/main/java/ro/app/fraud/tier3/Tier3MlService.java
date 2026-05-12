@@ -66,8 +66,10 @@ public class Tier3MlService {
         // ── EVALUARE PE TEST (date nevăzute) ─────────────────────────────────
         evaluateModel(testData, testNormalCount);
 
-        // ── CALIBRARE PRAG ────────────────────────────────────────────────────
+        // ── CALIBRARE PRAG PRIN MAX F1────────────────────────────────────────────────────
         this.threshold = findOptimalThreshold(testData, testNormalCount);
+
+        //Dacă antrenezi și evaluezi pe aceleași date, precision/recall/F1 raportate sunt optimiste și nu reflectă performanța pe date nevăzute
     }
 
     public MlVerdict analyze(Long decisionId, FraudEvaluationRequest req, ScoringResult scoring) {

@@ -39,17 +39,20 @@ public class FraudService {
     private final RuleEngine ruleEngine;
     private final Tier2AsyncRunner tier2Runner;
     private final AccountSecurityClient accountSecurityClient;
+    private final Tier2SyncEvaluator tier2SyncEvaluator;
 
     public FraudService(FraudDecisionRepository decisionRepo,
                         UserBehaviorProfileRepository profileRepo,
                         RuleEngine ruleEngine,
                         Tier2AsyncRunner tier2Runner,
-                        AccountSecurityClient accountSecurityClient) {
+                        AccountSecurityClient accountSecurityClient,
+                        Tier2SyncEvaluator tier2SyncEvaluator) {
         this.decisionRepo = decisionRepo;
         this.profileRepo = profileRepo;
         this.ruleEngine = ruleEngine;
         this.tier2Runner = tier2Runner;
         this.accountSecurityClient = accountSecurityClient;
+        this.tier2SyncEvaluator = tier2SyncEvaluator;
     }
 
     /**
@@ -58,16 +61,18 @@ public class FraudService {
      */
     public FraudEvaluationResponse evaluate(FraudEvaluationRequest req) {
         log.info("Evaluating transfer: client={} amount={} {} -> {}",
-                req.getClientId(), req.getAmount(), req.getSenderIban(), req.getReceiverIban());
+                req.getClientId(), req.getAmount(),
+                req.getSenderIban(), req.getReceiverIban());
 
+        // -- TIER 1: synchronous, deterministic rules --
         RuleResult tier1 = ruleEngine.evaluate(req);
         log.info("Tier1 result: status={} riskScore={} ruleHits={}",
                 tier1.status(), tier1.riskScore(), tier1.ruleHits());
 
         FraudDecision decision = new FraudDecision();
-        decision.setAccountId(req.getAccountId()); 
+        decision.setAccountId(req.getAccountId());
         decision.setClientId(req.getClientId());
-        decision.setTransactionId(req.getTransactionId());
+        decision.setTransactionId(req.getTransactionId()); 
         decision.setCorrelationId(req.getCorrelationId());
         decision.setStatus(tier1.status());
         decision.setDecidedByTier(FraudTier.TIER1_RULES);
@@ -77,15 +82,40 @@ public class FraudService {
 
         decision = decisionRepo.save(decision);
 
-        if (tier1.status() == FraudDecisionStatus.MANUAL_REVIEW || tier1.status() == FraudDecisionStatus.ALLOW) {
-            tier2Runner.run(decision.getId(), req);
+        // -- TIER 2: synchronous for ALLOW/MANUAL_REVIEW from Tier 1 --
+        // Tier 1 already handles STEP_UP for hard rules (large amount etc.)
+        // Tier 2 adds behavioral context synchronously so account-service
+        // can enforce TOTP based on behavioral risk too.
+        FraudDecisionStatus finalStatus = tier1.status();
+
+        if (tier1.status() == FraudDecisionStatus.ALLOW
+                || tier1.status() == FraudDecisionStatus.MANUAL_REVIEW) {
+
+            FraudDecisionStatus tier2Status =
+                    tier2SyncEvaluator.evaluate(decision.getId(), req);
+
+            // Tier 2 can escalate: ALLOW → STEP_UP_REQUIRED or FLAG
+            // Tier 2 cannot de-escalate Tier 1 STEP_UP_REQUIRED
+            finalStatus = tier2Status;
+            decision.setStatus(finalStatus);
+            // Note: tier2SyncEvaluator already persisted its results
         }
 
+        // -- TIER 3: async — for ML learning and post-hoc alerting --
+        // Runs only when Tier 2 result is ALLOW (ambiguous cases already
+        // handled: score 50-70 → STEP_UP, score 70+ → FLAG from Tier 2)
+        // Tier 3 updates the decision record async but does NOT affect
+        // what account-service receives synchronously.
+        if (finalStatus == FraudDecisionStatus.ALLOW) {
+            tier2Runner.runTier3Only(decision.getId(), req);
+        }
+
+        // -- BUILD RESPONSE --
         FraudEvaluationResponse resp = new FraudEvaluationResponse();
         resp.setDecisionId(decision.getId());
         resp.setTransactionId(decision.getTransactionId());
         resp.setCorrelationId(decision.getCorrelationId());
-        resp.setStatus(decision.getStatus());
+        resp.setStatus(finalStatus); 
         resp.setDecidedByTier(decision.getDecidedByTier());
         resp.setRiskScore(decision.getRiskScore());
         resp.setRuleHits(decision.getRuleHits());

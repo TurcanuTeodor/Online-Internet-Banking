@@ -93,7 +93,7 @@ public class FraudProperties {
          * Lower threshold: score < this = ALLOW
          */
         private double lowerThreshold = 30.0;
-
+        
         /**
          * Upper threshold: score >= this = FLAG
          */

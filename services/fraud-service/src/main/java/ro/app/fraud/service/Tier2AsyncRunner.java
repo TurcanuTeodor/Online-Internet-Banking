@@ -44,73 +44,64 @@ public class Tier2AsyncRunner {
         this.transactionClient = transactionClient;
     }
 
+    /**
+     * Runs only Tier 3 ML async — Tier 2 already ran synchronously.
+     * Used when Tier 2 returned ALLOW and we want ML validation
+     * for learning/alerting purposes without blocking the transfer.
+     */
     @Async("fraudAsyncExecutor")
-    public void run(Long decisionId, FraudEvaluationRequest req) {
+    public void runTier3Only(Long decisionId, FraudEvaluationRequest req) {
         try {
-            log.info("Tier2 async start: decision={} client={} account={}",
-                    decisionId, req.getClientId(), req.getAccountId());
-
-            List<ExternalTransactionDto> history = transactionClient.getTransactionsByAccount(req.getAccountId());
-            log.info("Fetched {} historical transactions for account {}", history.size(), req.getAccountId());
-
-            UserBehaviorProfile profile = profileService.recompute(req.getClientId(), history);
-
-            ScoringResult scoring = scoringService.score(req, history, profile);
+            log.info("Tier3 async start: decision={}", decisionId);
 
             FraudDecision decision = decisionRepo.findById(decisionId).orElse(null);
             if (decision == null) {
-                log.warn("Decision {} not found for Tier2 update", decisionId);
+                log.warn("Decision {} not found for Tier3 update", decisionId);
                 return;
             }
 
-            decision.setDecidedByTier(FraudTier.TIER2_BEHAVIORAL);
-            decision.setRiskScore(scoring.totalScore());
-            decision.setRuleHits(scoring.summary());
+            // Need scoring result for Tier 3 feature vector
+            // Re-fetch history (already fetched in Tier2Sync, but async so we fetch again)
+            List<ExternalTransactionDto> history =
+                    transactionClient.getTransactionsByAccount(req.getAccountId());
+            UserBehaviorProfile profile =
+                    profileService.getOrCreate(req.getClientId());
+            ScoringResult scoring =
+                    scoringService.score(req, history, profile);
 
-            if (scoring.totalScore() >= 70) {
-                applyHighRiskVerdict(decisionId, decision, scoring, req.getClientId());
-            } else if (scoring.totalScore() >= 30) {
-                log.info("Tier2 ambiguous (score={}), escalating to Tier3 ML", scoring.totalScore());
-                applyAmbiguousVerdict(decisionId, decision, req, scoring);
-            } else {
-                applyLowRiskVerdict(decisionId, decision, scoring);
+            if (tier3 == null) {
+                log.debug("Tier3 disabled — skipping async ML analysis");
+                return;
             }
 
-            decisionRepo.save(decision);
-            log.info("Tier2 async complete: decision={} finalStatus={} score={}",
-                    decisionId, decision.getStatus(), scoring.totalScore());
-
-        } catch (Exception e) {
-            log.error("Tier2 async failed for decision {}: {}", decisionId, e.getMessage(), e);
-        }
-    }
-
-    // ── Verdict helpers ──────────────────────────────────────────────────────
-
-    private void applyHighRiskVerdict(Long decisionId, FraudDecision decision,
-                                      ScoringResult scoring, Long clientId) {
-        decision.setStatus(FraudDecisionStatus.FLAG);
-        decision.setExplanation("Tier2 HIGH RISK: " + scoring.summary());
-        log.warn("FLAGGED: decision={} score={} client={}", decisionId, scoring.totalScore(), clientId);
-    }
-
-    private void applyAmbiguousVerdict(Long decisionId, FraudDecision decision,
-                                       FraudEvaluationRequest req, ScoringResult scoring) {
-        if (tier3 != null) {
             MlVerdict mlVerdict;
             try {
                 mlVerdict = tier3.analyze(decisionId, req, scoring);
             } catch (Exception e) {
-                log.error("Tier3 analysis failed for decision {}: {} — falling back to Tier2 decision", decisionId, e.getMessage());
-                applyTier3KillSwitchFallback(decisionId, decision, scoring);
+                log.error("Tier3 async failed for decision {}: {}", decisionId, e.getMessage());
                 return;
             }
-            decision.setDecidedByTier(FraudTier.TIER3_ML);
-            applyMlVerdict(decisionId, decision, mlVerdict);
-        } else {
-            applyTier3KillSwitchFallback(decisionId, decision, scoring);
+
+            // If Tier 3 flags something Tier 2 missed, update record for review
+            // NOTE: this does NOT affect the transfer — it's already processed
+            // This creates an alert for admin review
+            if (mlVerdict.isFlagged()) {
+                decision.setDecidedByTier(FraudTier.TIER3_ML);
+                decision.setStatus(FraudDecisionStatus.FLAG);
+                decision.setExplanation("Tier3-ML post-hoc FLAG: " + mlVerdict.reasoning());
+                decisionRepo.save(decision);
+                log.warn("Tier3 async POST-HOC FLAG: decision={} confidence={}",
+                        decisionId, mlVerdict.confidence());
+            } else {
+                log.info("Tier3 async ALLOW: decision={}", decisionId);
+            }
+            
+        } catch (Exception e) {
+            log.error("Tier3 async runner failed for decision {}: {}", decisionId, e.getMessage());
         }
     }
+
+    // ── Verdict helpers ──────────────────────────────────────────────────────
 
     private void applyMlVerdict(Long decisionId, FraudDecision decision, MlVerdict mlVerdict) {
         if (mlVerdict.isFlagged()) {
@@ -132,12 +123,5 @@ public class Tier2AsyncRunner {
         decision.setStatus(scoring.totalScore() >= 50 ? FraudDecisionStatus.FLAG : FraudDecisionStatus.ALLOW);
         decision.setDecidedByTier(FraudTier.TIER2_BEHAVIORAL);
         decision.setExplanation("Tier2 final (Tier3 disabled): " + scoring.summary());
-    }
-
-    private void applyLowRiskVerdict(Long decisionId, FraudDecision decision, ScoringResult scoring) {
-        decision.setStatus(FraudDecisionStatus.ALLOW);
-        decision.setDecidedByTier(FraudTier.TIER2_BEHAVIORAL);
-        decision.setExplanation("Tier2 low risk: " + scoring.summary());
-        log.info("Tier2 low risk: decision={} score={}", decisionId, scoring.totalScore());
     }
 }
