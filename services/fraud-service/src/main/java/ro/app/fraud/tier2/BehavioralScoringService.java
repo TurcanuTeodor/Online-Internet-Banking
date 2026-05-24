@@ -45,8 +45,9 @@ public class BehavioralScoringService {
         double categoryScore  = scoreCategoryRisk(req.getTransactionType());
         double velocityScore  = scoreVelocity(req.getAmount(), history);
 
-        // NOTE: these key names are coupled to FeatureVectorBuilder in tier3 —
-        // if you rename a key here, update FeatureVectorBuilder.build() accordingly.
+        // Aceste chei sunt folosite exclusiv pentru scorul agregat Tier 2 și pentru explicații.
+        // FeatureVectorBuilder (Tier 3) NU mai citește componentScores — folosește
+        // FraudFeatureEngine cu date brute din request, fără cuplaj cu Tier 2.
         components.put("amount_anomaly",    amountScore);
         components.put("frequency_anomaly", frequencyScore);
         components.put("time_anomaly",      timeScore);

@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import ro.app.fraud.config.FraudProperties;
@@ -17,6 +18,7 @@ import ro.app.fraud.repository.FraudDecisionRepository;
  * Rules are evaluated in order; first BLOCK wins. If no BLOCK, result is ALLOW or REVIEW.
  */
 @Component
+@Profile("!trainer")
 public class RuleEngine {
 
     private static final Logger log = LoggerFactory.getLogger(RuleEngine.class);

@@ -93,11 +93,18 @@ public class FraudProperties {
          * Lower threshold: score < this = ALLOW
          */
         private double lowerThreshold = 30.0;
-        
+
         /**
          * Upper threshold: score >= this = FLAG
          */
         private double upperThreshold = 70.0;
+
+        /**
+         * Step-up threshold: score >= this (and < upperThreshold) = STEP_UP_REQUIRED.
+         * Implicit: (lowerThreshold + upperThreshold) / 2. Configurat explicit pentru
+         * flexibilitate — operatorul poate ajusta zona STEP_UP independent de celelalte praguri.
+         */
+        private double stepUpThreshold = 50.0;
 
         /**
          * Timeout for Tier2 async execution (milliseconds)
@@ -120,6 +127,14 @@ public class FraudProperties {
             this.upperThreshold = upperThreshold;
         }
 
+        public double getStepUpThreshold() {
+            return stepUpThreshold;
+        }
+
+        public void setStepUpThreshold(double stepUpThreshold) {
+            this.stepUpThreshold = stepUpThreshold;
+        }
+
         public long getTimeoutMs() {
             return timeoutMs;
         }
@@ -136,34 +151,45 @@ public class FraudProperties {
         private boolean mlEnabled = true;
 
         /**
+         * Mod antrenament offline (activat via --fraud.tier3.trainer.mode=true)
+         * Când true, porneste ModelTrainerCli si apoi opreste aplicatia.
+         */
+        private boolean trainerMode = false;
+
+        /**
+         * Calea absolută sau relativă către fişierul model serializat (.bin).
+         * Generat de ModelTrainerCli, citit de Tier3MlService la startup.
+         */
+        private String modelPath = "data/isolation_forest_model.bin";
+
+        /**
+         * Calea către CSV-ul PaySim (Kaggle) folosit pentru antrenament.
+         * Necesar doar când trainer.mode=true.
+         */
+        private String paySimCsvPath = "data/PS_20174392719_1491204439457_log.csv";
+
+        /**
+         * Numărul maxim de rânduri de citit din PaySim CSV.
+         * 150.000 = echilibru optim între calitate model şi evitarea masking-ului.
+         */
+        private int paySimMaxRows = 150_000;
+
+        /**
          * Isolation Forest contamination parameter (fraction of anomalies in training)
          */
         private double mlContamination = 0.05;
 
         /**
-         * Random seed for reproducible data generation and model training
+         * Random seed for reproducible data shuffle and model training
          */
         private int mlSeed = 42;
 
         /**
-         * Anomaly score decision threshold (range: 0.0-1.0)
+         * Anomaly score decision threshold (range: 0.0-1.0).
+         * Valoarea optimă este calibrată automat de ModelTrainerCli (max F1 pe test set)
+         * şi salvată în modelul serializat. Aceasta este fallback-ul dacă modelul nu e încărcat.
          */
         private double mlThreshold = 0.62;
-
-        /**
-         * Number of synthetic training samples
-         */
-        private int mlTrainingSamples = 1000;
-
-        /**
-         * Timeout for Tier3 ML analysis (milliseconds)
-         */
-        private long timeoutMs = 5000;
-
-        /**
-         * Thread pool size for Tier3 executor
-         */
-        private int threadPoolSize = 2;
 
         public boolean isMlEnabled() {
             return mlEnabled;
@@ -171,6 +197,38 @@ public class FraudProperties {
 
         public void setMlEnabled(boolean mlEnabled) {
             this.mlEnabled = mlEnabled;
+        }
+
+        public boolean isTrainerMode() {
+            return trainerMode;
+        }
+
+        public void setTrainerMode(boolean trainerMode) {
+            this.trainerMode = trainerMode;
+        }
+
+        public String getModelPath() {
+            return modelPath;
+        }
+
+        public void setModelPath(String modelPath) {
+            this.modelPath = modelPath;
+        }
+
+        public String getPaySimCsvPath() {
+            return paySimCsvPath;
+        }
+
+        public void setPaySimCsvPath(String paySimCsvPath) {
+            this.paySimCsvPath = paySimCsvPath;
+        }
+
+        public int getPaySimMaxRows() {
+            return paySimMaxRows;
+        }
+
+        public void setPaySimMaxRows(int paySimMaxRows) {
+            this.paySimMaxRows = paySimMaxRows;
         }
 
         public double getMlContamination() {
@@ -195,30 +253,6 @@ public class FraudProperties {
 
         public void setMlThreshold(double mlThreshold) {
             this.mlThreshold = mlThreshold;
-        }
-
-        public int getMlTrainingSamples() {
-            return mlTrainingSamples;
-        }
-
-        public void setMlTrainingSamples(int mlTrainingSamples) {
-            this.mlTrainingSamples = mlTrainingSamples;
-        }
-
-        public long getTimeoutMs() {
-            return timeoutMs;
-        }
-
-        public void setTimeoutMs(long timeoutMs) {
-            this.timeoutMs = timeoutMs;
-        }
-
-        public int getThreadPoolSize() {
-            return threadPoolSize;
-        }
-
-        public void setThreadPoolSize(int threadPoolSize) {
-            this.threadPoolSize = threadPoolSize;
         }
     }
 

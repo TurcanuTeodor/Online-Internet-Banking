@@ -1,17 +1,17 @@
 package ro.app.fraud.service;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -30,6 +30,7 @@ import ro.app.fraud.tier1.RuleEngine;
 import ro.app.fraud.tier1.RuleResult;
 
 @Service
+@Profile("!trainer") // nu se instantiaza in modul trainer (nu exista JPA/repository)
 public class FraudService {
 
     private static final Logger log = LoggerFactory.getLogger(FraudService.class);
@@ -152,6 +153,16 @@ public class FraudService {
             .map(this::toDto);
     }
 
+    /**
+     * Returnează alertele unui client specific, paginate la nivel DB.
+     *
+     * Fix #8: Înlocuiește varianta anterioară care încărca TOATE deciziile în memorie
+     * (și aplica filter+sort în Java). Acum:
+     *   - Filtrarea statusurilor se face în SQL WHERE
+     *   - Sortarea descrescătoare după createdAt se face în SQL ORDER BY
+     *   - Paginarea (LIMIT/OFFSET) se face în SQL
+     * Eliminat riscul de OOM pentru clienți cu istoric de mii de tranzacții.
+     */
     public Page<FraudDecisionDTO> getMyAlerts(Long clientId, Pageable pageable) {
         Set<FraudDecisionStatus> alertStatuses = EnumSet.of(
                 FraudDecisionStatus.FLAG,
@@ -159,18 +170,17 @@ public class FraudService {
                 FraudDecisionStatus.MANUAL_REVIEW,
                 FraudDecisionStatus.STEP_UP_REQUIRED
         );
-        List<FraudDecisionDTO> results = decisionRepo.findByClientId(clientId).stream()
-                .filter(d -> alertStatuses.contains(d.getStatus()))
-                .sorted(Comparator.comparing(FraudDecision::getCreatedAt).reversed())
-                .map(this::toDto)
-                .collect(Collectors.toList());
 
-        int start = (int) pageable.getOffset();
-        if (start >= results.size()) {
-            return new PageImpl<>(List.of(), pageable, results.size());
-        }
-        int end = Math.min(start + pageable.getPageSize(), results.size());
-        return new PageImpl<>(results.subList(start, end), pageable, results.size());
+        // Sortare descrescătoare după createdAt impusă explicit la nivel DB
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by("createdAt").descending()
+        );
+
+        return decisionRepo
+                .findByClientIdAndStatusIn(clientId, List.copyOf(alertStatuses), sortedPageable)
+                .map(this::toDto);
     }
 
     public FraudDecisionDTO resolveMyAlert(Long decisionId, Long clientId, FraudUserResolution resolution, String notes) {

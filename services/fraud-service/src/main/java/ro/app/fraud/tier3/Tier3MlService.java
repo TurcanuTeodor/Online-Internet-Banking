@@ -9,157 +9,129 @@ import jakarta.annotation.PostConstruct;
 import ro.app.fraud.config.FraudProperties;
 import ro.app.fraud.dto.FraudEvaluationRequest;
 import ro.app.fraud.tier2.ScoringResult;
-import smile.anomaly.IsolationForest;
 
+/**
+ * =====================================================================
+ * Tier3MlService — Motor de Inferență ML (Refactorizat)
+ * =====================================================================
+ *
+ * DIFERENȚA față de versiunea anterioară:
+ * ----------------------------------------
+ * ÎNAINTE: @PostConstruct antrena modelul de la zero la fiecare pornire
+ *           folosind TrainingDataGenerator (date sintetice random).
+ *           Probleme: cold start, date nerealiste, nereproductibil.
+ *
+ * ACUM:    @PostConstruct NUMAI deserializează modelul pre-antrenat
+ *           din fișierul isolation_forest_model.bin de pe disc.
+ *           Antrenamentul se face OFFLINE, o singură dată, prin ModelTrainerCli.
+ *
+ * FAIL-SAFE:
+ * -----------
+ * Dacă modelul nu există pe disc (ex: prima rulare, mediu nou),
+ * serviciul pornește cu model=null și logează un avertisment clar.
+ * Metoda analyze() returnează MlVerdict ALLOW → nu blochează tranzacțiile.
+ * Aceasta este o decizie de design "fail-open" conștientă pentru Tier 3
+ * (care este oricum asincron și post-hoc).
+ */
 @Service
 @ConditionalOnProperty(name = "fraud.tier3.ml.enabled", havingValue = "true", matchIfMissing = true)
 public class Tier3MlService {
 
     private static final Logger log = LoggerFactory.getLogger(Tier3MlService.class);
-    private static final String MODEL_VERSION = "isolation-forest-v1.0-seed";
 
-    private final double contamination;
-    private final int seed;
-    private double threshold;
-    private final int trainingSamples;
+    private final String modelPath;
+    private final double configuredThreshold;
 
-    private IsolationForest model;
-    private double[] featureMeans; // stored for perturbation method
+    // State încărcat din fișierul .bin
+    private ModelStore.ModelSnapshot snapshot; // null dacă modelul nu a fost găsit
+
+    public Tier3MlService(FraudProperties fraudProperties) {
+        FraudProperties.Tier3 tier3 = fraudProperties.getTier3();
+        this.modelPath           = tier3.getModelPath();
+        this.configuredThreshold = tier3.getMlThreshold();
+    }
 
     /**
-     * Dependency injection of FraudProperties for centralized ML configuration.
-     * Extracts Tier3-specific parameters in constructor for clarity and testability.
+     * La pornirea aplicației: încearcă să încarce modelul din disc.
+     * NU mai antrenează nimic. Dacă modelul lipsește → pornire degradată.
      */
-    public Tier3MlService(FraudProperties fraudProperties) {
-        FraudProperties.Tier3 tier3Config = fraudProperties.getTier3();
-        this.contamination = tier3Config.getMlContamination();
-        this.seed = tier3Config.getMlSeed();
-        this.threshold = tier3Config.getMlThreshold();
-        this.trainingSamples = tier3Config.getMlTrainingSamples();
+    @PostConstruct
+    void loadModel() {
+        if (!ModelStore.exists(modelPath)) {
+            log.warn("Tier3 model not found: {}", modelPath);
+            log.warn("Run offline training: java -jar fraud-service.jar --fraud.tier3.trainer.mode=true");
+            log.warn("Tier3 running in DEGRADED mode (all transactions → ALLOW)");
+            this.snapshot = null;
+            return;
+        }
+
+        try {
+            this.snapshot = ModelStore.load(modelPath);
+            log.info("Tier3-ML model loaded: version={} threshold={}",
+                    snapshot.version, snapshot.threshold);
+        } catch (Exception e) {
+            log.error("Error loading Tier3 model: {}", e.getMessage());
+            this.snapshot = null;
+        }
     }
 
-    @PostConstruct // App starts → @PostConstruct fires → trainModel() runs → model is ready
-    void trainModel() {
-        int normalCount = (int) (trainingSamples * (1 - contamination)); // 950
-        int anomalyCount = trainingSamples - normalCount;                 // 50
-
-        double[][] allData = TrainingDataGenerator.generate(normalCount, anomalyCount, seed);
-
-        // ── TRAIN/TEST SPLIT 80/20 ──────────────────────────────────────────
-        int trainSize = (int) (allData.length * 0.8);   // 800
-        int trainNormal = (int) (normalCount * 0.8);    // 760
-
-        double[][] trainData = java.util.Arrays.copyOfRange(allData, 0, trainSize);
-        double[][] testData  = java.util.Arrays.copyOfRange(allData, trainSize, allData.length);
-        int testNormalCount  = normalCount - trainNormal; // 190
-
-        // ── ANTRENARE DOAR PE TRAIN ──────────────────────────────────────────
-        model = IsolationForest.fit(trainData, 100, 256, contamination, 0);
-
-        // ── featureMeans DOAR PE DATE NORMALE DIN TRAIN ──────────────────────
-        double[][] normalTrainData = java.util.Arrays.copyOfRange(trainData, 0, trainNormal);
-        featureMeans = MlUtils.computeMeans(normalTrainData);
-
-        log.info("Tier3-ML model trained: version={}{} samples={} normal={} anomalies={}",
-                MODEL_VERSION, seed, trainSize, trainNormal, trainSize - trainNormal);
-
-        // ── EVALUARE PE TEST (date nevăzute) ─────────────────────────────────
-        evaluateModel(testData, testNormalCount);
-
-        // ── CALIBRARE PRAG PRIN MAX F1────────────────────────────────────────────────────
-        this.threshold = findOptimalThreshold(testData, testNormalCount);
-
-        //Dacă antrenezi și evaluezi pe aceleași date, precision/recall/F1 raportate sunt optimiste și nu reflectă performanța pe date nevăzute
-    }
-
+    /**
+     * Analizează o tranzacție live și returnează verdictul ML.
+     *
+     * @param decisionId ID-ul deciziei din BD (pentru logging corelat)
+     * @param req        request-ul live cu datele tranzacției
+     * @param scoring    rezultatul Tier 2 (folosit pentru features)
+     * @return MlVerdict cu ALLOW sau FLAG + explicație
+     */
     public MlVerdict analyze(Long decisionId, FraudEvaluationRequest req, ScoringResult scoring) {
+        // Dacă modelul nu a putut fi încărcat → fail-open (ALLOW)
+        if (snapshot == null) {
+            log.debug("Tier3 model not found for decision: {}", decisionId);
+            return new MlVerdict("ALLOW", 0.0, "Model not loaded, default ALLOW");
+        }
 
+        // Feature engineering: request live → vector numeric (via FeatureVectorBuilder)
         double[] features = FeatureVectorBuilder.build(req, scoring);
-        double anomalyScore = model.score(features);
 
-        // feature importance via perturbation method
-        double[] importances = PerturbationAnalyzer.computeFeatureImportances(features, model, featureMeans);
+        // Scorul de anomalie: [0, 1]. Mai aproape de 1 = mai suspect.
+        double anomalyScore = snapshot.model.score(features);
 
-        boolean flagged = anomalyScore > threshold;
-        String reasoning = ReasoningBuilder.build(flagged, anomalyScore, importances);
-        double decisionMargin = Math.min(1.0, Math.abs(anomalyScore - threshold) * 2.0); // simple confidence heuristic
+        // Importanțele feature-urilor via perturbation method
+        double[] importances = PerturbationAnalyzer.computeFeatureImportances(
+                features, snapshot.model, snapshot.getFeatureMeans());
+
+        // Decizie binară bazată pe threshold calibrat offline
+        double  activeThreshold = snapshot.threshold;
+        boolean flagged = anomalyScore > activeThreshold;
+        String  reasoning = ReasoningBuilder.build(flagged, anomalyScore, importances);
+        double  confidence = Math.min(1.0, Math.abs(anomalyScore - activeThreshold) * 2.0);
 
         log.info("Tier3-ML: decisionId={} score={} threshold={} verdict={}",
-                decisionId, String.format("%.4f", anomalyScore), threshold, flagged ? "FLAG" : "ALLOW");
+                decisionId, String.format("%.4f", anomalyScore), activeThreshold,
+                flagged ? "FLAG" : "ALLOW");
 
-        return new MlVerdict(flagged ? "FLAG" : "ALLOW", decisionMargin, reasoning);
+        return new MlVerdict(flagged ? "FLAG" : "ALLOW", confidence, reasoning);
     }
 
-    private void evaluateModel(double[][] testData, int normalCount) {
-        int tp = 0, fp = 0, tn = 0, fn = 0;
-        for (int i = 0; i < testData.length; i++) {
-            boolean actualFraud = i >= normalCount;
-            boolean predicted   = model.score(testData[i]) > threshold;
-            if (predicted && actualFraud)  tp++;
-            if (predicted && !actualFraud) fp++;
-            if (!predicted && !actualFraud) tn++;
-            if (!predicted && actualFraud)  fn++;
-        }
-        double precision = tp + fp > 0 ? (double) tp / (tp + fp) : 0;
-        double recall    = tp + fn > 0 ? (double) tp / (tp + fn) : 0;
-        double f1        = precision + recall > 0 ? 2 * precision * recall / (precision + recall) : 0;
-        log.info("Tier3-ML Evaluation (initial threshold {}): precision={} recall={} f1={}", threshold, precision, recall, f1);
-    }
+    // ── Accessors pentru Actuator / Health Check ─────────────────────────────
 
-    private double findOptimalThreshold(double[][] testData, int normalCount) {
-        double bestF1 = 0, bestThreshold = 0.5;
-        for (double t = 0.40; t <= 0.90; t += 0.05) {
-            int tp = 0, fp = 0, fn = 0;
-            for (int i = 0; i < testData.length; i++) {
-                boolean actualFraud = i >= normalCount;
-                boolean predicted   = model.score(testData[i]) > t;
-                if (predicted && actualFraud)  tp++;
-                if (predicted && !actualFraud) fp++;
-                if (!predicted && actualFraud)  fn++;
-            }
-            double precision = tp + fp > 0 ? (double) tp / (tp + fp) : 0;
-            double recall    = tp + fn > 0 ? (double) tp / (tp + fn) : 0;
-            double f1        = precision + recall > 0 ? 2 * precision * recall / (precision + recall) : 0;
-            
-            if (f1 > bestF1) { 
-                bestF1 = f1; 
-                bestThreshold = t; 
-            }
-        }
-        log.info("Optimal threshold calibrated: {} with max F1={}", bestThreshold, bestF1);
-        return bestThreshold;
-    }
-
-    // ============ PUBLIC ACCESSORS FOR HEALTH CHECK & METRICS ============
-
-    /**
-     * Check if ML model is trained and ready for inference
-     */
     public boolean isModelReady() {
-        return model != null && featureMeans != null;
+        return snapshot != null;
     }
 
-    /**
-     * ML model is enabled via @ConditionalOnProperty or explicitly check
-     */
     public boolean isEnabled() {
-        return true; // Service only instantiates if fraud.tier3.ml.enabled=true
+        return true; // Bean există doar dacă fraud.tier3.ml.enabled=true
     }
 
     public double getThreshold() {
-        return threshold;
+        return snapshot != null ? snapshot.threshold : configuredThreshold;
     }
 
-    public int getTrainingSamples() {
-        return trainingSamples;
+    public String getModelVersion() {
+        return snapshot != null ? snapshot.version : "NOT_LOADED";
     }
 
-    public double getContamination() {
-        return contamination;
+    public long getModelTrainedAt() {
+        return snapshot != null ? snapshot.trainedAtEpoch : 0L;
     }
-
-    public int getSeed() {
-        return seed;
-    }
-
 }

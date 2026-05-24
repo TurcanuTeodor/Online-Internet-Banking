@@ -18,9 +18,18 @@ public interface FraudDecisionRepository extends JpaRepository<FraudDecision, Lo
 
     Optional<FraudDecision> findByCorrelationId(String correlationId);
 
-    List<FraudDecision> findByClientId(Long clientId);
+    // Fix #8: Înlocuiește findByClientId (List — toate în memorie) cu query paginated.
+    // Filtrarea statusurilor și sortarea se fac acum la nivel DB (JPA/Hibernate),
+    // nu în memorie cu .stream().filter(). Previne OOM pentru clienți cu istoric mare.
+    Page<FraudDecision> findByClientIdAndStatusIn(
+            Long clientId,
+            List<FraudDecisionStatus> statuses,
+            Pageable pageable);
 
-    Page<FraudDecision> findByStatusInAndUserResolution(List<FraudDecisionStatus> statuses, FraudUserResolution userResolution, Pageable pageable);
+    Page<FraudDecision> findByStatusInAndUserResolution(
+            List<FraudDecisionStatus> statuses,
+            FraudUserResolution userResolution,
+            Pageable pageable);
 
     Page<FraudDecision> findByStatus(FraudDecisionStatus status, Pageable pageable);
 
@@ -29,6 +38,7 @@ public interface FraudDecisionRepository extends JpaRepository<FraudDecision, Lo
     long countByStatus(FraudDecisionStatus status);
 
     long countByClientIdAndCreatedAtAfter(Long clientId, LocalDateTime after);
-    
+
     long countByAccountIdAndCreatedAtAfter(Long accountId, LocalDateTime after);
 }
+

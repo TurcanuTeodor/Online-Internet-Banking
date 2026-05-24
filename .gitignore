@@ -44,3 +44,10 @@ frontend/build_log_2.txt
 frontend/build_output.txt
 frontend/err.txt
 out/
+
+# ML Model (generat offline — NU se include in git)
+data/*.bin
+services/fraud-service/src/main/resources/ml/model/*.bin
+# PaySim CSV (Kaggle dataset, 470MB — NU se include in git)
+data/*.csv
+data/*.log

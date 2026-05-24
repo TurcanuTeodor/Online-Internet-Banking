@@ -2,15 +2,15 @@ package ro.app.fraud.tier1;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import static org.mockito.ArgumentMatchers.any;
 import org.mockito.Mock;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import ro.app.fraud.config.FraudProperties;
 import ro.app.fraud.dto.FraudEvaluationRequest;
 import ro.app.fraud.model.enums.FraudDecisionStatus;
 import ro.app.fraud.repository.FraudDecisionRepository;
@@ -20,9 +20,21 @@ class RuleEngineTest {
 
     @Mock
     FraudDecisionRepository decisionRepo;
-    
-    @InjectMocks
+
+    FraudProperties fraudProperties;
     RuleEngine ruleEngine;
+
+    @BeforeEach
+    void setUp() {
+        fraudProperties = new FraudProperties();
+        FraudProperties.Tier1 tier1 = new FraudProperties.Tier1();
+        tier1.setLargeAmountThreshold(10_000.0);
+        tier1.setBurstLimit(5);
+        tier1.setNewAccountAgeDays(30);
+        fraudProperties.setTier1(tier1);
+
+        ruleEngine = new RuleEngine(decisionRepo, fraudProperties);
+    }
 
     @Test
     void normalTransaction_returnsAllow() {

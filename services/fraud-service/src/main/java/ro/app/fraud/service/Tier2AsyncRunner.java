@@ -5,6 +5,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,7 @@ import ro.app.fraud.tier3.MlVerdict;
 import ro.app.fraud.tier3.Tier3MlService;
 
 @Component
+@Profile("!trainer") // nu se instantiaza in modul trainer (nu exista JPA/repository)
 public class Tier2AsyncRunner {
 
     private static final Logger log = LoggerFactory.getLogger(Tier2AsyncRunner.class);
@@ -95,33 +97,9 @@ public class Tier2AsyncRunner {
             } else {
                 log.info("Tier3 async ALLOW: decision={}", decisionId);
             }
-            
+
         } catch (Exception e) {
             log.error("Tier3 async runner failed for decision {}: {}", decisionId, e.getMessage());
         }
-    }
-
-    // ── Verdict helpers ──────────────────────────────────────────────────────
-
-    private void applyMlVerdict(Long decisionId, FraudDecision decision, MlVerdict mlVerdict) {
-        if (mlVerdict.isFlagged()) {
-            decision.setStatus(FraudDecisionStatus.FLAG);
-            decision.setExplanation("Tier3-ML FLAG (confidence=" +
-                    String.format("%.0f%%", mlVerdict.confidence() * 100) + "): " + mlVerdict.reasoning());
-            log.warn("Tier3-ML FLAGGED: decision={} confidence={} reason={}",
-                    decisionId, mlVerdict.confidence(), mlVerdict.reasoning());
-        } else {
-            decision.setStatus(FraudDecisionStatus.ALLOW);
-            decision.setExplanation("Tier3-ML ALLOW: " + mlVerdict.reasoning());
-            log.info("Tier3-ML ALLOW: decision={} confidence={}", decisionId, mlVerdict.confidence());
-        }
-    }
-
-    /** Called when {@code fraud.tier3.ml.enabled=false} — Tier 2 makes the final call. */
-    private void applyTier3KillSwitchFallback(Long decisionId, FraudDecision decision, ScoringResult scoring) {
-        log.info("Tier3 disabled — Tier2 final decision: score={}", scoring.totalScore());
-        decision.setStatus(scoring.totalScore() >= 50 ? FraudDecisionStatus.FLAG : FraudDecisionStatus.ALLOW);
-        decision.setDecidedByTier(FraudTier.TIER2_BEHAVIORAL);
-        decision.setExplanation("Tier2 final (Tier3 disabled): " + scoring.summary());
     }
 }

@@ -23,6 +23,7 @@ import ro.app.fraud.service.FraudService;
 
 @RestController
 @RequestMapping("/api/fraud")
+@org.springframework.context.annotation.Profile("!trainer")
 public class FraudController {
 
     private final FraudService fraudService;

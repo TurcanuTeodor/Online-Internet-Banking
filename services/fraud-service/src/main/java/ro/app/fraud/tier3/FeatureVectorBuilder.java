@@ -3,24 +3,42 @@ package ro.app.fraud.tier3;
 import ro.app.fraud.dto.FraudEvaluationRequest;
 import ro.app.fraud.tier2.ScoringResult;
 
-// before the ML model can analyze a transaction, we need to convert it into a vector of numbers (features)
-// it takes the raw transaction data and the scoring results from Tier 2
+/**
+ * Adaptor de date pentru inferență live.
+ * Construiește vectorul de features (double[6]) delegând calculele la FraudFeatureEngine.
+ * Balanțele nu sunt transmise în request, deci se folosește valoarea neutră.
+ */
 public final class FeatureVectorBuilder {
 
-    private FeatureVectorBuilder() {}
+    private FeatureVectorBuilder() {
+    }
 
-    public static double[] build(FraudEvaluationRequest req, ScoringResult scoring){
+    /**
+     * Construiește vectorul de features pentru modelul de Tier 3.
+     *
+     * @param req     request-ul live
+     * @param scoring rezultatul Tier 2 (păstrat pentru extensibilitate)
+     * @return vector double[6] pentru inferență
+     */
+    public static double[] build(FraudEvaluationRequest req, ScoringResult scoring) {
+        return new double[]{
+            // [0] amountRatio (normalizat)
+            FraudFeatureEngine.computeAmountRatio(req.getAmount(), FraudFeatureEngine.LIVE_AMOUNT_CAP),
 
-        double amountRatio = Math.min(1.0, req.getAmount() / 5000.0); // cap at 1.0 for amounts >= 5000
-        double tier2Norm = scoring.totalScore() / 100.0; // normalize to [0,1]  
-        double freq24h = Math.min(1.0, scoring.componentScores()
-                    .getOrDefault("frequency_anomaly", 0.0) / 100.0); // normalize and cap
-        double newRecipient = scoring.componentScores()
-                    .getOrDefault("recipient_anomaly", 0.0) > 50.0 ? 1.0 : 0.0; // binary feature based on threshold
-        double hourDeviation = Math.min(1.0, scoring.componentScores()
-                    .getOrDefault("time_anomaly", 0.0) / 100.0); // normalize and cap
-        double newAccount = req.getAccountAgeDays() < 30 ? 1.0 : 0.0; // binary feature for new accounts
-                    
-        return new double[]{amountRatio, tier2Norm, freq24h, newRecipient, hourDeviation, newAccount};
+            // [1] balance sender (necunoscut) → neutral
+            FraudFeatureEngine.NEUTRAL,
+
+            // [2] balance dest (necunoscut) → neutral
+            FraudFeatureEngine.NEUTRAL,
+
+            // [3] typeRisk (bazat pe tip tranzacție)
+            FraudFeatureEngine.computeTypeRiskLive(req.getTransactionType()),
+
+            // [4] hourSuspicion (noapte)
+            FraudFeatureEngine.computeHourSuspicionFromClock(),
+
+            // [5] newAccountFlag (cont nou)
+            FraudFeatureEngine.computeNewAccountFlagFromAge(req.getAccountAgeDays())
+        };
     }
 }

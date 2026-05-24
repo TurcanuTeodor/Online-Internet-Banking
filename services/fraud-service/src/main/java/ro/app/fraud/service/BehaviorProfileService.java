@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import ro.app.fraud.client.ExternalTransactionDto;
@@ -17,6 +18,7 @@ import ro.app.fraud.model.entity.UserBehaviorProfile;
 import ro.app.fraud.repository.UserBehaviorProfileRepository;
 
 @Service
+@Profile("!trainer")
 public class BehaviorProfileService {
 
     private static final Logger log = LoggerFactory.getLogger(BehaviorProfileService.class);

@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import ro.app.fraud.client.ExternalTransactionDto;
@@ -26,10 +27,10 @@ import ro.app.fraud.tier2.ScoringResult;
  * the decision record after the fact for learning and alerting,
  * but does NOT block the synchronous flow.
  */
-
 @Service
+@Profile("!trainer") // nu se instantiaza in modul trainer (nu exista JPA/repository)
 public class Tier2SyncEvaluator {
-    
+
     private static final Logger log = LoggerFactory.getLogger(Tier2SyncEvaluator.class);
 
     private final TransactionRestClient transactionClient;
@@ -52,7 +53,7 @@ public class Tier2SyncEvaluator {
         FraudProperties.Tier2 tier2= fraudProperties.getTier2();
         this.lowerThreshold = tier2.getLowerThreshold();
         this.upperThreshold = tier2.getUpperThreshold();
-        this.stepUpThreshold = (lowerThreshold + upperThreshold) / 2.0; // 50.0
+        this.stepUpThreshold = tier2.getStepUpThreshold(); // Fix #12: configurat explicit
     }
 
     /**
