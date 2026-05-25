@@ -28,11 +28,12 @@ services:
     url: ${FRAUD_SERVICE_URL:http://localhost:8086}
 
 app:
-  jwt:
-    secret: ${JWT_SECRET}
-    issuer: CashTactics
-  cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  gateway:
+    jwt:
+      secret: ${JWT_SECRET}
+      issuer: CashTactics
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 management:
   endpoints:

@@ -27,8 +27,8 @@ public class ExchangeRateService {
     private final RestClient restClient;
     private final String ecbUrl;
 
-    public ExchangeRateService(RestClient restClient, @Value("${app.fx.ecb-url}") String ecbUrl) {
-        this.restClient = restClient;
+    public ExchangeRateService(RestClient.Builder restClientBuilder, @Value("${app.fx.ecb-url}") String ecbUrl) {
+        this.restClient = restClientBuilder.build();
         this.ecbUrl = ecbUrl;
     }
 

@@ -91,6 +91,8 @@ public class Tier2AsyncRunner {
                 decision.setDecidedByTier(FraudTier.TIER3_ML);
                 decision.setStatus(FraudDecisionStatus.FLAG);
                 decision.setExplanation("Tier3-ML post-hoc FLAG: " + mlVerdict.reasoning());
+                decision.setRiskScore(mlVerdict.anomalyScore() * 100.0);
+                decision.setRuleHits(String.format("Isolation Forest Anomaly Score: %.2f (Confidence: %.2f)", mlVerdict.anomalyScore() * 100.0, mlVerdict.confidence() * 100.0));
                 decisionRepo.save(decision);
                 log.warn("Tier3 async POST-HOC FLAG: decision={} confidence={}",
                         decisionId, mlVerdict.confidence());

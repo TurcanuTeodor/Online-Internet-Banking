@@ -9,14 +9,14 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 
-import ro.app.gateway.config.GatewayProperties;
+import ro.app.gateway.config.ApiGatewayProperties;
 
 @Service
 public class JwtService {
     private final SecretKey secretKey;
     private final String issuer;
 
-    public JwtService(GatewayProperties gatewayProperties) {
+    public JwtService(ApiGatewayProperties gatewayProperties) {
         this.secretKey = Keys.hmacShaKeyFor(gatewayProperties.getJwt().getSecret().getBytes(StandardCharsets.UTF_8));
         this.issuer = gatewayProperties.getJwt().getIssuer();
     }

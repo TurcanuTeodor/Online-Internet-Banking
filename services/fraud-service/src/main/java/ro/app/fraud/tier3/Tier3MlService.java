@@ -87,7 +87,7 @@ public class Tier3MlService {
         // Dacă modelul nu a putut fi încărcat → fail-open (ALLOW)
         if (snapshot == null) {
             log.debug("Tier3 model not found for decision: {}", decisionId);
-            return new MlVerdict("ALLOW", 0.0, "Model not loaded, default ALLOW");
+            return new MlVerdict("ALLOW", 0.0, "Model not loaded, default ALLOW", 0.0);
         }
 
         // Feature engineering: request live → vector numeric (via FeatureVectorBuilder)
@@ -110,7 +110,7 @@ public class Tier3MlService {
                 decisionId, String.format("%.4f", anomalyScore), activeThreshold,
                 flagged ? "FLAG" : "ALLOW");
 
-        return new MlVerdict(flagged ? "FLAG" : "ALLOW", confidence, reasoning);
+        return new MlVerdict(flagged ? "FLAG" : "ALLOW", confidence, reasoning, anomalyScore);
     }
 
     // ── Accessors pentru Actuator / Health Check ─────────────────────────────
