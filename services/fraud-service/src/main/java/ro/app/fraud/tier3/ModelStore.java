@@ -26,13 +26,13 @@ import smile.anomaly.IsolationForest;
  * — Serializare/Deserializare Model pe Disc
  * =====================================================================
  *
- * DE CE serializare? 
+ * DE CE serializare?
  * -------------------------------------------------------
  * Antrenarea unui Isolation Forest pe 150.000 de randuri dureaza ~5-15 secunde.
  * Daca am antrena la fiecare pornire a aplicației:
- *   - Cold Start in productie → tranzactiile din primele secunde NU sunt evaluate
- *   - Fiecare restart Docker → asteptare inutila
- *   - Threshold-ul calibrat s-ar recalcula → instabilitate între deployments
+ * - Cold Start in productie → tranzactiile din primele secunde NU sunt evaluate
+ * - Fiecare restart Docker → asteptare inutila
+ * - Threshold-ul calibrat s-ar recalcula → instabilitate între deployments
  *
  * Solutia: antrenare O SINGURA DATA, save starea completa pe disc.
  * La fiecare pornire ulterioara → incarcam din disc in ~100ms.
@@ -51,7 +51,8 @@ public final class ModelStore {
     private static final Logger log = LoggerFactory.getLogger(ModelStore.class);
     private static final String CURRENT_MODEL_VERSION = "paysim-v1.0";
 
-    private ModelStore() {}
+    private ModelStore() {
+    }
 
     // -----------------------------------------------------------------------
     // Snapshot intern (ce se salvează pe disc)
@@ -62,21 +63,26 @@ public final class ModelStore {
     public static class ModelSnapshot implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 2L;
 
         public final IsolationForest model;
         public final double threshold;
-        private final double[] featureMeans;  
+        private final double[] featureMeans;
         public final String version;
-        public final long trainedAtEpoch; 
+        public final long trainedAtEpoch;
+        public final double trainedFraudRate;
+        public final int trainedOnRows;
 
         public ModelSnapshot(IsolationForest model, double threshold,
-                             double[] featureMeans, String version) {
+                double[] featureMeans, String version,
+                double trainedFraudRate, int trainedOnRows) {
             this.model = model;
             this.threshold = threshold;
-            this.featureMeans = featureMeans.clone(); 
+            this.featureMeans = featureMeans.clone();
             this.version = version;
             this.trainedAtEpoch = System.currentTimeMillis();
+            this.trainedFraudRate = trainedFraudRate;
+            this.trainedOnRows = trainedOnRows;
         }
 
         public double[] getFeatureMeans() {
@@ -90,7 +96,7 @@ public final class ModelStore {
 
     public static void save(ModelSnapshot snapshot, String outputPath) throws IOException {
         Path path = Paths.get(outputPath);
-        Files.createDirectories(path.getParent()); 
+        Files.createDirectories(path.getParent());
 
         try (ObjectOutputStream oos = new ObjectOutputStream(
                 new BufferedOutputStream(new FileOutputStream(path.toFile())))) {
@@ -105,7 +111,7 @@ public final class ModelStore {
     // INCARCARE
     // -----------------------------------------------------------------------
 
-    // Deserializeaza snapshot-ul 
+    // Deserializeaza snapshot-ul
     public static ModelSnapshot load(String modelPath) throws IOException, ClassNotFoundException {
         InputStream is;
         if (modelPath.startsWith("classpath:")) {
@@ -129,7 +135,7 @@ public final class ModelStore {
             snapshot = (ModelSnapshot) ois.readObject();
         }
 
-        // Validare versiune 
+        // Validare versiune
         if (!CURRENT_MODEL_VERSION.equals(snapshot.version)) {
             log.warn("Version mismatch! Disc={} Expected={}. Retrain the model.",
                     snapshot.version, CURRENT_MODEL_VERSION);
@@ -138,14 +144,17 @@ public final class ModelStore {
         double[] means = snapshot.getFeatureMeans();
         if (means == null || means.length != EXPECTED_FEATURE_COUNT) {
             throw new IllegalStateException(String.format(
-                "Model corupt or incompatible: featureMeans.length=%s, expected %d. " +
-                "Retrain the model with --fraud.tier3.trainer.mode=true.",
-                means == null ? "null" : means.length, EXPECTED_FEATURE_COUNT));
+                    "Model corupt or incompatible: featureMeans.length=%s, expected %d. " +
+                            "Retrain the model with --fraud.tier3.trainer.mode=true.",
+                    means == null ? "null" : means.length, EXPECTED_FEATURE_COUNT));
         }
 
         long trainedAgo = (System.currentTimeMillis() - snapshot.trainedAtEpoch) / (1000L * 60 * 60 * 24);
         log.info("Model loaded: version={} threshold={} features={} trained {} days ago",
                 snapshot.version, snapshot.threshold, means.length, trainedAgo);
+        log.info("Audit Trail: trainedOnRows={} trainedFraudRate={}%",
+                snapshot.trainedOnRows,
+                String.format("%.2f", snapshot.trainedFraudRate * 100));
 
         return snapshot;
     }
@@ -154,7 +163,7 @@ public final class ModelStore {
     // UTILS
     // -----------------------------------------------------------------------
 
-    //verifica daca modelul exista
+    // verifica daca modelul exista
     public static boolean exists(String modelPath) {
         if (modelPath.startsWith("classpath:")) {
             return new ClassPathResource(modelPath.substring(10)).exists();

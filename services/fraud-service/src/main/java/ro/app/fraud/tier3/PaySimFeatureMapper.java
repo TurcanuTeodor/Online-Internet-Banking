@@ -2,13 +2,16 @@ package ro.app.fraud.tier3;
 
 /**
  * =====================================================================
- * — Adaptor de Antrenament 
+ * — Adaptor de Antrenament (PaySim → Vector PSD2)
  * =====================================================================
  *
-* ROL: 
-*     1. Extrage valorile brute din campurile PaySimRow
-*     2. Le paseaza metodelor statice din FraudFeatureEngine
-*     3. Asambleaza vectorul final de 6 dimensiuni
+ * ROL:
+ *     1. Extrage valorile brute din campurile PaySimRow
+ *     2. Le paseaza metodelor statice din FraudFeatureEngine
+ *     3. Asambleaza vectorul final de 6 dimensiuni IDENTIC cu FeatureVectorBuilder
+ *
+ * STRATEGIE: Open Payments / PSD2 — vector comportamental, fara balanta destinatar.
+ * Vectorul: [amountRatio, typeRisk, hourSuspicion, newAccountFlag, senderDepletionRatio, isRoundAmount]
  */
 public final class PaySimFeatureMapper {
 
@@ -18,23 +21,23 @@ public final class PaySimFeatureMapper {
 
     public static double[] fromPaySim(PaySimRow row) {
         return new double[]{
-            // [0] Normalizare suma cu plafonul specific PaySim (10.000)
-            FraudFeatureEngine.computeAmountRatio(row.amount(), FraudFeatureEngine.PAYSIM_AMOUNT_CAP),
+            // [0] amountRatio — suma normalizata la plafonul legal Transfond (50.000 RON)
+            FraudFeatureEngine.computeAmountRatio(row.amount(), FraudFeatureEngine.LEGAL_AMOUNT_CAP),
 
-            // [1] Fractie balanta iesita din sender (0=nimic, 1=golit complet)
-            FraudFeatureEngine.computeBalanceDeltaOrg(row.oldbalanceOrg(), row.newbalanceOrig()),
-
-            // [2] Fractie suma primita de destinatar fata de astepari
-            FraudFeatureEngine.computeBalanceDeltaDest(row.oldbalanceDest(), row.newbalanceDest(), row.amount()),
-
-            // [3] Risc bazat pe tipul PaySim (TRANSFER/CASH_OUT = 1.0)
+            // [1] typeRisk — mapeaza tipurile PaySim pe scara PSD2 (TRANSFER/CASH_OUT = 3.0)
             FraudFeatureEngine.computeTypeRiskPaySim(row.type()),
 
-            // [4] Ora noaptea simulata: step % 24 ∈ [0, 6) → 1.0
-            FraudFeatureEngine.computeHourSuspicionFromStep(row.step()),
+            // [2] hourSuspicion — step PaySim simulat ca ora [0, 23] cu grupe de risc ciclice
+            FraudFeatureEngine.computeHourSuspicionFromClock(row.step() % 24),
 
-            // [5] Cont cu balanta zero initiinda tranzactie = anomalie PaySim
-            FraudFeatureEngine.computeNewAccountFlagFromBalance(row.oldbalanceOrg(), row.amount())
+            // [3] newAccountFlag — PaySim nu are varsta contului, se lasa 0.0 la antrenament
+            0.0,
+
+            // [4] senderDepletionRatio — procentul din contul senderului golit (ATO signature)
+            FraudFeatureEngine.computeSenderDepletionRatio(row.amount(), row.oldbalanceOrg()),
+
+            // [5] isRoundAmount — flag suma rotunda (specific atacurilor Cash-Out)
+            FraudFeatureEngine.computeRoundAmountFlag(row.amount())
         };
     }
 }

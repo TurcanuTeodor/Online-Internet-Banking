@@ -41,7 +41,8 @@ import ro.app.account.security.JwtPrincipal;
 import ro.app.account.security.OwnershipChecker;
 
 /**
- * Internal transfers: balance updates + transaction records via transaction-service REST.
+ * Internal transfers: balance updates + transaction records via
+ * transaction-service REST.
  */
 @Service
 public class AccountTransferService {
@@ -132,11 +133,11 @@ public class AccountTransferService {
             }
 
             Account from = accountRepository.findByIban(normalizedFromIban)
-                .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
-        ownershipChecker.checkOwnership(principal, from.getClientId());
+                    .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
+            ownershipChecker.checkOwnership(principal, from.getClientId());
 
             Account to = accountRepository.findByIban(normalizedToIban)
-                .orElseThrow(() -> new ResourceNotFoundException("Destination account not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Destination account not found"));
 
             if (from.getBalance().compareTo(amount) < 0) {
                 throw new InsufficientFundsException("Insufficient funds");
@@ -152,9 +153,10 @@ public class AccountTransferService {
                         actorClientId,
                         role,
                         from.getClientId(),
-                        "amount=" + amount + " " + from.getCurrency().getCode() + " fromIban=" + normalizedFromIban + " toIban=" + normalizedToIban);
+                        "amount=" + amount + " " + from.getCurrency().getCode() + " fromIban=" + normalizedFromIban
+                                + " toIban=" + normalizedToIban);
             }
-        
+
             boolean stepUpRequiredFromFraud = runFraudCheck(from, to, amount);
 
             if (isLargeTransfer || stepUpRequiredFromFraud) {
@@ -300,6 +302,8 @@ public class AccountTransferService {
             body.put("transactionType", "TRANSFER_INTERNAL");
             body.put("selfTransfer", selfTransfer);
             body.put("accountAgeDays", accountAgeDays);
+            // Soldul senderului pre-tranzactie — disponibil mereu (clientul nostru).
+            body.put("oldBalanceOrg", from.getBalance().doubleValue());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -309,11 +313,12 @@ public class AccountTransferService {
                     url, new HttpEntity<>(body, headers), Map.class);
 
             if (resp != null && "BLOCK".equals(resp.get("status"))) {
-                String explanation = (String) resp.getOrDefault("explanation", "Transaction blocked by fraud detection");
+                String explanation = (String) resp.getOrDefault("explanation",
+                        "Transaction blocked by fraud detection");
                 log.warn("FRAUD BLOCK: client={} amount={} reason={}", from.getClientId(), amount, explanation);
                 throw new BusinessRuleViolationException(explanation);
             }
-            
+
             if (resp != null && "STEP_UP_REQUIRED".equals(resp.get("status"))) {
                 log.info("FRAUD STEP-UP: client={} amount={}", from.getClientId(), amount);
                 return true;

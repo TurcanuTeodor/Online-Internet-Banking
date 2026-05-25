@@ -51,9 +51,10 @@ public class ModelTrainerCli implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(ModelTrainerCli.class);
 
-    private static final int IF_NUM_TREES = 50;   // 50 arbori = bun echilibru dimensiune/calitate pe PaySim
-    private static final int IF_SUBSAMPLE = 256;   // subsample per arbore (SMILE default)
-    private static final int IF_SEED = 0;     // seed SMILE intern
+    private static final int IF_NUM_TREES  = 50;  // 50 arbori = bun echilibru dimensiune/calitate pe PaySim
+    private static final int IF_MAX_DEPTH  = 10;  // adâncime maximă arbore — Smile 3.x: al 3-lea param este maxDepth, NU subsampleSize!
+                                                   // Formula: ceil(log2(256)) = 8; folosim 10 pt. margine de siguranță.
+    private static final int IF_SEED       = 0;   // seed SMILE intern
 
     private final FraudProperties props;
 
@@ -109,10 +110,10 @@ public class ModelTrainerCli implements CommandLineRunner {
         int[] testLabels= java.util.Arrays.copyOfRange(labels, trainSize, labels.length);
 
         // ── STEP 5: IsolationForest training ──────────────────────────────
-        log.info("[5/6] IsolationForest training: num_trees={} subsample={} contamin={}",
-            IF_NUM_TREES, IF_SUBSAMPLE, contamin);
+        log.info("[5/6] IsolationForest training: num_trees={} max_depth={} contamin={}",
+            IF_NUM_TREES, IF_MAX_DEPTH, contamin);
         long t0 = System.currentTimeMillis();
-        IsolationForest model = IsolationForest.fit(trainX, IF_NUM_TREES, IF_SUBSAMPLE, contamin, IF_SEED);
+        IsolationForest model = IsolationForest.fit(trainX, IF_NUM_TREES, IF_MAX_DEPTH, contamin, IF_SEED);
         log.info("Training completed in {} ms", System.currentTimeMillis() - t0);
 
         // featureMeans pe setul de train NORMAL (pentru PerturbationAnalyzer)
@@ -134,7 +135,9 @@ public class ModelTrainerCli implements CommandLineRunner {
 
         // ─ SALVARE ──────────────────────────────────────────────────────────
         ModelStore.ModelSnapshot snapshot = new ModelStore.ModelSnapshot(
-                model, optimalThreshold, featureMeans, ModelStore.currentVersion());
+                model, optimalThreshold, featureMeans, ModelStore.currentVersion(),
+                fraudRatePercent / 100.0,  // conversie procent → [0,1]
+                rows.size());              // nr. total rânduri citite din CSV
         ModelStore.save(snapshot, modelPath);
 
         log.info("=== TRAINING COMPLETED ===");
@@ -218,14 +221,62 @@ public class ModelTrainerCli implements CommandLineRunner {
         double recall = (tp + fn) > 0 ? (double) tp / (tp + fn) : 0;
         double f1 = (precision + recall) > 0 ? 2 * precision * recall / (precision + recall) : 0;
         double accuracy  = (double)(tp + tn) / X.length;
+        double auc = computeAucRoc(model, X, labels);
 
         log.info("[{}] threshold={} TP={} FP={} TN={} FN={}", tag, threshold, tp, fp, tn, fn);
-        log.info("[{}] Precision={} Recall={} F1={} Acc={}",
+        log.info("[{}] Precision={} Recall={} F1={} Acc={} AUC-ROC={}",
             tag,
             String.format("%.4f", precision),
             String.format("%.4f", recall),
             String.format("%.4f", f1),
-            String.format("%.4f", accuracy));
+            String.format("%.4f", accuracy),
+            String.format("%.4f", auc));
+    }
+
+    // -----------------------------------------------------------------------
+    // AUC-ROC — Integrare trapezoidala a curbei ROC
+    //
+    // Algoritmul:
+    //  1. Calculeaza scorurile brute o singura data
+    //  2. Sorteaza descrescator dupa scor (praguri simulate)
+    //  3. Incrementeaza TPR sau FPR la fiecare pas
+    //  4. Integreaza aria trapezoidala
+    //
+    // AUC-ROC > 0.90 = excelent | > 0.85 = bun | < 0.70 = model slab
+    // Avantaj: metrica independenta de threshold — ideala pentru comisia academica
+    // -----------------------------------------------------------------------
+
+    private double computeAucRoc(IsolationForest model, double[][] X, int[] labels) {
+        int n = X.length;
+        double[] scores = new double[n];
+        for (int i = 0; i < n; i++) scores[i] = model.score(X[i]);
+
+        // Sorteaza descrescator dupa scor (cel mai suspect = primul)
+        Integer[] idx = new Integer[n];
+        for (int i = 0; i < n; i++) idx[i] = i;
+        java.util.Arrays.sort(idx, (a, b) -> Double.compare(scores[b], scores[a]));
+
+        long totalPos = 0;
+        for (int l : labels) if (l == 1) totalPos++;
+        long totalNeg = n - totalPos;
+
+        if (totalPos == 0 || totalNeg == 0) {
+            log.warn("AUC-ROC: nu exista exemple pozitive sau negative in setul de test — AUC nedefinit");
+            return 0.0;
+        }
+
+        double auc = 0.0;
+        double tpr = 0.0, fpr = 0.0, prevTpr = 0.0, prevFpr = 0.0;
+
+        for (int i = 0; i < n; i++) {
+            if (labels[idx[i]] == 1) tpr += 1.0 / totalPos;
+            else                      fpr += 1.0 / totalNeg;
+            // Regula trapezoidala: aria = (delta_FPR) * (TPR_curent + TPR_anterior) / 2
+            auc += (fpr - prevFpr) * (tpr + prevTpr) / 2.0;
+            prevTpr = tpr;
+            prevFpr = fpr;
+        }
+        return auc;
     }
 
     // -----------------------------------------------------------------------

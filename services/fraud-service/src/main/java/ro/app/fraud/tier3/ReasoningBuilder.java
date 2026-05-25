@@ -6,31 +6,31 @@ import java.util.Arrays;
  * Construiește textul de explicație al verdictului ML pentru utilizator/admin.
  *
  * Etichetele din FEATURE_NAMES sunt mapate 1:1 cu ordinea vectorului produs
- * de FraudFeatureEngine și asamblat de PaySimFeatureMapper / FeatureVectorBuilder:
+ * de FraudFeatureEngine si asamblat de PaySimFeatureMapper / FeatureVectorBuilder:
  *
- *   [0] amountRatio       → "unusually large transaction amount"
- *   [1] balanceDeltaOrg   → "sender account balance fully drained"
- *   [2] balanceDeltaDest  → "recipient balance mismatch after transfer"
- *   [3] typeRisk          → "high-risk transaction type (external/withdrawal)"
- *   [4] hourSuspicion     → "transaction during suspicious night-time hours"
- *   [5] newAccountFlag    → "new or recently opened account"
+ *   [0] amountRatio          → "unusually large transaction amount"
+ *   [1] typeRisk             → "high-risk transaction type (external / instant)"
+ *   [2] hourSuspicion        → "transaction during suspicious night-time hours"
+ *   [3] newAccountFlag       → "new or recently opened sender account"
+ *   [4] senderDepletionRatio → "sender account heavily or fully drained"
+ *   [5] isRoundAmount        → "suspiciously round transaction amount"
  *
- * IMPORTANT: Dacă ordinea vectorului se schimbă în FraudFeatureEngine,
- * actualizează și acest array în consecință.
+ * IMPORTANT: Daca ordinea vectorului se schimba in FraudFeatureEngine,
+ * actualizeaza si acest array in consecinta.
  */
 public final class ReasoningBuilder {
 
     /**
-     * Etichete human-readable aliniate 1:1 cu vectorul de 6 features.
-     * Ordinea trebuie să corespundă exact cu FraudFeatureEngine.
+     * Etichete human-readable aliniate 1:1 cu vectorul de 6 features PSD2.
+     * Ordinea trebuie sa corespunda exact cu FraudFeatureEngine.
      */
     public static final String[] FEATURE_NAMES = {
-        "unusually large transaction amount",                // [0] amountRatio
-        "sender account balance fully drained",              // [1] balanceDeltaOrg
-        "recipient balance mismatch after transfer",         // [2] balanceDeltaDest
-        "high-risk transaction type (external/withdrawal)",  // [3] typeRisk
-        "transaction during suspicious night-time hours",    // [4] hourSuspicion
-        "new or recently opened account"                     // [5] newAccountFlag
+        "unusually large transaction amount",                       // [0] amountRatio
+        "high-risk transaction type (external / instant)",          // [1] typeRisk
+        "transaction during suspicious night-time hours",           // [2] hourSuspicion
+        "new or recently opened sender account",                    // [3] newAccountFlag
+        "sender account heavily or fully drained",                  // [4] senderDepletionRatio
+        "suspiciously round transaction amount"                     // [5] isRoundAmount
     };
 
     private ReasoningBuilder() {}
