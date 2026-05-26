@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { Send } from 'lucide-react';
 import { transfer } from '@/services/accountService';
 import TransferConfirmation from './TransferConfirmation';
+import StepUpModal from './Modals/StepUpModal';
 
 export default function UserPaymentsTab({ accounts, onSuccess, onError, onRefresh }) {
   const [fromAccountId, setFromAccountId] = useState('');
   const [toIban, setToIban] = useState('');
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showStepUp, setShowStepUp] = useState(false);
+  const [stepUpError, setStepUpError] = useState('');
   const [step, setStep] = useState('form');
   const [submitError, setSubmitError] = useState('');
 
@@ -32,7 +35,7 @@ export default function UserPaymentsTab({ accounts, onSuccess, onError, onRefres
     setStep('form');
   };
 
-  const submitTransfer = async () => {
+  const submitTransfer = async (totpCode = null) => {
     if (!selectedFrom) {
       setStep('form');
       onError?.('Please select a source account.');
@@ -42,14 +45,23 @@ export default function UserPaymentsTab({ accounts, onSuccess, onError, onRefres
     setBusy(true);
     setSubmitError('');
     try {
-      await transfer(selectedFrom.iban, toIban.trim(), Number.parseFloat(amount));
+      await transfer(selectedFrom.iban, toIban.trim(), Number.parseFloat(amount), totpCode);
       resetTransferForm();
+      setShowStepUp(false);
       onSuccess?.(`Transfer sent successfully from ${selectedFrom.iban}.`);
       onRefresh?.();
     } catch (err) {
+      const status = err?.response?.status;
       const message = err?.response?.data?.message || err?.message || 'Transfer failed';
-      setSubmitError(message);
-      onError?.(message);
+      
+      if (status === 428) {
+        setStepUpError(message);
+        setShowStepUp(true);
+      } else {
+        setSubmitError(message);
+        onError?.(message);
+        setShowStepUp(false);
+      }
     } finally {
       setBusy(false);
     }
@@ -57,6 +69,13 @@ export default function UserPaymentsTab({ accounts, onSuccess, onError, onRefres
 
   return (
     <div className="space-y-6">
+      {showStepUp && (
+        <StepUpModal
+          error={stepUpError}
+          onVerify={(code) => submitTransfer(code)}
+          onCancel={() => setShowStepUp(false)}
+        />
+      )}
       <div className="glass rounded-2xl p-6">
         <h2 className="text-2xl font-bold">Payments & Transfers</h2>
         <p className="text-zinc-500 text-sm mt-1">Send money quickly using your active accounts.</p>

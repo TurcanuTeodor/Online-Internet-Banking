@@ -22,38 +22,46 @@ package ro.app.fraud.tier3;
  * VECTORUL DE 6 FEATURES — definitie canonica PSD2
  * -----------------------------------------------------------------------
  *
- * [0] amountRatio — suma normalizata prin raportare la plafonul legal Transfond.
- *     Range: [0.0, 1.0] (capped la 1.0 — orice suma >= 50.000 RON = alerta maxima)
- *     Calcul: min(amount / LEGAL_AMOUNT_CAP, 1.0)
- *     Motiv: atacatorii maximizeaza profitul; normalizarea protejeaza de scale invariance in ML.
+ * [0] amountRatio — suma normalizata prin raportare la plafonul legal
+ * Transfond.
+ * Range: [0.0, 1.0] (capped la 1.0 — orice suma >= 50.000 RON = alerta maxima)
+ * Calcul: min(amount / LEGAL_AMOUNT_CAP, 1.0)
+ * Motiv: atacatorii maximizeaza profitul; normalizarea protejeaza de scale
+ * invariance in ML.
  *
  * [1] typeRisk — riscul asociat tipului de tranzactie (scara PSD2).
- *     Range: {0.0, 1.0, 2.0, 3.0}
- *     Motiv: transferurile instant (SEPA Instant) nu permit recall — risc maxim.
+ * Range: {0.0, 1.0, 3.0} — aliniata cu PaySim ({CASH_IN=0, PAYMENT=1,
+ * TRANSFER/CASH_OUT=3})
+ * IMPORTANT: valoarea 2.0 a fost eliminata pentru a preveni out-of-distribution
+ * la inferenta.
+ * TRANSFER_EXTERNAL mapat pe 3.0 (la fel ca TRANSFER_INSTANT) — ambele sunt
+ * ireversibile.
+ * Motiv: transferurile instant (SEPA Instant) nu permit recall — risc maxim.
  *
  * [2] hourSuspicion — grupa de risc ciclica pe ora zilei.
- *     Range: {1.0, 2.0, 3.0} (nu binar — evita functia liniara 0-23)
- *     Motiv: atacurile au loc noaptea pentru a intarzia notificarile.
+ * Range: {1.0, 2.0, 3.0} (nu binar — evita functia liniara 0-23)
+ * Motiv: atacurile au loc noaptea pentru a intarzia notificarile.
  *
  * [3] newAccountFlag — semnal de cont nou la sender.
- *     Range: {0.0, 1.0} (feature binar)
- *     Motiv: burner accounts (< 30 zile) = vectori de money laundering.
+ * Range: {0.0, 1.0} (feature binar)
+ * Motiv: burner accounts (< 30 zile) = vectori de money laundering.
  *
  * [4] senderDepletionRatio — ce procent din contul senderului paraseste contul.
- *     Range: [0.0, 1.0] (capped la 1.0)
- *     Calcul: min(amount / oldBalanceOrg, 1.0)
- *     Motiv: golirea completa a contului = semnatura Account Takeover (ATO).
+ * Range: [0.0, 1.0] (capped la 1.0)
+ * Calcul: min(amount / oldBalanceOrg, 1.0)
+ * Motiv: golirea completa a contului = semnatura Account Takeover (ATO).
  *
  * [5] isRoundAmount — flag comportamental pentru sume rotunde.
- *     Range: {0.0, 1.0} (feature binar)
- *     Motiv: atacatorii Cash-Out folosesc sume rotunde (100, 500, 1000).
+ * Range: {0.0, 1.0} (feature binar)
+ * Motiv: atacatorii Cash-Out folosesc sume rotunde (100, 500, 1000).
  */
 public final class FraudFeatureEngine {
 
     // Plafonul legal unificat pentru normalizarea sumei.
     // Reprezinta limita maxima pentru plati instant Transfond (Romania),
     // echivalentul directivei AML (~10.000 EUR). Sursa: BNR / Transfond 2024.
-    // Utilizat IDENTIC in antrenament (PaySimFeatureMapper) si in inferenta live (FeatureVectorBuilder).
+    // Utilizat IDENTIC in antrenament (PaySimFeatureMapper) si in inferenta live
+    // (FeatureVectorBuilder).
     public static final double LEGAL_AMOUNT_CAP = 50_000.0;
 
     public static final int NEW_ACCOUNT_THRESHOLD_DAYS = 30;
@@ -72,7 +80,8 @@ public final class FraudFeatureEngine {
      * Exemplu: computeAmountRatio(25_000, LEGAL_AMOUNT_CAP) → 0.5
      */
     public static double computeAmountRatio(double amount, double cap) {
-        if (cap <= 0) return 0.0;
+        if (cap <= 0)
+            return 0.0;
         return Math.min(amount / cap, 1.0);
     }
 
@@ -83,16 +92,23 @@ public final class FraudFeatureEngine {
     /**
      * Risc bazat pe tipul tranzactiei in contextul PSD2 / Open Payments.
      * Scara: POS_PAYMENT=0 (biometric/chip) → TRANSFER_INSTANT=3 (no recall).
-     * Tipurile PaySim sunt mapate pe aceeasi scara pentru consistenta la antrenament.
+     * Tipurile PaySim sunt mapate pe aceeasi scara pentru consistenta la
+     * antrenament.
      */
     public static double computeTypeRiskLive(String type) {
-        if (type == null) return 1.0;
+        if (type == null)
+            return 1.0;
         return switch (type.toUpperCase().trim()) {
-            case "POS_PAYMENT"       -> 0.0; // Sigur: card fizic / biometrie
+            case "POS_PAYMENT" -> 0.0; // Sigur: card fizic / biometrie
             case "TRANSFER_INTERNAL" -> 1.0; // Risc normal: intern, reversibil
-            case "TRANSFER_EXTERNAL" -> 2.0; // Risc ridicat: interbancar
-            case "TRANSFER_INSTANT"  -> 3.0; // Risc maxim: SEPA Instant, no recall
-            default                  -> 1.0; // Default: risc normal
+            // TRANSFER_EXTERNAL mapat pe 3.0 (nu 2.0!) pentru consistenta cu spatiul
+            // vectorial PaySim.
+            // PaySim nu are tip cu risk=2.0; a pasa 2.0 la inferenta = out-of-distribution.
+            // Semantic: ambele EXTERNAL si INSTANT sunt ireversibile din perspectiva
+            // clientului.
+            case "TRANSFER_EXTERNAL" -> 3.0; // Risc maxim: interbancar ireversibil (aliniat PaySim TRANSFER)
+            case "TRANSFER_INSTANT" -> 3.0; // Risc maxim: SEPA Instant, no recall
+            default -> 1.0; // Default: risc normal
         };
     }
 
@@ -101,12 +117,13 @@ public final class FraudFeatureEngine {
      * TRANSFER/CASH_OUT → risc maxim; PAYMENT/DEBIT → risc normal; CASH_IN → sigur.
      */
     public static double computeTypeRiskPaySim(String paySimType) {
-        if (paySimType == null) return 1.0;
+        if (paySimType == null)
+            return 1.0;
         return switch (paySimType.toUpperCase().trim()) {
             case "TRANSFER", "CASH_OUT" -> 3.0; // Echivalent TRANSFER_INSTANT (fraud predominant)
-            case "PAYMENT", "DEBIT"     -> 1.0; // Echivalent TRANSFER_INTERNAL
-            case "CASH_IN"              -> 0.0; // Echivalent POS_PAYMENT (intrare fonduri)
-            default                     -> 1.0;
+            case "PAYMENT", "DEBIT" -> 1.0; // Echivalent TRANSFER_INTERNAL
+            case "CASH_IN" -> 0.0; // Echivalent POS_PAYMENT (intrare fonduri)
+            default -> 1.0;
         };
     }
 
@@ -117,15 +134,17 @@ public final class FraudFeatureEngine {
     /**
      * Grupa de risc ciclica pentru ora zilei. Evita functia liniara 0-23.
      * Grupe:
-     *   3.0 = Risc Maxim  → [1, 5]       (noapte tarziu: atacuri active)
-     *   2.0 = Risc Mediu  → {0, 6, 7, 23} (tranzitie zi/noapte: marginal)
-     *   1.0 = Risc Normal → restul orelor  (ziua)
+     * 3.0 = Risc Maxim → [1, 5] (noapte tarziu: atacuri active)
+     * 2.0 = Risc Mediu → {0, 6, 7, 23} (tranzitie zi/noapte: marginal)
+     * 1.0 = Risc Normal → restul orelor (ziua)
      *
      * @param hour ora zilei [0, 23]
      */
     public static double computeHourSuspicionFromClock(int hour) {
-        if (hour >= 1 && hour <= 5)                              return 3.0;
-        if (hour == 23 || hour == 0 || hour == 6 || hour == 7)  return 2.0;
+        if (hour >= 1 && hour <= 5)
+            return 3.0;
+        if (hour == 23 || hour == 0 || hour == 6 || hour == 7)
+            return 2.0;
         return 1.0;
     }
 
@@ -142,14 +161,16 @@ public final class FraudFeatureEngine {
     // -----------------------------------------------------------------------
 
     /**
-     * Procentul din contul senderului care paraseste contul intr-o singura tranzactie.
+     * Procentul din contul senderului care paraseste contul intr-o singura
+     * tranzactie.
      * Valoare 1.0 = contul este golit complet = semnatura Account Takeover (ATO).
      *
      * @param amount        suma tranzactiei
      * @param oldBalanceOrg soldul sender INAINTE de tranzactie (nullable → 0.0)
      */
     public static double computeSenderDepletionRatio(double amount, Double oldBalanceOrg) {
-        if (oldBalanceOrg == null || oldBalanceOrg <= 0) return 0.0;
+        if (oldBalanceOrg == null || oldBalanceOrg <= 0)
+            return 0.0;
         return Math.min(amount / oldBalanceOrg, 1.0);
     }
 
@@ -162,8 +183,7 @@ public final class FraudFeatureEngine {
      * Exemplu: 500.0 → 1.0 | 537.50 → 0.0
      */
     public static double computeRoundAmountFlag(double amount) {
-        return (amount % 100.0 == 0) ? 1.0 : 0.0;
+        return (Math.abs(amount % 100.0) < 0.01) ? 1.0 : 0.0;
     }
-
 
 }

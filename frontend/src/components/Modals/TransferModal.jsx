@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { transfer } from '@/services/accountService';
 import TransferConfirmation from '../TransferConfirmation';
+import StepUpModal from './StepUpModal';
 import { toast } from 'sonner';
 
 export default function TransferModal({ selectedAccount, onClose, onSuccess }) {
@@ -8,6 +9,8 @@ export default function TransferModal({ selectedAccount, onClose, onSuccess }) {
   const [transferStep, setTransferStep] = useState('form');
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [showStepUp, setShowStepUp] = useState(false);
+  const [stepUpError, setStepUpError] = useState('');
 
   const handleTransferSubmit = () => {
     setSubmitError('');
@@ -18,7 +21,7 @@ export default function TransferModal({ selectedAccount, onClose, onSuccess }) {
     setTransferStep('confirm');
   };
 
-  const handleTransferConfirm = async () => {
+  const handleTransferConfirm = async (totpCode = null) => {
     if (!selectedAccount) {
       toast.error('Source account is no longer available.');
       setTransferStep('form');
@@ -27,24 +30,42 @@ export default function TransferModal({ selectedAccount, onClose, onSuccess }) {
 
     setLoading(true);
     setSubmitError('');
+    setStepUpError('');
     try {
-      await transfer(selectedAccount.iban, transferForm.toIban.trim(), parseFloat(transferForm.amount));
+      await transfer(selectedAccount.iban, transferForm.toIban.trim(), parseFloat(transferForm.amount), totpCode);
       toast.success(`Transferred ${transferForm.amount} ${selectedAccount.currencyCode} successfully!`);
+      setShowStepUp(false);
       onSuccess();
       onClose();
     } catch (err) {
+      const status = err?.response?.status;
       const message = err?.response?.data?.message || err?.message || 'Transfer failed';
-      setSubmitError(message);
-      toast.error(message);
+      
+      if (status === 428 || status === 401) {
+        setStepUpError(message);
+        setShowStepUp(true);
+      } else {
+        setSubmitError(message);
+        toast.error(message);
+        setShowStepUp(false);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="glass rounded-2xl p-6 max-w-md w-full animate-fade-in" onClick={(e) => e.stopPropagation()}>
-        {transferStep === 'confirm' ? (
+    <>
+      {showStepUp && (
+        <StepUpModal
+          error={stepUpError}
+          onVerify={(code) => handleTransferConfirm(code)}
+          onCancel={() => setShowStepUp(false)}
+        />
+      )}
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
+        <div className="glass rounded-2xl p-6 max-w-md w-full animate-fade-in" onClick={(e) => e.stopPropagation()}>
+          {transferStep === 'confirm' ? (
           <TransferConfirmation
             fromAccount={selectedAccount}
             toIban={transferForm.toIban}
@@ -92,5 +113,6 @@ export default function TransferModal({ selectedAccount, onClose, onSuccess }) {
         )}
       </div>
     </div>
+    </>
   );
 }

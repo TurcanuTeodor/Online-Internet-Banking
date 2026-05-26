@@ -63,22 +63,30 @@ public final class ModelStore {
     public static class ModelSnapshot implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 2L;
+        // FIX #3: Bump la 3L deoarece am adaugat featureMins si featureMaxes.
+        // IMPORTANT: modelul .bin existent este incompatibil — trebuie RE-ANTRENAT!
+        private static final long serialVersionUID = 3L;
 
         public final IsolationForest model;
         public final double threshold;
         private final double[] featureMeans;
+        // FIX #3 — MinMaxScaler: limitele calculate pe setul de train.
+        // Aplicate identic la inferenta live pentru train/inference parity.
+        private final double[] featureMins;
+        private final double[] featureMaxes;
         public final String version;
         public final long trainedAtEpoch;
         public final double trainedFraudRate;
         public final int trainedOnRows;
 
         public ModelSnapshot(IsolationForest model, double threshold,
-                double[] featureMeans, String version,
-                double trainedFraudRate, int trainedOnRows) {
+                double[] featureMeans, double[] featureMins, double[] featureMaxes,
+                String version, double trainedFraudRate, int trainedOnRows) {
             this.model = model;
             this.threshold = threshold;
             this.featureMeans = featureMeans.clone();
+            this.featureMins  = featureMins.clone();
+            this.featureMaxes = featureMaxes.clone();
             this.version = version;
             this.trainedAtEpoch = System.currentTimeMillis();
             this.trainedFraudRate = trainedFraudRate;
@@ -87,6 +95,14 @@ public final class ModelStore {
 
         public double[] getFeatureMeans() {
             return java.util.Arrays.copyOf(featureMeans, featureMeans.length);
+        }
+
+        public double[] getFeatureMins() {
+            return java.util.Arrays.copyOf(featureMins, featureMins.length);
+        }
+
+        public double[] getFeatureMaxes() {
+            return java.util.Arrays.copyOf(featureMaxes, featureMaxes.length);
         }
     }
 
@@ -144,9 +160,19 @@ public final class ModelStore {
         double[] means = snapshot.getFeatureMeans();
         if (means == null || means.length != EXPECTED_FEATURE_COUNT) {
             throw new IllegalStateException(String.format(
-                    "Model corupt or incompatible: featureMeans.length=%s, expected %d. " +
-                            "Retrain the model with --fraud.tier3.trainer.mode=true.",
+                    "Model corupt or incompatibil: featureMeans.length=%s, expected %d. " +
+                            "Retrain the model with --fraud.tier3.trainer-mode=true.",
                     means == null ? "null" : means.length, EXPECTED_FEATURE_COUNT));
+        }
+
+        double[] mins = snapshot.getFeatureMins();
+        double[] maxes = snapshot.getFeatureMaxes();
+        if (mins == null || mins.length != EXPECTED_FEATURE_COUNT ||
+            maxes == null || maxes.length != EXPECTED_FEATURE_COUNT) {
+            throw new IllegalStateException(String.format(
+                    "Model corupt or incompatibil: featureMins/featureMaxes invalide (expected %d features). " +
+                            "Retrain the model with --fraud.tier3.trainer-mode=true.",
+                    EXPECTED_FEATURE_COUNT));
         }
 
         long trainedAgo = (System.currentTimeMillis() - snapshot.trainedAtEpoch) / (1000L * 60 * 60 * 24);

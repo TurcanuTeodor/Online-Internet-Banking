@@ -49,14 +49,19 @@ export const getBalanceByIban = async (iban) => {
  * @param {string} fromIban - Source account IBAN
  * @param {string} toIban - Destination account IBAN
  * @param {number} amount - Transfer amount
+ * @param {string} totpCode - Optional TOTP code for 2FA step-up
  * @returns {Promise} API response
  */
-export const transfer = async (fromIban, toIban, amount) => {
+export const transfer = async (fromIban, toIban, amount, totpCode = null) => {
+  const headers = {};
+  if (totpCode) {
+    headers['X-TOTP-Code'] = totpCode;
+  }
   const response = await apiClient.post('/accounts/transfer', {
     fromIban,
     toIban,
     amount,
-  });
+  }, { headers });
   return response.data;
 };
 

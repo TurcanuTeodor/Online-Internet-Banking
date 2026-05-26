@@ -132,6 +132,8 @@ services:
   frontend:
     build:
       context: ../frontend
+      args:
+        - VITE_STRIPE_PUBLISHABLE_KEY=${VITE_STRIPE_PUBLISHABLE_KEY}
     depends_on:
       api-gateway:
         condition: service_started

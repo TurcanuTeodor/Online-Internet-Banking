@@ -91,7 +91,8 @@ public class Tier3MlService {
         }
 
         // Feature engineering: request live → vector numeric (via FeatureVectorBuilder)
-        double[] features = FeatureVectorBuilder.build(req, scoring);
+        // FIX #3: Pasam snapshot pentru aplicarea MinMaxScaler (train/inference parity).
+        double[] features = FeatureVectorBuilder.build(req, scoring, snapshot);
 
         // Scorul de anomalie: [0, 1]. Mai aproape de 1 = mai suspect.
         double anomalyScore = snapshot.model.score(features);

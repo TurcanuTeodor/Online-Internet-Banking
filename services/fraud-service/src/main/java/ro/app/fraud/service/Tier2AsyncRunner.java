@@ -1,7 +1,5 @@
 package ro.app.fraud.service;
 
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,15 +7,11 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import ro.app.fraud.client.ExternalTransactionDto;
-import ro.app.fraud.client.TransactionRestClient;
 import ro.app.fraud.dto.FraudEvaluationRequest;
 import ro.app.fraud.model.entity.FraudDecision;
-import ro.app.fraud.model.entity.UserBehaviorProfile;
 import ro.app.fraud.model.enums.FraudDecisionStatus;
 import ro.app.fraud.model.enums.FraudTier;
 import ro.app.fraud.repository.FraudDecisionRepository;
-import ro.app.fraud.tier2.BehavioralScoringService;
 import ro.app.fraud.tier2.ScoringResult;
 import ro.app.fraud.tier3.MlVerdict;
 import ro.app.fraud.tier3.Tier3MlService;
@@ -29,21 +23,12 @@ public class Tier2AsyncRunner {
     private static final Logger log = LoggerFactory.getLogger(Tier2AsyncRunner.class);
 
     private final FraudDecisionRepository decisionRepo;
-    private final BehavioralScoringService scoringService;
-    private final BehaviorProfileService profileService;
-    private final TransactionRestClient transactionClient;
 
     @Autowired(required = false)
     private Tier3MlService tier3;
 
-    public Tier2AsyncRunner(FraudDecisionRepository decisionRepo,
-            BehavioralScoringService scoringService,
-            BehaviorProfileService profileService,
-            TransactionRestClient transactionClient) {
+    public Tier2AsyncRunner(FraudDecisionRepository decisionRepo) {
         this.decisionRepo = decisionRepo;
-        this.scoringService = scoringService;
-        this.profileService = profileService;
-        this.transactionClient = transactionClient;
     }
 
     /**
@@ -62,14 +47,11 @@ public class Tier2AsyncRunner {
                 return;
             }
 
-            // Need scoring result for Tier 3 feature vector
-            // Re-fetch history (already fetched in Tier2Sync, but async so we fetch again)
-            List<ExternalTransactionDto> history =
-                    transactionClient.getTransactionsByAccount(req.getAccountId());
-            UserBehaviorProfile profile =
-                    profileService.getOrCreate(req.getClientId());
-            ScoringResult scoring =
-                    scoringService.score(req, history, profile);
+            // FIX #12: Tier 3 NU foloseste ScoringResult in feature vector (FeatureVectorBuilder
+            // lucreaza exclusiv cu datele brute din FraudEvaluationRequest).
+            // Am eliminat cele 2 HTTP calls inutile (getTransactionsByAccount + score)
+            // care adaugau latenta si load pe transaction-service fara niciun beneficiu.
+            ScoringResult scoring = new ScoringResult(0.0, java.util.Map.of(), "N/A — Tier3 async only");
 
             if (tier3 == null) {
                 log.debug("Tier3 disabled — skipping async ML analysis");

@@ -304,6 +304,7 @@ public class AccountTransferService {
             body.put("accountAgeDays", accountAgeDays);
             // Soldul senderului pre-tranzactie — disponibil mereu (clientul nostru).
             body.put("oldBalanceOrg", from.getBalance().doubleValue());
+            body.put("transactionHour", LocalDateTime.now().getHour());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);

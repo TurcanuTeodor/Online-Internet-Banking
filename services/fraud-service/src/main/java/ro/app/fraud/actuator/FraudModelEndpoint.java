@@ -91,6 +91,21 @@ public class FraudModelEndpoint {
         long trainedAt = tier3MlService.getModelTrainedAt();
         if (trainedAt > 0) {
             response.put("trained_at", ISO_FORMATTER.format(Instant.ofEpochMilli(trainedAt)));
+
+            // FIX #5: Concept drift awareness — modelul antrenat pe PaySim (2017) poate
+            // deveni progresiv mai putin eficient daca patternurile de frauda se schimba.
+            // model_age_days este expus ca metric operational pentru echipa MLOps.
+            long ageDays = (System.currentTimeMillis() - trainedAt) / (1000L * 60 * 60 * 24);
+            response.put("model_age_days", ageDays);
+
+            // Drift warning: dupa 90 zile in productie, reantrenarea este recomandata.
+            // Aceasta este o limita operationala, nu o garantie statistica.
+            if (ageDays > 90) {
+                response.put("drift_warning",
+                    String.format("Model has %d days in production (>90 days). " +
+                        "Consider retraining with fresh labeled data to prevent concept drift. " +
+                        "Monitor PSI (Population Stability Index) on anomaly score distribution.", ageDays));
+            }
         }
 
         response.put("details", "ML model is trained and ready for inference on anomaly detection");

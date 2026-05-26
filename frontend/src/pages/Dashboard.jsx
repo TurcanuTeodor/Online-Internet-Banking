@@ -16,7 +16,6 @@ import UserTransactionsTab from '../components/UserTransactionsTab';
 import UserPaymentsTab from '../components/UserPaymentsTab';
 import OnboardingCard from '../components/OnboardingCard';
 import SearchOverlay from '../components/SearchOverlay';
-import NotificationCenter, { useNotifications } from '../components/NotificationCenter';
 import SecurityCenterTab from '../components/SecurityCenterTab';
 import TableSkeleton from '../components/TableSkeleton';
 
@@ -38,7 +37,6 @@ export default function Dashboard() {
 
   const [showBalances, setShowBalances] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
-  const { notifications, addNotification, markAllRead, clearAll, unreadCount } = useNotifications();
   
   const [activeModal, setActiveModal] = useState(null);
   const [selectedAccount, setSelectedAccount] = useState(null);
@@ -203,7 +201,6 @@ export default function Dashboard() {
             <button onClick={() => setShowSearch(true)} className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors" title="Search (Ctrl+K)">
               <Search className="w-5 h-5" />
             </button>
-            <NotificationCenter notifications={notifications} unreadCount={unreadCount} onMarkAllRead={markAllRead} onClearAll={clearAll} />
             {sub && (
               <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-sm" title={sub}>
                 {sub.substring(0, 2).toUpperCase()}
