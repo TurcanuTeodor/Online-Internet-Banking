@@ -18,6 +18,8 @@ public class FraudDecisionDTO {
     private double riskScore;
     private String ruleHits;
     private String explanation;
+    private Double amount;
+    private String currencyCode;
     private String reviewedByAdmin;
     private String adminNotes;
     private FraudUserResolution userResolution;
@@ -55,6 +57,12 @@ public class FraudDecisionDTO {
 
     public String getExplanation() { return explanation; }
     public void setExplanation(String explanation) { this.explanation = explanation; }
+
+    public Double getAmount() { return amount; }
+    public void setAmount(Double amount) { this.amount = amount; }
+
+    public String getCurrencyCode() { return currencyCode; }
+    public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
 
     public String getReviewedByAdmin() { return reviewedByAdmin; }
     public void setReviewedByAdmin(String reviewedByAdmin) { this.reviewedByAdmin = reviewedByAdmin; }

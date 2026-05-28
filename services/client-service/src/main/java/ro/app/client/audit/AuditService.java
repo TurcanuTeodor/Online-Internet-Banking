@@ -14,6 +14,8 @@ public class AuditService {
     public static final String ADMIN_CLIENT_LIST  = "ADMIN_CLIENT_LIST";
     /** Admin suspended a client account. */
     public static final String ACCOUNT_FREEZE     = "ACCOUNT_FREEZE";
+    /** Admin reactivated a suspended client account. */
+    public static final String ACCOUNT_REACTIVATE = "ACCOUNT_REACTIVATE";
     /** Admin or system soft-deleted a client. */
     public static final String CLIENT_DELETE      = "CLIENT_DELETE";
     /** GDPR right-to-erasure applied for a client. */

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { logout } from '@/services/authService';
-import { getAllClientsFromView, suspendClient } from '@/services/clientService';
+import { getAllClientsFromView, suspendClient, reactivateClient } from '@/services/clientService';
 import { getAllTransactionsFromView } from '@/services/transactionService';
 import { getAllAccountsFromView } from '@/services/accountService';
 import { logSensitiveDataReveal } from '@/services/adminAuditService';
@@ -65,6 +65,10 @@ export default function AdminDashboard() {
   const [accountToFreeze, setAccountToFreeze] = useState(null);
   const [showCloseAccountModal, setShowCloseAccountModal] = useState(false);
   const [accountToClose, setAccountToClose] = useState(null);
+  const [showReactivateModal, setShowReactivateModal] = useState(false);
+  const [clientToReactivate, setClientToReactivate] = useState(null);
+  const [showUnfreezeAccountModal, setShowUnfreezeAccountModal] = useState(false);
+  const [accountToUnfreeze, setAccountToUnfreeze] = useState(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState(null);
   const [showAccountSensitiveData, setShowAccountSensitiveData] = useState(false);
   const [showTransactionSensitiveData, setShowTransactionSensitiveData] = useState(false);
@@ -202,6 +206,23 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleReactivateClient = (client) => {
+    setClientToReactivate(client);
+    setShowReactivateModal(true);
+  };
+
+  const confirmReactivate = async () => {
+    if (!clientToReactivate?.clientId) return;
+    try {
+      await reactivateClient(clientToReactivate.clientId);
+      setShowReactivateModal(false);
+      setClientToReactivate(null);
+      fetchAllData();
+    } catch (err) {
+      console.error('Error reactivating client:', err);
+    }
+  };
+
   const handleViewAccountStatement = (account) => {
     setSelectedAccountForStatement(account);
     setShowAccountStatementModal(true);
@@ -269,6 +290,23 @@ export default function AdminDashboard() {
       fetchAllData();
     } catch (err) {
       console.error('Error closing account:', err);
+    }
+  };
+
+  const handleUnfreezeAccount = (account) => {
+    setAccountToUnfreeze(account);
+    setShowUnfreezeAccountModal(true);
+  };
+
+  const confirmUnfreezeAccount = async () => {
+    try {
+      const { unfreezeAccount } = await import('@/services/accountService');
+      await unfreezeAccount(accountToUnfreeze.accountId);
+      setShowUnfreezeAccountModal(false);
+      setAccountToUnfreeze(null);
+      fetchAllData();
+    } catch (err) {
+      console.error('Error unfreezing account:', err);
     }
   };
 
@@ -415,6 +453,7 @@ export default function AdminDashboard() {
                   onViewDetails={handleViewClientDetails}
                   onViewAccounts={handleViewClientAccounts}
                   onSuspend={handleSuspendClient}
+                  onReactivate={handleReactivateClient}
                 />
               )}
 
@@ -428,6 +467,7 @@ export default function AdminDashboard() {
                   onToggleFilters={() => setShowAccountFilters(!showAccountFilters)}
                   onViewStatement={handleViewAccountStatement}
                   onFreezeAccount={handleFreezeAccount}
+                  onUnfreezeAccount={handleUnfreezeAccount}
                   onCloseAccount={handleCloseAccount}
                   showSensitiveData={showAccountSensitiveData}
                   onRequestSensitiveReveal={() => handleRequestSensitiveReveal({
@@ -459,7 +499,7 @@ export default function AdminDashboard() {
               {activeTab === 'fraud' && (
                 <div className="space-y-6">
                   <FraudAlertsTab />
-                  <FraudCommandCenter transactions={transactions} clients={clients} fraudAlerts={fraudAlertsForCharts} />
+                  <FraudCommandCenter clients={clients} fraudAlerts={fraudAlertsForCharts} />
                 </div>
               )}
 
@@ -520,6 +560,24 @@ export default function AdminDashboard() {
         danger
         onConfirm={confirmCloseAccount}
         onCancel={() => { setShowCloseAccountModal(false); setAccountToClose(null); }}
+      />
+
+      <ConfirmDialog
+        open={showReactivateModal}
+        title="Reactivate this client?"
+        description={`This will reactivate client ID ${clientToReactivate?.clientId || ''}. The client will regain full access to their accounts and services.`}
+        confirmLabel="Reactivate Client"
+        onConfirm={confirmReactivate}
+        onCancel={() => { setShowReactivateModal(false); setClientToReactivate(null); }}
+      />
+
+      <ConfirmDialog
+        open={showUnfreezeAccountModal}
+        title="Reactivate this account?"
+        description={`This will reactivate account ${accountToUnfreeze?.accountIban || ''}. The account status will change from SUSPENDED back to ACTIVE.`}
+        confirmLabel="Reactivate Account"
+        onConfirm={confirmUnfreezeAccount}
+        onCancel={() => { setShowUnfreezeAccountModal(false); setAccountToUnfreeze(null); }}
       />
 
       {selectedTransactionId != null && (

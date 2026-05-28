@@ -131,4 +131,18 @@ public class ClientProfileService {
             clientRepository.save(client);
         }
     }
+
+    @Transactional
+    public void reactivateClient(@NotNull Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
+
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+        if (!client.isActive()) {
+            client.setActive(true);
+            clientRepository.save(client);
+        }
+    }
 }

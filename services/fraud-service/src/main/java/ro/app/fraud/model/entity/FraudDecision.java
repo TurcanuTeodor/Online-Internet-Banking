@@ -57,6 +57,12 @@ public class FraudDecision {
     @Column(name = "EXPLANATION")
     private String explanation;
 
+    @Column(name = "AMOUNT")
+    private Double amount;
+
+    @Column(name = "CURRENCY_CODE", length = 10)
+    private String currencyCode;
+
     @Column(name = "REVIEWED_BY_ADMIN")
     private String reviewedByAdmin;
 
@@ -113,6 +119,12 @@ public class FraudDecision {
 
     public String getExplanation() { return explanation; }
     public void setExplanation(String explanation) { this.explanation = explanation; }
+
+    public Double getAmount() { return amount; }
+    public void setAmount(Double amount) { this.amount = amount; }
+
+    public String getCurrencyCode() { return currencyCode; }
+    public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
 
     public String getReviewedByAdmin() { return reviewedByAdmin; }
     public void setReviewedByAdmin(String reviewedByAdmin) { this.reviewedByAdmin = reviewedByAdmin; }

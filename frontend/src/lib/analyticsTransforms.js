@@ -4,6 +4,12 @@ function toNumber(value) {
 }
 
 function toDate(value) {
+  if (!value) return null;
+  if (Array.isArray(value)) {
+    const [y, m, d, h = 0, min = 0, s = 0] = value;
+    const date = new Date(y, m - 1, d, h, min, s);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -211,6 +217,18 @@ export function prepareClientRiskDistributionData(clients) {
   return Object.entries(base).map(([level, value]) => ({ level, value }));
 }
 
+export function prepareAlertStatusDistributionData(fraudAlerts) {
+  const totals = {};
+  (Array.isArray(fraudAlerts) ? fraudAlerts : []).forEach((alert) => {
+    const raw = (alert?.status || 'UNKNOWN').toString().trim().toUpperCase();
+    totals[raw] = (totals[raw] || 0) + 1;
+  });
+
+  return Object.entries(totals)
+    .map(([level, value]) => ({ level, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
 // ----------------------------------------------------------------------------
 // NEW FINTECH & BUSINESS KPIs (Admin + User)
 // ----------------------------------------------------------------------------
@@ -307,3 +325,69 @@ export function prepareTransactionTypeDistribution(transactions) {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 }
+
+// ----------------------------------------------------------------------------
+// FRAUD ALERT-BASED CHART TRANSFORMS
+// Used by FraudCommandCenter — fraud alerts have amount/riskScore directly,
+// so we don't need to join with transactions by transactionId.
+// ----------------------------------------------------------------------------
+
+/**
+ * Converts an array of fraud alert DTOs into scatter plot data points.
+ * Each point = { amount, riskScore, highRisk, status, accountId, date, currencyCode, id }
+ */
+export function prepareAlertScatterData(fraudAlerts) {
+  return (Array.isArray(fraudAlerts) ? fraudAlerts : []).map((alert) => {
+    const amount = toNumber(alert?.amount);
+    const riskScore = normalizeRiskScore(alert?.riskScore);
+    const status = String(alert?.status || '');
+    const highRisk = riskScore > 70 || status === 'BLOCK' || status === 'FLAG' || status === 'STEP_UP_REQUIRED';
+    return {
+      id: alert?.id ?? `alert-${amount}-${riskScore}`,
+      amount,
+      riskScore,
+      highRisk,
+      status,
+      accountId: alert?.accountId ?? null,
+      currencyCode: alert?.currencyCode ?? 'EUR',
+      date: alert?.createdAt ?? null,
+      // For tooltip compatibility with ScatterTooltip
+      type: 'Fraud Alert',
+      sign: '-',
+      flagged: highRisk,
+    };
+  });
+}
+
+/**
+ * Builds a daily high-risk alert count for the line chart.
+ * Counts fraud alerts (FLAG, BLOCK, STEP_UP_REQUIRED) per day over the last `days` days.
+ */
+export function prepareAlertRiskOverTime(fraudAlerts, days = 30) {
+  const safeDays = Number.isInteger(days) && days > 0 ? days : 30;
+  const now = new Date();
+  const dayList = Array.from({ length: safeDays }, (_, idx) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - (safeDays - 1 - idx));
+    const iso = d.toISOString().slice(0, 10);
+    return {
+      date: iso,
+      label: formatDayLabel(iso),
+      highRiskCount: 0,
+    };
+  });
+
+  const byDay = new Map(dayList.map((x) => [x.date, x]));
+  const alertStatuses = new Set(['FLAG', 'BLOCK', 'STEP_UP_REQUIRED', 'MANUAL_REVIEW']);
+
+  (Array.isArray(fraudAlerts) ? fraudAlerts : []).forEach((alert) => {
+    const status = String(alert?.status || '');
+    if (!alertStatuses.has(status)) return;
+    const key = dayKey(alert?.createdAt);
+    if (!byDay.has(key)) return;
+    byDay.get(key).highRiskCount += 1;
+  });
+
+  return dayList;
+}
+

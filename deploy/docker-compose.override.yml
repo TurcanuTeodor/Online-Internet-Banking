@@ -25,22 +25,32 @@ services:
   auth-service:
     environment:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8081:8081"
 
   client-service:
     environment:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8082:8082"
 
   account-service:
     environment:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8083:8083"
 
   transaction-service:
     environment:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8084:8084"
 
   payment-service:
     environment:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8085:8085"
 
   fraud-service:
     environment:

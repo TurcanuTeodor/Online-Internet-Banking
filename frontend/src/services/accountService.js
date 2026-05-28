@@ -83,3 +83,13 @@ export const freezeAccount = async (accountId) => {
   const response = await apiClient.post(`/accounts/${accountId}/freeze`);
   return response.data;
 };
+
+/**
+ * Unfreeze / reactivate an account (set status back to ACTIVE)
+ * @param {number} accountId - Account ID
+ * @returns {Promise} Reactivated account details
+ */
+export const unfreezeAccount = async (accountId) => {
+  const response = await apiClient.post(`/accounts/${accountId}/unfreeze`);
+  return response.data;
+};

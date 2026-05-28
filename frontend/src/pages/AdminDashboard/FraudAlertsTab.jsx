@@ -6,16 +6,16 @@ import {
 import { getFraudAlerts, reviewFraudDecision } from '@/services/fraudService';
 
 const STATUS_CONFIG = {
-  BLOCK:         { label: 'BLOCK',          cls: 'badge-block',  icon: ShieldAlert },
-  FLAG:          { label: 'FLAG',           cls: 'badge-flag',   icon: AlertTriangle },
-  MANUAL_REVIEW: { label: 'MANUAL REVIEW',  cls: 'badge-review', icon: Clock },
-  ALLOW:         { label: 'ALLOW',          cls: 'badge-allow',  icon: CheckCircle },
+  BLOCK: { label: 'BLOCK', cls: 'badge-block', icon: ShieldAlert },
+  FLAG: { label: 'FLAG', cls: 'badge-flag', icon: AlertTriangle },
+  MANUAL_REVIEW: { label: 'MANUAL REVIEW', cls: 'badge-review', icon: Clock },
+  ALLOW: { label: 'ALLOW', cls: 'badge-allow', icon: CheckCircle },
 };
 
 const TIER_CONFIG = {
-  TIER1_RULES:      { label: 'Tier 1',      cls: 'badge-tier1' },
-  TIER2_BEHAVIORAL: { label: 'Tier 2',      cls: 'badge-tier2' },
-  TIER3_LLM:        { label: 'Tier 3 LLM',  cls: 'badge-flag' },
+  TIER1_RULES: { label: 'Tier 1', cls: 'badge-tier1' },
+  TIER2_BEHAVIORAL: { label: 'Tier 2', cls: 'badge-tier2' },
+  TIER3_LLM: { label: 'Tier 3 LLM', cls: 'badge-flag' },
 };
 
 function StatusBadge({ status }) {
@@ -90,13 +90,13 @@ function ReviewModal({ decision, onClose, onReviewed }) {
           ].map((item) => {
             const Icon = item.icon;
             return (
-            <div key={item.label} className="bg-zinc-900/60 rounded-xl p-3 border border-white/5">
-              <div className="flex items-center gap-1.5 text-zinc-500 mb-1">
-                <Icon className="w-3 h-3" />
-                <span className="text-xs">{item.label}</span>
+              <div key={item.label} className="bg-zinc-900/60 rounded-xl p-3 border border-white/5">
+                <div className="flex items-center gap-1.5 text-zinc-500 mb-1">
+                  <Icon className="w-3 h-3" />
+                  <span className="text-xs">{item.label}</span>
+                </div>
+                <p className="font-semibold text-sm">{item.value ?? '—'}</p>
               </div>
-              <p className="font-semibold text-sm">{item.value ?? '—'}</p>
-            </div>
             );
           })}
         </div>
@@ -166,7 +166,7 @@ export default function FraudAlertsTab() {
   const [serviceDown, setServiceDown] = useState(false);
   const [reviewTarget, setReviewTarget] = useState(null);
 
-  const PAGE_SIZE = 15;
+  const PAGE_SIZE = 5;
 
   const fetchAlerts = useCallback(async () => {
     setLoading(true);
@@ -278,7 +278,14 @@ export default function FraudAlertsTab() {
                       <td className="px-4 py-3 text-zinc-300">{alert.clientId ?? '—'}</td>
                       <td className="px-4 py-3 text-zinc-400 text-xs font-mono">{alert.accountId ?? '—'}</td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={alert.status} />
+                        <div className="flex flex-col gap-1 items-start">
+                          <StatusBadge status={alert.status} />
+                          {alert.userResolution === 'FRAUD_REPORTED' && (
+                            <span className="badge bg-red-500/20 text-red-300 border border-red-500/30 text-[10px]">
+                              USER REPORTED
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <RiskBar score={alert.riskScore} />

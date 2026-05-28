@@ -23,6 +23,7 @@ export default function AccountsTab({
   onToggleFilters,
   onViewStatement,
   onFreezeAccount,
+  onUnfreezeAccount,
   onCloseAccount,
   showSensitiveData,
   onRequestSensitiveReveal,
@@ -218,6 +219,11 @@ export default function AccountsTab({
                                 onClick: () => onFreezeAccount(acc),
                                 disabled: st !== 'ACTIVE',
                                 danger: false,
+                              },
+                              {
+                                label: 'Reactivate account',
+                                onClick: () => onUnfreezeAccount(acc),
+                                disabled: st !== 'SUSPENDED',
                               },
                               {
                                 label: 'Close account',

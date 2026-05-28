@@ -77,6 +77,14 @@ export const suspendClient = async (clientId) => {
 };
 
 /**
+ * Admin: reactivate a suspended client (sets active=true). Idempotent if already active.
+ * @param {number} clientId
+ */
+export const reactivateClient = async (clientId) => {
+  await apiClient.put(`/clients/${clientId}/reactivate`);
+};
+
+/**
  * Get all clients from view (read-only)
  * @returns {Promise} List of all clients
  */

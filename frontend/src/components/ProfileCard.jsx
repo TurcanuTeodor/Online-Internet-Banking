@@ -8,17 +8,9 @@ function pick(...values) {
 }
 
 function Avatar({ name }) {
-  const initials = (name || '?')
-    .split(' ')
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
   return (
-    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/30 to-emerald-600/20 border border-emerald-500/20 flex items-center justify-center text-2xl font-bold text-emerald-300 shrink-0">
-      {initials}
+    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/30 to-emerald-600/20 border border-emerald-500/20 flex items-center justify-center text-emerald-300 shrink-0">
+      <User className="w-8 h-8 opacity-80" />
     </div>
   );
 }

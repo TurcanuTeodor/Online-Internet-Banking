@@ -40,9 +40,11 @@ export default function TransferModal({ selectedAccount, onClose, onSuccess }) {
     } catch (err) {
       const status = err?.response?.status;
       const message = err?.response?.data?.message || err?.message || 'Transfer failed';
-      
-      if (status === 428 || status === 401) {
-        setStepUpError(message);
+
+      if (status === 428) {
+        // First trigger (totpCode null) → open modal cleanly, no error shown yet.
+        // Subsequent triggers (totpCode provided but wrong) → show error inside modal.
+        setStepUpError(totpCode ? message : '');
         setShowStepUp(true);
       } else {
         setSubmitError(message);
@@ -72,7 +74,7 @@ export default function TransferModal({ selectedAccount, onClose, onSuccess }) {
             amount={parseFloat(transferForm.amount)}
             loading={loading}
             errorMessage={submitError}
-            onConfirm={handleTransferConfirm}
+            onConfirm={() => handleTransferConfirm()}
             onBack={() => {
               setSubmitError('');
               setTransferStep('form');

@@ -31,6 +31,11 @@ public interface FraudDecisionRepository extends JpaRepository<FraudDecision, Lo
             FraudUserResolution userResolution,
             Pageable pageable);
 
+    Page<FraudDecision> findByStatusInAndUserResolutionIn(
+            List<FraudDecisionStatus> statuses,
+            List<FraudUserResolution> userResolutions,
+            Pageable pageable);
+
     Page<FraudDecision> findByStatus(FraudDecisionStatus status, Pageable pageable);
 
     Page<FraudDecision> findByStatusIn(List<FraudDecisionStatus> statuses, Pageable pageable);

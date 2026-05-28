@@ -266,13 +266,14 @@ public class AccountTransferService {
                 throw new StepUpRequiredException("2FA must be enabled to perform this action.");
             }
             if (code == 401) {
-                throw new BusinessRuleViolationException("Invalid 2FA code.");
+                // Invalid TOTP code — return 428 so frontend re-shows the OTP input modal
+                throw new StepUpRequiredException("Invalid 2FA code. Please try again with a fresh code from your authenticator app.");
             }
             log.warn("Step-up verification call failed: {} {}", code, e.getMessage());
-            throw new BusinessRuleViolationException("Could not verify 2FA code.");
+            throw new StepUpRequiredException("Could not verify 2FA code. Please try again.");
         } catch (Exception e) {
             log.warn("Step-up verification call failed: {}", e.getMessage());
-            throw new BusinessRuleViolationException("Could not verify 2FA code.");
+            throw new StepUpRequiredException("Could not verify 2FA code. Please try again.");
         }
     }
 

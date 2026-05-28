@@ -117,4 +117,11 @@ public class AccountController {
         Account account = accountService.freezeAccount(accountId);
         return ResponseEntity.ok(AccountMapper.toDTO(account));
     }
+
+    // 8) Unfreeze / reactivate account (set status back to ACTIVE)
+    @PostMapping("/{accountId}/unfreeze")
+    public ResponseEntity<AccountDTO> unfreeze(@PathVariable Long accountId) {
+        Account account = accountService.unfreezeAccount(accountId);
+        return ResponseEntity.ok(AccountMapper.toDTO(account));
+    }
 }

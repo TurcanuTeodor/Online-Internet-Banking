@@ -6,24 +6,10 @@ services:
       - postgres-prod-data:/var/lib/postgresql/data
 
   auth-service:
-    ports:
-      - "8081:8081"
-
   client-service:
-    ports:
-      - "8082:8082"
-
   account-service:
-    ports:
-      - "8083:8083"
-
   transaction-service:
-    ports:
-      - "8084:8084"
-
   payment-service:
-    ports:
-      - "8085:8085"
 
   fraud-service:
     expose:

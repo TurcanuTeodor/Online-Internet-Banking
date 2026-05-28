@@ -29,6 +29,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/accounts/view").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/accounts/audit/reveal-events").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/accounts/*/freeze").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/accounts/*/unfreeze").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/accounts/*/close").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/accounts/audit/reveal").hasRole("ADMIN")
                 //ADMIN & USER endpoints

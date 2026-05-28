@@ -17,6 +17,7 @@ export default function ClientsTab({
   onViewDetails,
   onViewAccounts,
   onSuspend,
+  onReactivate,
 }) {
   const getClientTypes = () => {
     const types = new Set(clients.map((c) => clientTypeOf(c)).filter(Boolean));
@@ -183,6 +184,11 @@ export default function ClientsTab({
                               onClick: () => onSuspend(client),
                               disabled: !client.active,
                               danger: true,
+                            },
+                            {
+                              label: 'Reactivate client',
+                              onClick: () => onReactivate(client),
+                              disabled: client.active,
                             },
                           ]}
                         />

@@ -201,11 +201,6 @@ export default function Dashboard() {
             <button onClick={() => setShowSearch(true)} className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors" title="Search (Ctrl+K)">
               <Search className="w-5 h-5" />
             </button>
-            {sub && (
-              <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-sm" title={sub}>
-                {sub.substring(0, 2).toUpperCase()}
-              </div>
-            )}
             {!twoFaEnabled && (
               <button onClick={handleSetup2FA} className="btn-secondary flex items-center gap-2 text-sm px-3 py-2 md:text-base md:px-4">
                 <Shield className="w-4 h-4 shrink-0" />

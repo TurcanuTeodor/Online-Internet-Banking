@@ -130,6 +130,18 @@ public class ClientController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Admin: reactivate a suspended client (active=true). Idempotent if already active. */
+    @PutMapping("/{id}/reactivate")
+    public ResponseEntity<Void> reactivate(
+            @PathVariable Long id,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        clientProfileService.reactivateClient(id);
+        Long actorClientId = principal != null ? principal.clientId() : null;
+        String role = principal != null ? principal.role() : "UNKNOWN";
+        auditService.log(AuditService.ACCOUNT_REACTIVATE, actorClientId, role, id, "Client reactivated (active=true)");
+        return ResponseEntity.noContent().build();
+    }
+
     /** USER: decrypted own row from client_readonly view (PII visible only to self). */
     @GetMapping("/view/me")
     public ResponseEntity<ViewClientDTO> viewMe(@AuthenticationPrincipal JwtPrincipal principal) {

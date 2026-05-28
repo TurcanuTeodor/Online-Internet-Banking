@@ -80,6 +80,8 @@ public class FraudService {
         decision.setRiskScore(tier1.riskScore());
         decision.setRuleHits(tier1.ruleHits());
         decision.setExplanation(tier1.explanation());
+        decision.setAmount(req.getAmount());
+        decision.setCurrencyCode(req.getCurrency());
 
         decision = decisionRepo.save(decision);
 
@@ -147,9 +149,17 @@ public class FraudService {
         Set<FraudDecisionStatus> alertStatuses = EnumSet.of(
                 FraudDecisionStatus.FLAG,
                 FraudDecisionStatus.BLOCK,
-                FraudDecisionStatus.MANUAL_REVIEW
+                FraudDecisionStatus.MANUAL_REVIEW,
+                FraudDecisionStatus.STEP_UP_REQUIRED
         );
-        return decisionRepo.findByStatusInAndUserResolution(List.copyOf(alertStatuses), FraudUserResolution.PENDING, pageable)
+        // Include both PENDING (unresolved) and FRAUD_REPORTED (user flagged as fraud)
+        // so admin can review and take action on user-reported fraud cases.
+        List<FraudUserResolution> visibleResolutions = List.of(
+                FraudUserResolution.PENDING,
+                FraudUserResolution.FRAUD_REPORTED
+        );
+        return decisionRepo.findByStatusInAndUserResolutionIn(
+                List.copyOf(alertStatuses), visibleResolutions, pageable)
             .map(this::toDto);
     }
 
@@ -248,6 +258,8 @@ public class FraudService {
         dto.setRiskScore(d.getRiskScore());
         dto.setRuleHits(d.getRuleHits());
         dto.setExplanation(d.getExplanation());
+        dto.setAmount(d.getAmount());
+        dto.setCurrencyCode(d.getCurrencyCode());
         dto.setReviewedByAdmin(d.getReviewedByAdmin());
         dto.setAdminNotes(d.getAdminNotes());
         dto.setUserResolution(d.getUserResolution());
