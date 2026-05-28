@@ -2,6 +2,11 @@ package ro.app.fraud.tier3;
 
 import smile.anomaly.IsolationForest;
 
+// — Perturbation Analysis pentru explicabilitate
+
+// DE CE?
+// Isolation Forest e un model black-box: ofera un scor de anomalie, dar nu explica DE CE o tranzactie e considerata frauduloasa.
+
 public final class PerturbationAnalyzer {
     
     private PerturbationAnalyzer() {}

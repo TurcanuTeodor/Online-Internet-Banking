@@ -4,26 +4,10 @@ import java.util.Arrays;
 
 /**
  * Construiește textul de explicație al verdictului ML pentru utilizator/admin.
- *
- * Etichetele din FEATURE_NAMES sunt mapate 1:1 cu ordinea vectorului produs
- * de FraudFeatureEngine si asamblat de PaySimFeatureMapper / FeatureVectorBuilder:
- *
- *   [0] amountRatio          → "unusually large transaction amount"
- *   [1] typeRisk             → "high-risk transaction type (external / instant)"
- *   [2] hourSuspicion        → "transaction during suspicious night-time hours"
- *   [3] newAccountFlag       → "new or recently opened sender account"
- *   [4] senderDepletionRatio → "sender account heavily or fully drained"
- *   [5] isRoundAmount        → "suspiciously round transaction amount"
- *
- * IMPORTANT: Daca ordinea vectorului se schimba in FraudFeatureEngine,
- * actualizeaza si acest array in consecinta.
  */
 public final class ReasoningBuilder {
 
-    /**
-     * Etichete human-readable aliniate 1:1 cu vectorul de 6 features PSD2.
-     * Ordinea trebuie sa corespunda exact cu FraudFeatureEngine.
-     */
+    
     public static final String[] FEATURE_NAMES = {
         "unusually large transaction amount",                       // [0] amountRatio
         "high-risk transaction type (external / instant)",          // [1] typeRisk
@@ -37,11 +21,6 @@ public final class ReasoningBuilder {
 
     /**
      * Generează explicația textuală a verdictului ML.
-     *
-     * @param flagged      true dacă tranzacția a fost marcată ca suspectă
-     * @param anomalyScore scorul de anomalie brut din IsolationForest [0,1]
-     * @param importances  importanțele per feature calculate de PerturbationAnalyzer
-     * @return text descriptiv pentru audit trail / notificare utilizator
      */
     public static String build(boolean flagged, double anomalyScore, double[] importances) {
         double total = Arrays.stream(importances).sum();

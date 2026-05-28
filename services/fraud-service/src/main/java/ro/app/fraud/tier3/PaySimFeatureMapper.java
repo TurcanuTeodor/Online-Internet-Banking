@@ -1,9 +1,7 @@
 package ro.app.fraud.tier3;
 
 /**
- * =====================================================================
  * — Adaptor de Antrenament (PaySim → Vector PSD2)
- * =====================================================================
  *
  * ROL:
  *     1. Extrage valorile brute din campurile PaySimRow

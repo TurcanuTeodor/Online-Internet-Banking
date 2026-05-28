@@ -13,9 +13,7 @@ import ro.app.fraud.config.FraudProperties;
 import smile.anomaly.IsolationForest;
 
 /**
- * =====================================================================
  * — Antrenor Offline al Modelului Isolation Forest
- * =====================================================================
  *
  * DE CE CommandLineRunner?
  * --------------------------
@@ -32,10 +30,10 @@ import smile.anomaly.IsolationForest;
  * 1. Citire CSV PaySim (sub-sampling 150.000 linii)
  * 2. Feature engineering via PaySimFeatureMapper
  * 3. Shuffle reproductibil (seed fix) pentru a amesteca normal/fraud
- * 4. FIX #11: Split STRATIFIED 80/20 — garanteaza aceeasi rata fraud/normal
- * 5. FIX #3:  MinMaxScaler pe train set, mins/maxes salvate in snapshot
- * 6. FIX #2:  IsolationForest.fit cu contamination DINAMIC = rata reala de fraude
- * 7. FIX #4:  Calibrare threshold cu F_beta (beta=0.5, favorizeaza Precision)
+ * 4. Split STRATIFIED 80/20 — garanteaza aceeasi rata fraud/normal
+ * 5. MinMaxScaler pe train set, mins/maxes salvate in snapshot
+ * 6. IsolationForest.fit cu contamination DINAMIC = rata reala de fraude
+ * 7. Calibrare threshold cu F_beta (beta=0.5, favorizeaza Precision)
  * 8. Evaluare finala: Precision, Recall, F0.5, F1, AUC-ROC
  * 9. Salvare pe disc via ModelStore (include featureMins/featureMaxes)
  * 10. System.exit(0) - aplicatia se opreste
@@ -44,7 +42,7 @@ import smile.anomaly.IsolationForest;
  * -----------
  * java -jar fraud-service.jar \
  *   --fraud.tier3.trainer-mode=true \
- *   --fraud.tier3.pay-sim-csv-path=/data/PS_20174392719_1491204439457_log.csv \
+ *   --fraud.tier3.pay-sim-csv-path= src\main\resources\ml\paysim_sample.csv \
  *   --fraud.tier3.model-path=/data/isolation_forest_model.bin
  */
 @Component
@@ -53,15 +51,15 @@ public class ModelTrainerCli implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(ModelTrainerCli.class);
 
-    private static final int IF_NUM_TREES  = 50;  // 50 arbori = bun echilibru dimensiune/calitate pe PaySim
-    private static final int IF_MAX_DEPTH  = 10;  // adâncime maximă arbore — Smile 3.x: al 3-lea param este maxDepth, NU subsampleSize!
+    private static final int IF_NUM_TREES = 50;  // 50 arbori = bun echilibru dimensiune/calitate pe PaySim
+    private static final int IF_MAX_DEPTH = 10;  // adâncime maximă arbore — Smile 3.x: al 3-lea param este maxDepth, NU subsampleSize!
                                                    // Formula: ceil(log2(256)) = 8; folosim 10 pt. margine de siguranță.
-    private static final int IF_SEED       = 0;   // seed SMILE intern
+    private static final int IF_SEED = 0;   // seed SMILE intern
 
-    // FIX #4: F_beta cu beta=0.5 — in banking, un False Positive (blocare tranzactie legitima)
+    // F_beta cu beta=0.5 — in banking, un False Positive (blocare tranzactie legitima)
     // costa experienta utilizatorului, iar False Negative (frauda nedetectata) costa bani.
     // beta=0.5 → Precision cantarita DUBLU fata de Recall.
-    // Justificare academica: reducerea alarmelor false protejeaza UX, iar Tier1+Tier2 captureaza
+    // Justificare : reducerea alarmelor false protejeaza UX, iar Tier1+Tier2 captureaza
     // cazurile evidente deterministic.
     private static final double FBETA_BETA = 0.5;
 
@@ -78,7 +76,7 @@ public class ModelTrainerCli implements CommandLineRunner {
         String modelPath = tier3.getModelPath();
         int maxRows = tier3.getPaySimMaxRows();
 
-        log.info("=== FRAUD SERVICE — MODEL TRAINER (v2 — cu MinMaxScaler + Stratified Split + Dynamic Contamination) ===");
+        log.info("=== FRAUD SERVICE — MODEL TRAINER (v2 — with MinMaxScaler + Stratified Split + Dynamic Contamination) ===");
         log.info("CSV: {}", csvPath);
         log.info("Output: {}", modelPath);
         log.info("Max rows: {}", maxRows);
@@ -109,7 +107,7 @@ public class ModelTrainerCli implements CommandLineRunner {
         shuffleWithSeed(X, labels, tier3.getMlSeed());
 
         // ── PASUL 4: Stratified Train/Test Split 80/20 ──────────────────────
-        // FIX #11: Split stratificat — garanteaza ca train si test au ACEEASI rata de fraude.
+        // Split stratificat — garanteaza ca train si test au ACEEASI rata de fraude.
         // Un split random simplu pe 150k rows este probabilistic OK, dar stratificarea
         // este mai robusta si demonstreaza best practice academic.
         log.info("[4/7] Stratified 80/20 split...");
@@ -129,9 +127,9 @@ public class ModelTrainerCli implements CommandLineRunner {
             testSize,  testFraud,  String.format("%.2f", (double) testFraud  / testSize  * 100));
 
         // ── PASUL 5: MinMaxScaler pe train set ──────────────────────────────
-        // FIX #3: Scaleaza toate features la [0, 1] pe baza min/max din train set.
+        // Scaleaza toate features la [0, 1] pe baza min/max din train set.
         // mins si maxes sunt salvate in ModelSnapshot pentru aplicarea identica la inferenta.
-        log.info("[5/7] MinMaxScaler pe train set...");
+        log.info("[5/7] MinMaxScaler on train set...");
         double[] featureMins  = MlUtils.computeMins(trainX);
         double[] featureMaxes = MlUtils.computeMaxes(trainX);
         double[][] scaledTrainX = MlUtils.minMaxScale(trainX, featureMins, featureMaxes);
@@ -141,9 +139,8 @@ public class ModelTrainerCli implements CommandLineRunner {
         log.info("Feature maxes: {}", formatArray(featureMaxes));
 
         // ── PASUL 6: IsolationForest training ──────────────────────────────
-        // FIX #2: contamination DINAMIC = rata reala de fraude din dataset.
+        // contamination DINAMIC = rata reala de fraude din dataset.
         // Justificare: contamination in IF determina threshold-ul intern pentru score.
-        // Daca setam 0.022 cand rata reala e 12%, modelul va interpreta gresit distributia.
         // Math.min(..., 0.30) = safety cap recomandat in literatura (Isolation Forest paper).
         double dynamicContamination = Math.min(fraudRate, 0.30);
         log.info("[6/7] IsolationForest training: num_trees={} max_depth={} contamination={} (dynamic, raw_fraud_rate={}%)",
@@ -161,7 +158,7 @@ public class ModelTrainerCli implements CommandLineRunner {
         log.info("featureMeans (normal-only): {}", formatArray(featureMeans));
 
         // ── PASUL 7: Calibrare threshold (F_beta) + Evaluare ────────────────
-        // FIX #4: Maximizam F_beta cu beta=0.5 in loc de F1.
+        // Maximizam F_beta cu beta=0.5 in loc de F1.
         // Raport Precision/Recall asimetric in banking: FP costa UX, FN costa bani.
         log.info("[7/7] Calibrating threshold (F_{} maximization) on test set...", FBETA_BETA);
         double optimalThreshold = findOptimalThreshold(model, scaledTestX, testLabels);
@@ -170,7 +167,7 @@ public class ModelTrainerCli implements CommandLineRunner {
         // ─ SALVARE ──────────────────────────────────────────────────────────
         ModelStore.ModelSnapshot snapshot = new ModelStore.ModelSnapshot(
                 model, optimalThreshold,
-                featureMeans, featureMins, featureMaxes, // FIX #3: include scaler params
+                featureMeans, featureMins, featureMaxes, // scaler params
                 ModelStore.currentVersion(),
                 fraudRate,        // rata reala [0,1]
                 rows.size());     // nr. total randuri citite din CSV
@@ -185,17 +182,15 @@ public class ModelTrainerCli implements CommandLineRunner {
         System.exit(0); // clean exit dupa antrenament
     }
 
-    // -----------------------------------------------------------------------
-    // FIX #4: Calibrare threshold cu F_beta (beta=0.5, Precision > Recall)
-    // -----------------------------------------------------------------------
+    // Calibrare threshold cu F_beta (beta=0.5, Precision > Recall)
 
     private double findOptimalThreshold(IsolationForest model, double[][] testX, int[] testLabels) {
-        log.info("Pre-calculez scorurile pentru {} exemple de test...", testX.length);
+        log.info("Pre-calculating scores for {} test examples...", testX.length);
         double[] scores = new double[testX.length];
         for (int i = 0; i < testX.length; i++) {
             scores[i] = model.score(testX[i]);
         }
-        log.info("Scoruri calculate. Calibrez threshold-ul (F_{})...", FBETA_BETA);
+        log.info("Scores calculated. Calibrating threshold (F_{})...", FBETA_BETA);
 
         double bestFbeta = 0, bestThreshold = 0.5;
         double bestF1 = 0; // raportat aditional pentru comparabilitate academica
@@ -266,9 +261,7 @@ public class ModelTrainerCli implements CommandLineRunner {
             String.format("%.4f", auc));
     }
 
-    // -----------------------------------------------------------------------
     // AUC-ROC — Integrare trapezoidala a curbei ROC
-    // -----------------------------------------------------------------------
 
     private double computeAucRoc(IsolationForest model, double[][] X, int[] labels) {
         double[] scores = scoreAll(model, X);
@@ -283,7 +276,7 @@ public class ModelTrainerCli implements CommandLineRunner {
         long totalNeg = n - totalPos;
 
         if (totalPos == 0 || totalNeg == 0) {
-            log.warn("AUC-ROC: nu exista exemple pozitive sau negative in setul de test — AUC nedefinit");
+            log.warn("AUC-ROC: no positive or negative examples in the test set — AUC undefined");
             return 0.0;
         }
 
@@ -306,19 +299,12 @@ public class ModelTrainerCli implements CommandLineRunner {
         return scores;
     }
 
-    // -----------------------------------------------------------------------
-    // FIX #11: Stratified Train/Test Split
-    // -----------------------------------------------------------------------
+    // Stratified Train/Test Split
 
     /**
      * Split stratificat: separa indexii fraud de normal, shuffleaza fiecare grup
      * independent, apoi preia 80% din fiecare pentru train si 20% pentru test.
      * Garanteaza ca rata de fraude este identica in train si test.
-     *
-     * @param X          matricea de features
-     * @param labels     etichetele (0=normal, 1=fraud)
-     * @param trainRatio proportia de date pentru train (0.8 = 80%)
-     * @return int[2][] — split[0] = indexi train, split[1] = indexi test
      */
     private int[][] stratifiedSplit(double[][] X, int[] labels, double trainRatio) {
         List<Integer> fraudIdx = new ArrayList<>();
@@ -372,9 +358,7 @@ public class ModelTrainerCli implements CommandLineRunner {
         return arr;
     }
 
-    // -----------------------------------------------------------------------
     // Fisher-Yates shuffle cu seed fix (reproductibil)
-    // -----------------------------------------------------------------------
 
     private static void shuffleWithSeed(double[][] X, int[] labels, long seed) {
         java.util.Random rng = new java.util.Random(seed);

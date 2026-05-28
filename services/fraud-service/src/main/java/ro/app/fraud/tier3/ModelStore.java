@@ -22,12 +22,9 @@ import org.springframework.core.io.ClassPathResource;
 import smile.anomaly.IsolationForest;
 
 /**
- * =====================================================================
  * — Serializare/Deserializare Model pe Disc
- * =====================================================================
  *
  * DE CE serializare?
- * -------------------------------------------------------
  * Antrenarea unui Isolation Forest pe 150.000 de randuri dureaza ~5-15 secunde.
  * Daca am antrena la fiecare pornire a aplicației:
  * - Cold Start in productie → tranzactiile din primele secunde NU sunt evaluate
@@ -54,24 +51,18 @@ public final class ModelStore {
     private ModelStore() {
     }
 
-    // -----------------------------------------------------------------------
     // Snapshot intern (ce se salvează pe disc)
-    // -----------------------------------------------------------------------
 
     public static final int EXPECTED_FEATURE_COUNT = 6;
 
     public static class ModelSnapshot implements Serializable {
 
         @Serial
-        // FIX #3: Bump la 3L deoarece am adaugat featureMins si featureMaxes.
-        // IMPORTANT: modelul .bin existent este incompatibil — trebuie RE-ANTRENAT!
         private static final long serialVersionUID = 3L;
 
         public final IsolationForest model;
         public final double threshold;
         private final double[] featureMeans;
-        // FIX #3 — MinMaxScaler: limitele calculate pe setul de train.
-        // Aplicate identic la inferenta live pentru train/inference parity.
         private final double[] featureMins;
         private final double[] featureMaxes;
         public final String version;
@@ -106,9 +97,7 @@ public final class ModelStore {
         }
     }
 
-    // -----------------------------------------------------------------------
     // SALVARE
-    // -----------------------------------------------------------------------
 
     public static void save(ModelSnapshot snapshot, String outputPath) throws IOException {
         Path path = Paths.get(outputPath);
@@ -123,9 +112,7 @@ public final class ModelStore {
         log.info("Model saved: path={} size={}KB version={}", outputPath, sizeKb, snapshot.version);
     }
 
-    // -----------------------------------------------------------------------
     // INCARCARE
-    // -----------------------------------------------------------------------
 
     // Deserializeaza snapshot-ul
     public static ModelSnapshot load(String modelPath) throws IOException, ClassNotFoundException {
@@ -185,9 +172,7 @@ public final class ModelStore {
         return snapshot;
     }
 
-    // -----------------------------------------------------------------------
     // UTILS
-    // -----------------------------------------------------------------------
 
     // verifica daca modelul exista
     public static boolean exists(String modelPath) {

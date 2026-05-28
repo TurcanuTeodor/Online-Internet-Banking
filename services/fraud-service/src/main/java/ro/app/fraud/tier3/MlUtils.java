@@ -2,17 +2,6 @@ package ro.app.fraud.tier3;
 
 /**
  * Utilitare ML pentru calcule statistice si scalare.
- *
- * Metode adaugate (FIX #3 — MinMaxScaler):
- * computeMins / computeMaxes — calculeaza limitele pe setul de train
- * minMaxScale (matrice) — scaleaza un set intreg de date
- * minMaxScaleSingle (vector) — scaleaza un singur vector la inferenta live
- *
- * IMPORTANT: mins/maxes sunt calculate EXCLUSIV pe setul de TRAIN, nu pe
- * intregul
- * dataset. Aplicarea lor identica la inferenta este esentiala pentru
- * corectitudinea
- * modelului (train/inference parity).
  */
 public final class MlUtils {
 

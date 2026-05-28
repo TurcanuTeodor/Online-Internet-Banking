@@ -47,10 +47,6 @@ public class Tier2AsyncRunner {
                 return;
             }
 
-            // FIX #12: Tier 3 NU foloseste ScoringResult in feature vector (FeatureVectorBuilder
-            // lucreaza exclusiv cu datele brute din FraudEvaluationRequest).
-            // Am eliminat cele 2 HTTP calls inutile (getTransactionsByAccount + score)
-            // care adaugau latenta si load pe transaction-service fara niciun beneficiu.
             ScoringResult scoring = new ScoringResult(0.0, java.util.Map.of(), "N/A — Tier3 async only");
 
             if (tier3 == null) {

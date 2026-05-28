@@ -11,20 +11,8 @@ import ro.app.fraud.dto.FraudEvaluationRequest;
 import ro.app.fraud.tier2.ScoringResult;
 
 /**
- * =====================================================================
- * Tier3MlService — Motor de Inferență ML (Refactorizat)
- * =====================================================================
- *
- * DIFERENȚA față de versiunea anterioară:
- * ----------------------------------------
- * ÎNAINTE: @PostConstruct antrena modelul de la zero la fiecare pornire
- *           folosind TrainingDataGenerator (date sintetice random).
- *           Probleme: cold start, date nerealiste, nereproductibil.
- *
- * ACUM:    @PostConstruct NUMAI deserializează modelul pre-antrenat
- *           din fișierul isolation_forest_model.bin de pe disc.
- *           Antrenamentul se face OFFLINE, o singură dată, prin ModelTrainerCli.
- *
+ * Tier3MlService — Motor de Inferență ML 
+ 
  * FAIL-SAFE:
  * -----------
  * Dacă modelul nu există pe disc (ex: prima rulare, mediu nou),
@@ -47,7 +35,7 @@ public class Tier3MlService {
 
     public Tier3MlService(FraudProperties fraudProperties) {
         FraudProperties.Tier3 tier3 = fraudProperties.getTier3();
-        this.modelPath           = tier3.getModelPath();
+        this.modelPath = tier3.getModelPath();
         this.configuredThreshold = tier3.getMlThreshold();
     }
 
@@ -77,11 +65,6 @@ public class Tier3MlService {
 
     /**
      * Analizează o tranzacție live și returnează verdictul ML.
-     *
-     * @param decisionId ID-ul deciziei din BD (pentru logging corelat)
-     * @param req        request-ul live cu datele tranzacției
-     * @param scoring    rezultatul Tier 2 (folosit pentru features)
-     * @return MlVerdict cu ALLOW sau FLAG + explicație
      */
     public MlVerdict analyze(Long decisionId, FraudEvaluationRequest req, ScoringResult scoring) {
         // Dacă modelul nu a putut fi încărcat → fail-open (ALLOW)
@@ -91,7 +74,7 @@ public class Tier3MlService {
         }
 
         // Feature engineering: request live → vector numeric (via FeatureVectorBuilder)
-        // FIX #3: Pasam snapshot pentru aplicarea MinMaxScaler (train/inference parity).
+        // Pasam snapshot pentru aplicarea MinMaxScaler (train/inference parity).
         double[] features = FeatureVectorBuilder.build(req, scoring, snapshot);
 
         // Scorul de anomalie: [0, 1]. Mai aproape de 1 = mai suspect.

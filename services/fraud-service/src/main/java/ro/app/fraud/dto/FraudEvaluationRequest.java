@@ -23,13 +23,8 @@ public class FraudEvaluationRequest {
     private boolean selfTransfer;
     private int accountAgeDays;
 
-    // FIX #14: Ora tranzactiei setata de account-service (ora locala a clientului).
-    // Default -1 = necunoscut → FeatureVectorBuilder va folosi ora serverului ca fallback.
-    // Recomandat: account-service sa seteze LocalDateTime.now().getHour() la initierea transferului.
     private int transactionHour = -1;
 
-    // Soldul expeditorului INAINTE de tranzactie — cunoscut mereu (clientul nostru).
-    // oldBalanceDest NU se transmite — inaccesibil la transferuri externe (PSD2 / Off-Us).
     private Double oldBalanceOrg;
 
     public Long getAccountId() {

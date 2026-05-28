@@ -165,13 +165,6 @@ public class FraudService {
 
     /**
      * Returnează alertele unui client specific, paginate la nivel DB.
-     *
-     * Fix #8: Înlocuiește varianta anterioară care încărca TOATE deciziile în memorie
-     * (și aplica filter+sort în Java). Acum:
-     *   - Filtrarea statusurilor se face în SQL WHERE
-     *   - Sortarea descrescătoare după createdAt se face în SQL ORDER BY
-     *   - Paginarea (LIMIT/OFFSET) se face în SQL
-     * Eliminat riscul de OOM pentru clienți cu istoric de mii de tranzacții.
      */
     public Page<FraudDecisionDTO> getMyAlerts(Long clientId, Pageable pageable) {
         Set<FraudDecisionStatus> alertStatuses = EnumSet.of(

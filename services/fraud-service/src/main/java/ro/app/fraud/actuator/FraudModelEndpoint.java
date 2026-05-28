@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import ro.app.fraud.tier3.Tier3MlService;
 
 /**
- * Custom Actuator endpoint pentru vizibilitate operațională Tier3 ML.
+ * Custom Actuator endpoint pentru vizibilitate operationala Tier3 ML.
  *
  * URL: GET /actuator/fraud-model
  *
@@ -34,16 +34,6 @@ import ro.app.fraud.tier3.Tier3MlService;
  *   "status": "model_not_found",
  *   "details": "Run training: java -jar fraud-service.jar --fraud.tier3.trainer.mode=true"
  * }
- *
- * Fix #3: Tier3MlService este @ConditionalOnProperty → poate lipsi din context
- *   (dacă fraud.tier3.ml.enabled=false). Injectare cu @Autowired(required=false)
- *   previne NoSuchBeanDefinitionException la startup.
- *
- * Fix #11: Status-ul "initializing" a fost eliminat — era înșelător (implica antrenament
- *   în background, ceea ce este fals). Noile statusuri posibile:
- *   - "ready"           → model încărcat și gata de inferență
- *   - "model_not_found" → fișierul .bin lipsește sau a eșuat la deserializare
- *   - "disabled"        → fraud.tier3.ml.enabled=false
  */
 @Component
 @Endpoint(id = "fraud-model")
@@ -52,7 +42,6 @@ public class FraudModelEndpoint {
     private static final DateTimeFormatter ISO_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneOffset.UTC);
 
-    // Fix #3: required=false — bean-ul poate lipsi dacă ML e dezactivat via config
     @Autowired(required = false)
     private Tier3MlService tier3MlService;
 
@@ -68,7 +57,7 @@ public class FraudModelEndpoint {
             return response;
         }
 
-        // Caz: model absent pe disc sau eșec la deserializare (Fix #11: "model_not_found" în loc de "initializing")
+        // Caz: model absent pe disc sau eșec la deserializare 
         if (!tier3MlService.isModelReady()) {
             response.put("status", "model_not_found");
             response.put("enabled", true);
@@ -92,9 +81,6 @@ public class FraudModelEndpoint {
         if (trainedAt > 0) {
             response.put("trained_at", ISO_FORMATTER.format(Instant.ofEpochMilli(trainedAt)));
 
-            // FIX #5: Concept drift awareness — modelul antrenat pe PaySim (2017) poate
-            // deveni progresiv mai putin eficient daca patternurile de frauda se schimba.
-            // model_age_days este expus ca metric operational pentru echipa MLOps.
             long ageDays = (System.currentTimeMillis() - trainedAt) / (1000L * 60 * 60 * 24);
             response.put("model_age_days", ageDays);
 

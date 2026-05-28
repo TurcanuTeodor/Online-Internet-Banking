@@ -8,7 +8,7 @@ import ro.app.fraud.tier2.ScoringResult;
 /**
  * Adaptor de date pentru inferenta live.
  * Construieste vectorul de features (double[6]) delegand calculele la FraudFeatureEngine,
- * aplica MinMaxScaler (FIX #3) folosind limitele salvate la antrenament in ModelSnapshot.
+ * aplica MinMaxScaler folosind limitele salvate la antrenament in ModelSnapshot.
  *
  * STRATEGIE: Open Payments / PSD2 — Behavioral Fraud Detector
  * Vectorul este identic cu cel din PaySimFeatureMapper:
@@ -24,23 +24,10 @@ public final class FeatureVectorBuilder {
 
     /**
      * Construieste vectorul de features SCALAT pentru modelul de Tier 3.
-     *
-     * FIX #3: Aplica MinMaxScaler folosind mins/maxes din ModelSnapshot.
-     * Train/inference parity: exact aceleasi transformari ca la antrenament.
-     *
-     * FIX #14 (partial): folosim ora din request daca este disponibila (transactionHour),
-     * altfel fallback la ora serverului. Ora serverului poate fi UTC — recomandat ca
-     * account-service sa transmita ora locala a tranzactiei.
-     *
-     * @param req      request-ul live (trebuie sa contina oldBalanceOrg pentru senderDepletionRatio)
-     * @param scoring  rezultatul Tier 2 (pastrat pentru extensibilitate, neutilizat in feature vector)
-     * @param snapshot modelul pre-antrenat care contine featureMins/featureMaxes pentru scaling
-     * @return vector double[6] scalat la [0,1] pentru inferenta
-     */
+    */
     public static double[] build(FraudEvaluationRequest req, ScoringResult scoring,
                                  ModelStore.ModelSnapshot snapshot) {
-        // FIX #14: daca request-ul contine ora tranzactiei, o folosim.
-        // Daca nu (field null sau 0), fallback la ora serverului (potential UTC offset).
+
         int hour = (req.getTransactionHour() >= 0 && req.getTransactionHour() <= 23)
                 ? req.getTransactionHour()
                 : LocalDateTime.now().getHour();
@@ -65,28 +52,8 @@ public final class FeatureVectorBuilder {
             FraudFeatureEngine.computeRoundAmountFlag(req.getAmount())
         };
 
-        // FIX #3: Aplica MinMaxScaler cu limitele din snapshot (calculate pe train set).
         // CRITIC pentru train/inference parity: modelul a fost antrenat pe date scalate.
         // A pasa date nescalate la inferenta produce scoruri inconsistente.
         return MlUtils.minMaxScaleSingle(raw, snapshot.getFeatureMins(), snapshot.getFeatureMaxes());
-    }
-
-    /**
-     * @deprecated Foloseste {@link #build(FraudEvaluationRequest, ScoringResult, ModelStore.ModelSnapshot)}.
-     * Aceasta varianta nu aplica MinMaxScaler — pastrata temporar pentru compatibilitate.
-     */
-    @Deprecated(since = "v2", forRemoval = true)
-    public static double[] build(FraudEvaluationRequest req, ScoringResult scoring) {
-        int hour = (req.getTransactionHour() >= 0 && req.getTransactionHour() <= 23)
-                ? req.getTransactionHour()
-                : LocalDateTime.now().getHour();
-        return new double[]{
-            FraudFeatureEngine.computeAmountRatio(req.getAmount(), FraudFeatureEngine.LEGAL_AMOUNT_CAP),
-            FraudFeatureEngine.computeTypeRiskLive(req.getTransactionType()),
-            FraudFeatureEngine.computeHourSuspicionFromClock(hour),
-            FraudFeatureEngine.computeNewAccountFlagFromAge(req.getAccountAgeDays()),
-            FraudFeatureEngine.computeSenderDepletionRatio(req.getAmount(), req.getOldBalanceOrg()),
-            FraudFeatureEngine.computeRoundAmountFlag(req.getAmount())
-        };
     }
 }
