@@ -3,61 +3,75 @@
 skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
 
-title Figure 4.6 — API Gateway Request Lifecycle
+title Figure 4.5 — API Gateway Request Lifecycle
 
 participant "Frontend\n(Browser)" as CLIENT
-box "API Gateway (Port 8443)" #F5F5DC
-  participant "CORS\nFilter" as CORS
-  participant "Rate Limit\nFilter" as RATE
-  participant "Audit Log\nFilter" as AUDIT
-  participant "JWT Auth\nFilter" as JWT
-  participant "Router +\nCircuit Breaker" as ROUTE
+box "API Gateway (Port 8443) — GlobalFilter chain (by order)" #F5F5DC
+  participant "Logout\nBlacklist\nFilter\n(order -30)" as LOGOUT
+  participant "Login\nRate Limit\nFilter\n(order -20)" as LOGINRATE
+  participant "Global\nRate Limit\nFilter\n(order -10)" as RATE
+  participant "Audit\nLogging\nFilter\n(order -1)" as AUDIT
+  participant "JWT Auth\nFilter\n(route-level)" as JWT
+  participant "Circuit Breaker\n+ Router" as ROUTE
   participant "Fallback\nController" as FALLBACK
 end box
 participant "Target\nMicroservice" as SERVICE
 
 == Incoming Request ==
-CLIENT -> CORS : HTTP Request
-CORS -> CORS : Check allowed\norigins + methods
+CLIENT -> LOGOUT : HTTP Request
 
-alt CORS rejected
-  CORS --> CLIENT : 403 Forbidden
-else CORS OK
-  CORS -> RATE : Forward
+alt POST /api/auth/logout
+  LOGOUT -> LOGOUT : Extract token from\nAuthorization header or body\nBlacklist in Redis (TTL = token remaining life)
+  LOGOUT -> LOGINRATE : Forward (with re-buffered body)
+else All other paths
+  LOGOUT -> LOGINRATE : Forward unchanged
 end
 
-RATE -> RATE : < 50 req/sec?
+alt POST /api/auth/login
+  LOGINRATE -> LOGINRATE : Redis counter per IP\n> 5 req / 60s?
+  alt Login rate exceeded
+    LOGINRATE --> CLIENT : 429 Too Many Requests
+  else Login rate OK
+    LOGINRATE -> RATE : Forward
+  end
+else All other paths (not /api/auth/login)
+  LOGINRATE -> RATE : Forward
+end
 
-alt Rate limit exceeded
+RATE -> RATE : Redis counter per IP\n> 50 req / 1s?\n(OPTIONS and /api/auth/login excluded)
+
+alt Global rate exceeded
   RATE --> CLIENT : 429 Too Many Requests
 else Rate OK
   RATE -> AUDIT : Forward
 end
 
-AUDIT -> AUDIT : Log: method, path,\nduration
-AUDIT -> JWT : Forward
+AUDIT -> AUDIT : Log: timestamp, user identity\n(from JWT claims), method,\npath, source IP, response status
+AUDIT -> JWT : Forward (response logged after)
 
-== JWT Validation ==
-alt Public route\n(/api/auth/**, /api/clients/sign-up,\n/api/payments/webhook)
-  JWT -> ROUTE : Skip validation
+== JWT Validation (route-level, per-route filter) ==
+alt Public route\n(/api/auth/**, /api/clients/sign-up,\n/api/payments/webhook, /api/fraud/health)
+  JWT -> ROUTE : Skip JWT validation
 else Protected route
-  JWT -> JWT : Validate:\n- Signature (HMAC-SHA256)\n- Expiration\n- Claims
+  JWT -> JWT : Extract Bearer token
+  JWT -> JWT : Check Redis blacklist (token revoked?)
+  JWT -> JWT : Validate signature (HMAC-SHA256)\nand expiration
 
-  alt Invalid / Expired
+  alt Blacklisted or Invalid / Expired
     JWT --> CLIENT : 401 Unauthorized
   else Valid JWT
     JWT -> ROUTE : Forward
   end
 end
 
-== Routing ==
-alt Service healthy
+== Routing + Circuit Breaker ==
+alt Service healthy (circuit CLOSED)
   ROUTE -> SERVICE : Forward request
   SERVICE --> ROUTE : Response
   ROUTE --> CLIENT : Forward response
 else Circuit breaker OPEN
-  ROUTE -> FALLBACK : Redirect
-  FALLBACK --> CLIENT : 503 Service\nUnavailable
+  ROUTE -> FALLBACK : Redirect to fallback URI
+  FALLBACK --> CLIENT : 503 Service Unavailable\n(with Retry-After header)
 end
 
 @enduml

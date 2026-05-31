@@ -1,4 +1,4 @@
-@startuml Transfer_Flow_Async_Fraud
+@startuml Transfer_Flow_Async_Tier3
 !theme plain
 autonumber
 hide footbox
@@ -6,32 +6,38 @@ skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
 skinparam sequenceMessageAlign center
 
-title Figure 4.6 — Async Fraud Analysis (Tier 2 + Tier 3)
+title Figure 4.7 — Async Tier 3 ML Analysis (Post-Hoc, Non-Blocking)
 
-participant "Fraud Service\n:8086" as FRAUD
-participant "Transaction Service\n:8084" as TX
-participant "LLM Provider\n(Groq/Gemini)" as LLM
+participant "Fraud Service\n:8086\n(fraudAsyncExecutor)" as FRAUD
+participant "Fraud DB\n(fraud schema)" as DB
 
-== Trigger ==
-FRAUD -> FRAUD : Run in @Async("fraudAsyncExecutor")
+note over FRAUD
+  Triggered by Tier2AsyncRunner.runTier3Only()
+  only when synchronous Tier 1 + Tier 2 returned ALLOW.
+  Runs in a dedicated thread pool — does NOT block
+  the transfer response already sent to the user.
+end note
 
-== Context Fetch ==
-FRAUD -> TX : GET /api/internal/transactions/by-account/{accountId}\n[X-Internal-Api-Secret]
-TX --> FRAUD : Transaction history
+== Tier 3 ML Inference ==
+FRAUD -> FRAUD : Load FraudEvaluationRequest\nfrom in-memory context
+FRAUD -> FRAUD : Build feature vector (6 dimensions):\n[0] amountRatio = amount / 50,000\n[1] typeRisk = {INTERNAL:1.0, EXTERNAL:3.0}\n[2] hourSuspicion = {01-05h:3.0, night:2.0, day:1.0}\n[3] newAccountFlag = 1.0 if age < 30d\n[4] senderDepletionRatio = amount / oldBalance\n[5] isRoundAmount = 1.0 if amount % 100 ≈ 0
+FRAUD -> FRAUD : Apply MinMax scaling\n(per-feature min/max saved at training time)
+FRAUD -> FRAUD : IsolationForest.score(scaledFeatures)\n→ anomalyScore ∈ [0, 1]
 
-== Tier 2 Behavioral Scoring ==
-FRAUD -> FRAUD : Compute Tier 2 behavioral score
-
-alt Score >= 70
-  FRAUD -> FRAUD : FLAG
-else Score 30-70 (ambiguous)
-  FRAUD -> LLM : Pseudonymized payload\n(IBANs hashed with SHA-256)
-  LLM --> FRAUD : verdict + confidence + reasoning
-else Score < 30
-  FRAUD -> FRAUD : ALLOW
+== Decision ==
+alt anomalyScore > calibrated threshold (≈ 0.55–0.75)
+  == Post-Hoc FLAG ==
+  FRAUD -> FRAUD : PerturbationAnalyzer:\ncompute feature importances\n(replace each feature with training mean,\nmeasure |score change|)
+  FRAUD -> FRAUD : ReasoningBuilder:\nbuild human-readable explanation\n(primary + secondary anomaly drivers)
+  FRAUD -> DB : UPDATE fraud_decision SET\n  status = FLAG,\n  decided_by_tier = TIER3_ML,\n  risk_score = anomalyScore * 100,\n  explanation = "Tier3-ML post-hoc FLAG: ..."
+  note right of DB
+    Admin dashboard will surface
+    this as an unresolved alert.
+    Transfer is already completed —
+    this is a post-hoc learning signal.
+  end note
+else anomalyScore ≤ threshold
+  FRAUD -> DB : No update — existing ALLOW decision stands
 end
-
-== Decision Persistence ==
-FRAUD -> FRAUD : Persist fraud_decision
 
 @enduml

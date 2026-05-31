@@ -16,16 +16,16 @@ actor "User / Admin" as USER
 
 rectangle "<<Container: SPA>>\nFrontend\nReact + Vite\nPort 5173" as FE #89CFF0
 
-rectangle "<<Container: API Gateway>>\nAPI Gateway\nSpring Cloud Gateway\nPort 8443\n---\nJWT validation\nRate limiting (50 req/s)\nCircuit breaker (Resilience4j)\nCORS" as GW #5B9BD5
+rectangle "<<Container: API Gateway>>\nAPI Gateway\nSpring Cloud Gateway\nPort 8443\n---\nJWT validation\nLogin rate limit (5 req/60s)\nGlobal rate limit (50 req/s)\nLogout token blacklist (Redis)\nCircuit breaker (Resilience4j)\nAudit logging" as GW #5B9BD5
 
 package "Microservices" {
 	together {
-		rectangle "<<Container>>\nClient Service\nSpring Boot :8082" as CLIENT #6DB33F
 		rectangle "<<Container>>\nAuth Service\nSpring Boot :8081" as AUTH #6DB33F
-		rectangle "<<Container>>\nPayment Service\nSpring Boot :8085" as PAY #6DB33F
-		rectangle "<<Container>>\nFraud Service\nSpring Boot :8086" as FRAUD #6DB33F
+		rectangle "<<Container>>\nClient Service\nSpring Boot :8082" as CLIENT #6DB33F
+		rectangle "<<Container>>\nAccount Service\nSpring Boot :8083\n---\nCaffeine + Redis cache\nRedisson distributed locks" as ACCOUNT #6DB33F
 		rectangle "<<Container>>\nTransaction Service\nSpring Boot :8084" as TX #6DB33F
-		rectangle "<<Container>>\nAccount Service\nSpring Boot :8083" as ACCOUNT #6DB33F
+		rectangle "<<Container>>\nPayment Service\nSpring Boot :8085" as PAY #6DB33F
+		rectangle "<<Container>>\nFraud Service\nSpring Boot :8086\n---\nTier1: Rule Engine\nTier2: Behavioral Scoring\nTier3: Isolation Forest ML" as FRAUD #6DB33F
 	}
 }
 
@@ -33,41 +33,31 @@ package "Data" {
 	database "<<Container: Database>>\nPostgreSQL 16\nSingle instance\n6 isolated schemas" as DB #336791
 	rectangle "Schema ownership\n- auth\n- clients\n- accounts\n- transactions\n- payments\n- fraud" as DB_NOTE #D9EAF7
 	DB -[hidden]down-> DB_NOTE
+
+	database "<<Container: Cache>>\nRedis 7\nToken blacklist\nRate limit counters\nAccount cache\nDistributed locks\nPub/Sub invalidation" as REDIS #DC382D
 }
 
 package "External Systems" {
 	rectangle "<<External>>\nStripe API" as STRIPE #gray
-	rectangle "<<External>>\nLLM Providers" as LLM #gray
 	rectangle "<<External>>\nEuropean Central Bank" as ECB #gray
 }
 
 USER --> FE : HTTPS
 FE --> GW : JSON / REST
 
-' Keep service placement stable
-CLIENT -[hidden]down-> AUTH
-AUTH -[hidden]down-> PAY
-PAY -[hidden]down-> FRAUD
-FRAUD -[hidden]down-> TX
-TX -[hidden]down-> ACCOUNT
-
-' Keep data and external systems visually separate from the main flow
-DB -[hidden]down-> STRIPE
-STRIPE -[hidden]right-> ECB
-ECB -[hidden]right-> LLM
-
+' Gateway routes to all services
 GW --> AUTH : /api/auth/**\n(public)
-GW --> CLIENT : /api/clients/**
+GW --> CLIENT : /api/clients/**\n/api/gdpr/**
 GW --> ACCOUNT : /api/accounts/**
 GW --> TX : /api/transactions/**
-GW --> PAY : /api/payments/**
+GW --> PAY : /api/payments/**\n/api/payment-methods/**
 GW --> FRAUD : /api/fraud/**
 
-note bottom of DB
-Each service owns one isolated schema.
-All persistence goes through PostgreSQL.
-end note
+' Redis connections
+GW --> REDIS : Token blacklist\nRate limit counters
+ACCOUNT --> REDIS : Caffeine+Redis cache\nRedisson locks\nPub/Sub invalidation
 
+' DB connections
 AUTH --> DB : JDBC\n(auth schema)
 CLIENT --> DB : JDBC\n(clients schema)
 ACCOUNT --> DB : JDBC\n(accounts schema)
@@ -75,8 +65,13 @@ TX --> DB : JDBC\n(transactions schema)
 PAY --> DB : JDBC\n(payments schema)
 FRAUD --> DB : JDBC\n(fraud schema)
 
+' External
 PAY --> STRIPE
-FRAUD --> LLM
 ACCOUNT --> ECB : Daily FX rates\n[HTTPS / XML]
+
+note bottom of DB
+  Each service owns one isolated schema.
+  No cross-schema JOINs or FK constraints.
+end note
 
 @enduml

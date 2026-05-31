@@ -8,11 +8,11 @@ skinparam nodesep 80
 skinparam ranksep 90
 skinparam packageStyle rectangle
 
-title Figure 4.3 — Inter-Service Communication Map
+title Figure 4.4 — Inter-Service Communication Map
 
 note as N1
   All calls are synchronous REST
-  (Spring RestTemplate).
+  (Spring RestTemplate / RestClient).
   Two auth patterns:
   1. JWT forwarding (user-initiated)
   2. X-Internal-Api-Secret (service-initiated)
@@ -27,12 +27,7 @@ package "Core Services" {
   rectangle "Auth\nService\n:8081" as AUTH #6DB33F
 }
 
-package "External AI" {
-  rectangle "LLM\nProviders" as LLM #gray
-}
-
 ' === Grid layout (3 rows x 2 cols) ===
-' Row ordering: TX/FRAUD -> ACCOUNT/PAY -> CLIENT/AUTH
 TX -[hidden]right-> FRAUD
 ACCOUNT -[hidden]right-> PAY
 CLIENT -[hidden]right-> AUTH
@@ -42,27 +37,27 @@ ACCOUNT -[hidden]down-> CLIENT
 FRAUD -[hidden]down-> PAY
 PAY -[hidden]down-> AUTH
 
-FRAUD -[hidden]right-> LLM
-
 ' === Core banking flows ===
 ACCOUNT -up-> TX : Create debit/credit tx records\n[JWT forwarded]
-ACCOUNT -up-> FRAUD : Fraud evaluation (sync, Tier 1)\n[X-Internal-Api-Secret]
+ACCOUNT -up-> FRAUD : Fraud evaluation (sync, Tier 1 + Tier 2)\n[X-Internal-Api-Secret]
 
-' === Fraud async flow ===
-FRAUD -left-> TX : Fetch tx history (async, Tier 2)\n[X-Internal-Api-Secret]
-FRAUD -right-> LLM : Pseudonymized scoring (Tier 3)\n[HTTPS + API key]
+' === Fraud pipeline: Tier 2 sync context fetch ===
+FRAUD -left-> TX : Fetch tx history (sync, Tier 2)\n[X-Internal-Api-Secret]
+
+' === Fraud alert resolution: freeze/unfreeze accounts ===
+FRAUD -down-> ACCOUNT : Freeze / unfreeze account\n(on fraud alert resolution)\n[X-Internal-Api-Secret]
 
 ' === Payment settlement ===
 PAY -left-> ACCOUNT : Apply Stripe top-up credit\n[X-Internal-Api-Secret]
 
-' === Encryption lifecycle & MFA ===
-AUTH -left-> CLIENT : Re-encrypt on password change\n[X-Internal-Api-Secret]
-ACCOUNT -down-> AUTH : Verify Step-Up TOTP code\n[X-Internal-Api-Secret]
-CLIENT -right-> AUTH : Verify Step-Up TOTP code\n[X-Internal-Api-Secret]
+' === Encryption lifecycle & step-up MFA ===
+AUTH -left-> CLIENT : Re-encrypt PII on password change\n[X-Internal-Api-Secret]
+ACCOUNT -down-> AUTH : Verify step-up TOTP code\n[X-Internal-Api-Secret]
+CLIENT -right-> AUTH : Verify step-up TOTP code\n[X-Internal-Api-Secret]
 
-' === GDPR erasure cascade ===
-CLIENT -right-> AUTH : Deactivate user\n[X-Internal-Api-Secret]
-CLIENT -up-> ACCOUNT : Close all accounts +\nfetch account IDs\n[X-Internal-Api-Secret]
-CLIENT -up-> TX : Anonymize tx details\n[X-Internal-Api-Secret]
+' === GDPR erasure cascade (all from client-service) ===
+CLIENT -right-> AUTH : Deactivate user (GDPR)\n[X-Internal-Api-Secret]
+CLIENT -up-> ACCOUNT : Fetch account IDs + close all accounts (GDPR)\n[X-Internal-Api-Secret]
+CLIENT -up-> TX : Anonymize transaction details (GDPR)\n[X-Internal-Api-Secret]
 
 @enduml
