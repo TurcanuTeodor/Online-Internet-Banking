@@ -1,23 +1,23 @@
 @startuml System_Context
 !theme plain
-left to right direction
+top to bottom direction
 skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
 skinparam defaultFontSize 12
 skinparam shadowing false
-skinparam linetype ortho
-skinparam nodesep 80
-skinparam ranksep 90
+skinparam nodesep 60
+skinparam ranksep 80
 skinparam packageStyle rectangle
 
-title Figure 4.1 — System Context Diagram
+' Arrow styling
+skinparam ArrowFontSize 12
+skinparam ArrowFontStyle bold
+skinparam ArrowFontColor #111111
+skinparam ArrowColor #444444
+skinparam ArrowThickness 1.5
 
-package "People" {
-	actor "Bank Customer\n" as USER
-	actor "Bank Administrator\n" as ADMIN
-
-	USER -[hidden]down-> ADMIN
-}
+actor "Bank Customer" as USER
+actor "Bank Administrator" as ADMIN
 
 package "CashTactics Platform" {
 	rectangle "<<Software System>>\nCashTactics\nOnline Banking Platform\n\nSpring Boot Microservices + React SPA\nAPI Gateway (Spring Cloud Gateway)\n6 backend microservices,\nPostgreSQL with 6 isolated schemas" as SYSTEM #438DD5
@@ -26,14 +26,14 @@ package "CashTactics Platform" {
 package "External Systems" {
 	rectangle "<<External System>>\nStripe\nPayment Processing" as STRIPE #gray
 	rectangle "<<External System>>\nEuropean Central Bank\nExchange Rates API" as ECB #gray
-
-	STRIPE -[hidden]down-> ECB
 }
 
-USER --> SYSTEM : Manages accounts,\nmakes transfers,\ntops up via Stripe\n[HTTPS / Browser]
-ADMIN --> SYSTEM : Reviews fraud alerts,\nmanages clients,\nGDPR operations\n[HTTPS / Browser]
+USER --> SYSTEM : "Manages accounts, transfers\n& card top-ups\n[HTTPS / Browser]"
 
-SYSTEM --> STRIPE : Processes card\ntop-ups and webhooks\n[HTTPS / Stripe API]
-SYSTEM --> ECB : Fetches daily\nexchange rates\n[HTTPS / XML]
+ADMIN --> SYSTEM : "Reviews fraud alerts,\nmanages clients, GDPR\n[HTTPS / Browser]"
+
+SYSTEM --> STRIPE : "Card top-ups & webhooks\n[HTTPS / Stripe API]"
+
+SYSTEM --> ECB : "Daily exchange rates\n[HTTPS / XML]"
 
 @enduml
