@@ -3,8 +3,7 @@
 skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
 
-title Figure 4.5 — API Gateway Request Lifecycle
-
+ 
 participant "Frontend\n(Browser)" as CLIENT
 box "API Gateway (Port 8443) — GlobalFilter chain (by order)" #F5F5DC
   participant "Logout\nBlacklist\nFilter\n(order -30)" as LOGOUT

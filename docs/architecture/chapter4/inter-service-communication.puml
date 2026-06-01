@@ -8,8 +8,7 @@ skinparam nodesep 80
 skinparam ranksep 90
 skinparam packageStyle rectangle
 
-title Figure 4.4 — Inter-Service Communication Map
-
+ 
 note as N1
   All calls are synchronous REST
   (Spring RestTemplate / RestClient).

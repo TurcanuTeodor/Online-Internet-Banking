@@ -10,8 +10,7 @@ skinparam linetype ortho
 skinparam nodesep 35
 skinparam ranksep 35
 
-title Figure 4.3 — Data Zoning Model\nPostgreSQL 16 (Single Instance, Schema-per-Service)
-
+ 
 package "CENTRALIZED ZONE\n(Identity & Authentication)" #FDE8E8 {
   database "auth schema\nUSERS\nREFRESH_TOKENS" as AUTH_DB
   note bottom of AUTH_DB

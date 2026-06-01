@@ -4,8 +4,7 @@ skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
 skinparam sequenceMessageAlign center
 
-title Figure 4.6 — Transfer Flow Sequence
-
+ 
 actor "User" as USER
 participant "Frontend\n(React)" as FE
 participant "API Gateway\n:8443" as GW

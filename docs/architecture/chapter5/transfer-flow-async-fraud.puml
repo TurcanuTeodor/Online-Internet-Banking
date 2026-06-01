@@ -6,8 +6,7 @@ skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
 skinparam sequenceMessageAlign center
 
-title Figure 4.7 — Async Tier 3 ML Analysis (Post-Hoc, Non-Blocking)
-
+ 
 participant "Fraud Service\n:8086\n(fraudAsyncExecutor)" as FRAUD
 participant "Fraud DB\n(fraud schema)" as DB
 

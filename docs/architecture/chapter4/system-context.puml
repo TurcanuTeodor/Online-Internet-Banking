@@ -16,8 +16,8 @@ skinparam ArrowFontColor #111111
 skinparam ArrowColor #444444
 skinparam ArrowThickness 1.5
 
-actor "Bank Customer" as USER
-actor "Bank Administrator" as ADMIN
+actor "Platform Client" as USER
+actor "System Administrator" as ADMIN
 
 package "CashTactics Platform" {
 	rectangle "<<Software System>>\nCashTactics\nOnline Banking Platform\n\nSpring Boot Microservices + React SPA\nAPI Gateway (Spring Cloud Gateway)\n6 backend microservices,\nPostgreSQL with 6 isolated schemas" as SYSTEM #438DD5
