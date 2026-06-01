@@ -51,3 +51,4 @@ services/fraud-service/src/main/resources/ml/model/*.bin
 # PaySim CSV (Kaggle dataset, 470MB — NU se include in git)
 data/*.csv
 data/*.log
+thesis_online_banking.md
