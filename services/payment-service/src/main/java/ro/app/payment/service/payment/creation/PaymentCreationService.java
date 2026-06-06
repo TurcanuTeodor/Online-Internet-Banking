@@ -36,7 +36,7 @@ public class PaymentCreationService {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentCreationService.class);
 
-    private static final Set<String> TOP_UP_STRIPE_CURRENCIES = Set.of("EUR", "RON");
+    private static final Set<String> TOP_UP_STRIPE_CURRENCIES = Set.of("EUR", "RON", "GBP", "USD");
 
     private final PaymentRepository paymentRepository;
     private final AccountRestClient accountRestClient;
@@ -75,7 +75,7 @@ public class PaymentCreationService {
 
         String currencyCode = account.getCurrencyCode();
         if (currencyCode == null || !TOP_UP_STRIPE_CURRENCIES.contains(currencyCode.toUpperCase())) {
-            throw new IllegalArgumentException("Top-up is only supported for EUR and RON accounts");
+            throw new IllegalArgumentException("Top-up is only supported for EUR, RON, GBP, and USD accounts");
         }
 
         CurrencyType paymentCurrency = CurrencyType.fromCode(currencyCode);

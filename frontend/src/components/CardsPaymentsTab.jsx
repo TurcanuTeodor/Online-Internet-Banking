@@ -170,7 +170,6 @@ export default function CardsPaymentsTab({ clientId, accounts, onRefresh, onOpen
             >
               <option value="">— Select —</option>
               {activeAccounts
-                .filter((a) => a.currencyCode === 'EUR' || a.currencyCode === 'RON')
                 .map((a) => (
                   <option key={a.id} value={String(a.id)}>
                     {a.iban} ({a.currencyCode})

@@ -1,18 +1,14 @@
 package ro.app.client.controller;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import org.mockito.MockitoAnnotations;
+import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -24,7 +20,16 @@ import ro.app.client.service.ClientContactService;
 import ro.app.client.service.ClientProfileService;
 import ro.app.client.service.ClientViewProjectionService;
 
-class ClientControllerTest {
+/**
+ * Teste unitare pentru ClientController (JUnit 4).
+ *
+ * Pattern testat: Facade (Structural) — controllerul delega catre servicii specializate
+ * si verifica ownership inainte de orice operatie sensibila.
+ *
+ * JwtPrincipal construit cu "new" (este un record simplu cu 4 parametri).
+ */
+@RunWith(MockitoJUnitRunner.class)
+public class ClientControllerTest {
 
     @Mock
     private ClientProfileService clientProfileService;
@@ -36,32 +41,53 @@ class ClientControllerTest {
     private OwnershipChecker ownershipChecker;
     @Mock
     private AuditService auditService;
+
     @InjectMocks
     private ClientController clientController;
 
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-        clientController = new ClientController(
-                clientProfileService,
-                clientContactService,
-                clientViewProjectionService,
-                ownershipChecker,
-                auditService);
+    private JwtPrincipal clientPrincipal;
+
+    @Before
+    public void setUp() {
+        // JwtPrincipal este un record: (username, clientId, role, encryptionKey)
+        clientPrincipal = new JwtPrincipal("ion.pop", 123L, "CLIENT", "test-encryption-key");
     }
 
+    // ── updateContact ─────────────────────────────────────────────────────────
+
     @Test
-    void updateContact_OwnershipCheckCalled() {
-        ContactInfoDTO dto = mock(ContactInfoDTO.class);
-        JwtPrincipal principal = new JwtPrincipal("testUser", 123L, "USER", "testKey");
-        when(clientContactService.updateClientContactInfo(eq(123L), any(ContactInfoDTO.class), anyString(), isNull()))
-                .thenReturn(dto);
+    public void updateContact_ownershipCheckCalled_withCorrectClientId() {
+        // Arrange
+        ContactInfoDTO dto = new ContactInfoDTO();
+        Mockito.when(clientContactService.updateClientContactInfo(
+                Mockito.eq(123L), Mockito.any(ContactInfoDTO.class),
+                Mockito.anyString(), Mockito.isNull()))
+               .thenReturn(dto);
 
-        ResponseEntity<ContactInfoDTO> response = clientController.updateContact(123L, dto, null, principal);
+        // Act
+        ResponseEntity<ContactInfoDTO> response = clientController.updateContact(
+                123L, dto, null, clientPrincipal);
 
-        verify(ownershipChecker).checkOwnership(principal, 123L);
+        // Assert
+        Mockito.verify(ownershipChecker).checkOwnership(clientPrincipal, 123L);
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
-    // Adaugă teste similare pentru celelalte endpointuri cu ownership check
+    @Test
+    public void updateContact_returnsUpdatedDto() {
+        // Arrange
+        ContactInfoDTO dto = new ContactInfoDTO();
+        dto.setEmail("ion.pop@example.com");
+        Mockito.when(clientContactService.updateClientContactInfo(
+                Mockito.eq(123L), Mockito.any(ContactInfoDTO.class),
+                Mockito.anyString(), Mockito.isNull()))
+               .thenReturn(dto);
+
+        // Act
+        ResponseEntity<ContactInfoDTO> response = clientController.updateContact(
+                123L, dto, null, clientPrincipal);
+
+        // Assert
+        assertEquals("ion.pop@example.com", response.getBody().getEmail());
+    }
 }

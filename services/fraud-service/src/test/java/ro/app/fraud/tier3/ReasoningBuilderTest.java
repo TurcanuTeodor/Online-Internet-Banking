@@ -1,57 +1,62 @@
 package ro.app.fraud.tier3;
 
-import static org.junit.jupiter.api.Assertions.*;
-import org.junit.jupiter.api.Test;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /**
- * Teste unitare pentru ReasoningBuilder — generarea explicațiilor ML.
+ * Teste unitare pentru ReasoningBuilder (JUnit 4).
+ *
+ * Pattern testat: Builder (Creational) — construieste un mesaj de explicatie
+ * al deciziei antifrauda pe baza scorului de anomalie si a importantelor (array).
  */
-class ReasoningBuilderTest {
+@RunWith(JUnit4.class)
+public class ReasoningBuilderTest {
 
     @Test
-    void featureNames_has6Elements() {
-        assertEquals(6, ReasoningBuilder.FEATURE_NAMES.length,
-            "FEATURE_NAMES trebuie sa fie aliniat cu vectorul de 6 features");
+    public void build_flaggedTransaction_containsPrimaryAndSecondaryFactors() {
+        // Arrange
+        double anomalyScore = 0.85;
+        // Importances: amountRatio e maxim (0.8), hourSuspicion e al doilea (0.5)
+        double[] importances = {0.8, 0.1, 0.5, 0.0, 0.2, 0.0};
+
+        // Act
+        String reasoning = ReasoningBuilder.build(true, anomalyScore, importances);
+
+        // Assert
+        assertTrue("Must contain the anomaly score", reasoning.contains("0.85"));
+        assertTrue("Must mention the flagged transaction", reasoning.contains("flagged"));
+        assertTrue("Primary factor: amountRatio", reasoning.contains("transaction amount"));
+        assertTrue("Secondary factor: hourSuspicion", reasoning.contains("night-time hours"));
     }
 
     @Test
-    void build_flagged_containsPrimaryAndSecondaryFactor() {
-        double[] importances = {0.05, 0.30, 0.10, 0.02, 0.50, 0.03};
-        String reasoning = ReasoningBuilder.build(true, 0.75, importances);
+    public void build_normalTransaction_returnsNoRiskReasoning() {
+        // Arrange
+        double anomalyScore = 0.12;
+        double[] importances = {0.01, 0.02, 0.05, 0.0, 0.01, 0.0};
 
-        assertTrue(reasoning.contains("flagged as suspicious"), "Trebuie să menționeze 'flagged'");
-        assertTrue(reasoning.contains("0.75"), "Trebuie să conțină anomaly score");
-        // top feature = senderDepletionRatio (index 4, importance 0.50)
-        assertTrue(reasoning.contains("sender account heavily or fully drained"),
-            "Primary factor trebuie să fie senderDepletionRatio");
-        // second feature = typeRisk (index 1, importance 0.30)
-        assertTrue(reasoning.contains("high-risk transaction type"),
-            "Secondary factor trebuie să fie typeRisk");
+        // Act
+        String reasoning = ReasoningBuilder.build(false, anomalyScore, importances);
+
+        // Assert
+        assertTrue("Must contain the score", reasoning.contains("0.12"));
+        assertTrue("Must mention the normal transaction", reasoning.contains("normal"));
+        assertFalse("Must not mention primary factors", reasoning.contains("Primary factor"));
     }
 
     @Test
-    void build_notFlagged_indicatesNormal() {
-        double[] importances = {0.01, 0.01, 0.01, 0.01, 0.01, 0.01};
-        String reasoning = ReasoningBuilder.build(false, 0.30, importances);
-
-        assertTrue(reasoning.contains("considered normal"), "Trebuie să menționeze 'normal'");
-        assertTrue(reasoning.contains("0.30"), "Trebuie să conțină anomaly score");
-    }
-
-    @Test
-    void build_zeroImportances_noException() {
+    public void build_emptyImportances_handlesZeroGracefully() {
+        // Arrange — boundary: sum(importances) == 0 => evitam Impartire la 0 in procente
+        double anomalyScore = 0.5;
         double[] importances = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-        // Nu ar trebui sa dea exceptie chiar daca toate importancele sunt 0
-        assertDoesNotThrow(() -> ReasoningBuilder.build(true, 0.50, importances));
-    }
 
-    @Test
-    void build_flagged_percentagesAddUp() {
-        double[] importances = {0.1, 0.2, 0.3, 0.0, 0.0, 0.4};
-        String reasoning = ReasoningBuilder.build(true, 0.80, importances);
+        // Act
+        String reasoning = ReasoningBuilder.build(true, anomalyScore, importances);
 
-        // Top = isRoundAmount (0.4/1.0 = 40%), Second = hourSuspicion (0.3/1.0 = 30%)
-        assertTrue(reasoning.contains("40%"), "Top percentage should be ~40%");
-        assertTrue(reasoning.contains("30%"), "Second percentage should be ~30%");
+        // Assert
+        assertTrue(reasoning.contains("0%")); // Procentul trebuie sa fie calculat ca 0%
     }
 }

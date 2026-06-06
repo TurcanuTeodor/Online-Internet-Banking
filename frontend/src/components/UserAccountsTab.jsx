@@ -83,9 +83,7 @@ export default function UserAccountsTab({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {accounts.map((account) => {
-              const canTopUp =
-                account.status === 'ACTIVE' &&
-                (account.currencyCode === 'EUR' || account.currencyCode === 'RON');
+              const canTopUp = account.status === 'ACTIVE';
               
               const theme = CURRENCY_THEME[account.currencyCode] || CURRENCY_THEME.DEFAULT;
 
