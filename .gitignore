@@ -52,3 +52,4 @@ services/fraud-service/src/main/resources/ml/model/*.bin
 data/*.csv
 data/*.log
 thesis_online_banking.md
+docs/
