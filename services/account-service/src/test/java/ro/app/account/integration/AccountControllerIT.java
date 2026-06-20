@@ -3,7 +3,8 @@ package ro.app.account.integration;
 import java.math.BigDecimal;
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.Mockito;
@@ -15,6 +16,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -24,8 +26,9 @@ import ro.app.account.security.JwtPrincipal;
 import ro.app.account.security.OwnershipChecker;
 import ro.app.account.service.AccountService;
 
+@RunWith(SpringRunner.class)
 @WebMvcTest(AccountController.class)
-class AccountControllerIT {
+public class AccountControllerIT {
 
     @Autowired
     private MockMvc mockMvc;
@@ -40,7 +43,7 @@ class AccountControllerIT {
     private ro.app.account.security.jwt.JwtService jwtService;
 
     @Test
-    void clientCannotAccessOtherClientData() throws Exception {
+    public void clientCannotAccessOtherClientData() throws Exception {
         JwtPrincipal principal = Mockito.mock(JwtPrincipal.class);
         Mockito.doThrow(new AccessDeniedException("forbidden")).when(ownershipChecker).checkOwnership(any(), eq(999L));
 
@@ -50,7 +53,7 @@ class AccountControllerIT {
     }
 
     @Test
-    void adminCanAccessAnyClientData() throws Exception {
+    public void adminCanAccessAnyClientData() throws Exception {
         JwtPrincipal principal = Mockito.mock(JwtPrincipal.class);
         Mockito.doNothing().when(ownershipChecker).checkOwnership(any(), any());
         Mockito.when(accountService.getAccountsByClient(any())).thenReturn(List.of());
@@ -61,7 +64,7 @@ class AccountControllerIT {
     }
 
     @Test
-    void clientCanAccessOwnData() throws Exception {
+    public void clientCanAccessOwnData() throws Exception {
         JwtPrincipal principal = Mockito.mock(JwtPrincipal.class);
         Mockito.doNothing().when(ownershipChecker).checkOwnership(any(), any());
         Mockito.when(accountService.getAccountsByClient(eq(123L))).thenReturn(List.of());
@@ -72,7 +75,7 @@ class AccountControllerIT {
     }
 
     @Test
-    void adminOnlyEndpointForbiddenForClient() throws Exception {
+    public void adminOnlyEndpointForbiddenForClient() throws Exception {
         JwtPrincipal principal = Mockito.mock(JwtPrincipal.class);
         Mockito.doNothing().when(ownershipChecker).checkOwnership(any(), any());
         Mockito.when(accountService.closeAccount(any())).thenThrow(new AccessDeniedException("forbidden"));
@@ -83,7 +86,7 @@ class AccountControllerIT {
     }
 
     @Test
-    void readOnlyEndpointAccessibleForAll() throws Exception {
+    public void readOnlyEndpointAccessibleForAll() throws Exception {
         JwtPrincipal principal = Mockito.mock(JwtPrincipal.class);
         Mockito.when(accountService.getBalanceByIban(any(), any())).thenReturn(BigDecimal.ZERO);
 

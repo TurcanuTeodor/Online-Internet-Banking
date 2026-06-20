@@ -1,17 +1,20 @@
 package ro.app.payment.integration;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@RunWith(SpringRunner.class)
 @SpringBootTest
 @AutoConfigureMockMvc
-class PaymentMethodControllerIT {
+public class PaymentMethodControllerIT {
 
     @Autowired
     private MockMvc mockMvc;
@@ -20,28 +23,28 @@ class PaymentMethodControllerIT {
     private static final String JWT_ADMIN = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.admin";
 
     @Test
-    void clientCannotAccessOtherClientPaymentMethods() throws Exception {
+    public void clientCannotAccessOtherClientPaymentMethods() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.get("/api/payment-methods/by-client/999")
                 .header("Authorization", JWT_CLIENT))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    void adminCanAccessAnyClientPaymentMethods() throws Exception {
+    public void adminCanAccessAnyClientPaymentMethods() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.get("/api/payment-methods/by-client/999")
                 .header("Authorization", JWT_ADMIN))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void clientCanAccessOwnPaymentMethods() throws Exception {
+    public void clientCanAccessOwnPaymentMethods() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.get("/api/payment-methods/by-client/123")
                 .header("Authorization", JWT_CLIENT))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void readOnlyEndpointAccessibleForAll() throws Exception {
+    public void readOnlyEndpointAccessibleForAll() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.get("/api/payment-methods/by-client/123")
                 .header("Authorization", JWT_ADMIN))
                 .andExpect(status().isOk());
