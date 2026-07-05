@@ -109,7 +109,7 @@ public class RuleEngineTest {
         req.setAmount(amount);
         req.setSelfTransfer(selfTransfer);
         req.setAccountAgeDays(accountAgeDays);
-        req.setTransactionType("TRANSFER_INTERNAL");
+        req.setTransactionType("TR_INT");
         return req;
     }
 }

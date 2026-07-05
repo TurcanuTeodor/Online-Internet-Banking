@@ -96,7 +96,7 @@ public class AccountTopUpService {
         Map<String, Object> body = new HashMap<>();
         body.put("accountId", account.getId());
         body.put("destinationAccountId", null);
-        body.put("transactionTypeCode", "DEPOSIT");
+        body.put("transactionTypeCode", "DEP");
         body.put("categoryCode", "INCOME");
         body.put("amount", amount);
         body.put("originalAmount", amount);

@@ -13,10 +13,10 @@ const ICON_MAP = {
 };
 
 export const TRANSACTION_TYPE_CONFIG = {
-  DEPOSIT: { iconName: 'ArrowDownToLine', color: 'text-emerald-400', label: 'Deposit' },
-  WITHDRAWAL: { iconName: 'ArrowUpFromLine', color: 'text-rose-400', label: 'Withdrawal' },
-  TRANSFER_INTERNAL: { iconName: 'ArrowLeftRight', color: 'text-sky-400', label: 'Internal transfer' },
-  TRANSFER_EXTERNAL: { iconName: 'Send', color: 'text-blue-400', label: 'External transfer' },
+  DEP: { iconName: 'ArrowDownToLine', color: 'text-emerald-400', label: 'Deposit' },
+  WDL: { iconName: 'ArrowUpFromLine', color: 'text-rose-400', label: 'Withdrawal' },
+  TR_INT: { iconName: 'ArrowLeftRight', color: 'text-sky-400', label: 'Internal transfer' },
+  TR_EXT: { iconName: 'Send', color: 'text-blue-400', label: 'External transfer' },
   PAYMENT: { iconName: 'Receipt', color: 'text-rose-300', label: 'Payment' },
   TOP_UP: { iconName: 'CreditCard', color: 'text-emerald-300', label: 'Card top-up' },
 };
@@ -41,9 +41,9 @@ export function resolveTransactionTypeKey(tx) {
   let s = String(raw).trim().toUpperCase().replace(/\s+/g, '_');
   if ((s.includes('TOP') && s.includes('UP')) || s.includes('TOPUP') || s === 'CARD_TOP_UP') return 'TOP_UP';
   if (TRANSACTION_TYPE_CONFIG[s]) return s;
-  if (s.includes('TRANSFER')) return s.includes('INTERNAL') ? 'TRANSFER_INTERNAL' : 'TRANSFER_EXTERNAL';
-  if (s.includes('DEPOSIT')) return 'DEPOSIT';
-  if (s.includes('WITHDRAW')) return 'WITHDRAWAL';
+  if (s.includes('TRANSFER') || s.includes('TR_INT') || s.includes('TR_EXT')) return s.includes('INTERNAL') || s.includes('TR_INT') ? 'TR_INT' : 'TR_EXT';
+  if (s.includes('DEPOSIT') || s.includes('DEP')) return 'DEP';
+  if (s.includes('WITHDRAW') || s.includes('WDL')) return 'WDL';
   if (s.includes('PAYMENT')) return 'PAYMENT';
   return 'OTHER';
 }

@@ -288,12 +288,11 @@ export function prepareTopMerchants(transactions, limit = 3) {
     const amount = Math.abs(txAmount(tx));
     if (amount <= 0) return;
 
-    // Use counterpartyName, or fall back to IBAN/Description.
-    // Ensure we don't just group everything under 'Unknown' if we can avoid it.
+    // Use merchant field first; fall back to details (e.g. "Transfer to IBAN"
+    // or "Groceries shopping"), which doubles as a recipient/description label.
     const merchant = 
-      (tx?.counterpartyName && tx.counterpartyName.trim()) || 
-      (tx?.counterpartyIban && tx.counterpartyIban.trim()) || 
-      (tx?.description && tx.description.trim()) || 
+      (tx?.merchant && tx.merchant.trim()) || 
+      (tx?.details && tx.details.trim()) || 
       'Unknown Merchant';
 
     // Normalize slightly to group casing discrepancies

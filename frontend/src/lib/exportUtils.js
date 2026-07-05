@@ -33,8 +33,13 @@ function directionLabel(sign) {
 export function exportTransactionsToCsv(transactions, filename = 'transactions.csv') {
   const headers = ['Date', 'Type', 'Account', 'Amount', 'Currency', 'Direction', 'Details'];
   const rows = (transactions || []).map((t) => [
-    t.transactionDate ?? '', t.transactionTypeName ?? '', t.accountIban ?? '',
-    t.amount ?? '', t.currencyCode ?? '', directionLabel(t.sign), t.details ?? '',
+    t.transactionDate ?? '', 
+    t.transactionTypeName ?? t.transactionType ?? t.type ?? '', 
+    t.accountIban ?? t.iban ?? t.accountId ?? '',
+    t.amount ?? '', 
+    t.currencyCode ?? t.originalCurrencyCode ?? t.originalCurrency ?? '', 
+    directionLabel(t.sign), 
+    t.details ?? '',
   ]);
   exportToCsv(filename, headers, rows);
 }
@@ -51,8 +56,13 @@ export function exportAccountStatementToCsv(account, transactions) {
   ];
   for (const t of (transactions || [])) {
     lines.push([
-      t.transactionDate ?? '', t.transactionTypeName ?? '', t.accountIban ?? '',
-      t.amount ?? '', t.currencyCode ?? '', directionLabel(t.sign), t.details ?? '',
+      t.transactionDate ?? '', 
+      t.transactionTypeName ?? t.transactionType ?? t.type ?? '', 
+      t.accountIban ?? t.iban ?? t.accountId ?? '',
+      t.amount ?? '', 
+      t.currencyCode ?? t.originalCurrencyCode ?? t.originalCurrency ?? '', 
+      directionLabel(t.sign), 
+      t.details ?? '',
     ].map(escapeCsvField).join(','));
   }
   const safeIban = String(acc.iban ?? 'statement').replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 40);

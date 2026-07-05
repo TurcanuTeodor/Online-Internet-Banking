@@ -124,17 +124,14 @@ public class TransactionControllerTest {
     // ── getByType ─────────────────────────────────────────────────────────────
 
     @Test
-    public void getByType_validTypeCode_delegatesToService() {
-        // Arrange
-        Mockito.when(transactionService.getTransactionsByType("DEPOSIT"))
+    public void getByType() {
+        Mockito.when(transactionService.getTransactionsByType("DEP"))
                .thenReturn(Collections.emptyList());
 
-        // Act
-        List<TransactionDTO> result = transactionController.getByType("DEPOSIT");
+        List<TransactionDTO> result = transactionController.getByType("DEP");
 
-        // Assert
         Assert.assertNotNull(result);
-        Mockito.verify(transactionService).getTransactionsByType("DEPOSIT");
+        Mockito.verify(transactionService).getTransactionsByType("DEP");
     }
 
     // ── getFlagged ────────────────────────────────────────────────────────────

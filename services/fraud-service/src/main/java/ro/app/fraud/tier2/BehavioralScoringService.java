@@ -172,10 +172,10 @@ public class BehavioralScoringService {
     private double scoreCategoryRisk(String transactionType) {
         if (transactionType == null) return 20.0;
         return switch (transactionType.toUpperCase()) {
-            case "TRANSFER_EXTERNAL" -> 40.0;
-            case "TRANSFER_INTERNAL" -> 15.0;
-            case "WITHDRAWAL" -> 30.0;
-            case "DEPOSIT" -> 5.0;
+            case "TR_EXT" -> 40.0;
+            case "TR_INT" -> 15.0;
+            case "WDL" -> 10.0;
+            case "DEP" -> 5.0;
             default -> 20.0;
         };
     }

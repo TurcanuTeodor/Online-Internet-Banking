@@ -42,14 +42,50 @@ public class ClientViewProjectionService {
     }
 
     /**
-     * Admin analytic view — returns only non-PII operational fields.
-     * firstName, lastName, email, phone, address, city, postalCode are intentionally null.
-     * Compliant with GDPR data minimisation principle (Art. 5(1)(c)).
+     * Admin analytic view — returns decrypted PII using server fallback key.
+     * Name is fully visible; email and phone are sent decrypted (masking done on frontend).
+     * City and postalCode: new saves are plaintext; legacy encrypted values are decrypted on read.
      */
     private ViewClientDTO toAdminListViewDto(ViewClient v) {
-        return baseViewFields(v);
+        ViewClientDTO dto = baseViewFields(v);
+        String key = keyResolver.fallbackKey();
+        dto.setFirstName(safeDecrypt(v.getClientFirstName(), key));
+        dto.setLastName(safeDecrypt(v.getClientLastName(), key));
+        dto.setEmail(safeDecrypt(v.getEmailEncrypted(), key));
+        dto.setPhone(safeDecrypt(v.getPhoneEncrypted(), key));
+        dto.setCity(decryptOrPlain(v.getCityEncrypted(), key));
+        dto.setPostalCode(decryptOrPlain(v.getPostalCodeEncrypted(), key));
+        return dto;
     }
 
+    /**
+     * Safely decrypt a value using the server key, returning the raw value on any failure.
+     * Returns null if the input is null or blank.
+     */
+    private String safeDecrypt(String value, String key) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return encryptionService.decryptFlexible(value, key, null);
+        } catch (Exception e) {
+            return value;
+        }
+    }
+
+    /**
+     * Tries to decrypt the value; if it is not in encrypted format (new plaintext saves),
+     * returns the value as-is. Supports transition from encrypted to plaintext storage.
+     */
+    private String decryptOrPlain(String value, String key) {
+        if (value == null || value.isBlank()) return value;
+        // Encrypted format: "base64salt:base64iv:base64ciphertext" (exactly 2 colons)
+        String[] parts = value.split(":");
+        if (parts.length != 3) return value; // plaintext — return as-is
+        try {
+            return encryptionService.decryptFlexible(value, key, null);
+        } catch (Exception e) {
+            return value;
+        }
+    }
 
     private ViewClientDTO toOwnerViewDto(ViewClient v, String encryptionKey) {
         ViewClientDTO dto = baseViewFields(v);

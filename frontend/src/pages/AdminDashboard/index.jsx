@@ -5,6 +5,7 @@ import { getAllClientsFromView, suspendClient, reactivateClient } from '@/servic
 import { getAllTransactionsFromView } from '@/services/transactionService';
 import { getAllAccountsFromView } from '@/services/accountService';
 import { logSensitiveDataReveal } from '@/services/adminAuditService';
+
 import {
   LogOut,
   Users,
@@ -26,6 +27,7 @@ import SuspendClientModal from './SuspendClientModal';
 import AccountStatementModal from './AccountStatementModal';
 import FreezeAccountModal from './FreezeAccountModal';
 import RevealSensitiveDataModal from './RevealSensitiveDataModal';
+
 import DashboardOverview from './DashboardOverview';
 import FraudAlertsTab from './FraudAlertsTab';
 import FraudCommandCenter from './FraudCommandCenter';
@@ -70,11 +72,13 @@ export default function AdminDashboard() {
   const [showUnfreezeAccountModal, setShowUnfreezeAccountModal] = useState(false);
   const [accountToUnfreeze, setAccountToUnfreeze] = useState(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+
   const [showAccountSensitiveData, setShowAccountSensitiveData] = useState(false);
-  const [showTransactionSensitiveData, setShowTransactionSensitiveData] = useState(false);
+  const [showClientSensitiveData, setShowClientSensitiveData] = useState(false);
   const [showRevealModal, setShowRevealModal] = useState(false);
   const [revealScope, setRevealScope] = useState(null);
   const [revealLoading, setRevealLoading] = useState(false);
+
 
   const [showClientFilters, setShowClientFilters] = useState(false);
   const [clientFilters, setClientFilters] = useState({
@@ -247,8 +251,8 @@ export default function AdminDashboard() {
       if (revealScope.scope === 'ADMIN_ACCOUNTS') {
         setShowAccountSensitiveData(true);
       }
-      if (revealScope.scope === 'ADMIN_TRANSACTIONS') {
-        setShowTransactionSensitiveData(true);
+      if (revealScope.scope === 'ADMIN_CLIENTS') {
+        setShowClientSensitiveData(true);
       }
       setShowRevealModal(false);
       setRevealScope(null);
@@ -472,7 +476,7 @@ export default function AdminDashboard() {
                   showSensitiveData={showAccountSensitiveData}
                   onRequestSensitiveReveal={() => handleRequestSensitiveReveal({
                     scope: 'ADMIN_ACCOUNTS',
-                    targetType: 'ACCOUNT_BALANCE',
+                    targetType: 'ACCOUNT_IBAN',
                     targetId: 'accounts-tab',
                   })}
                 />
@@ -487,12 +491,6 @@ export default function AdminDashboard() {
                   showFilters={showTransactionFilters}
                   onToggleFilters={() => setShowTransactionFilters(!showTransactionFilters)}
                   onViewDetails={setSelectedTransactionId}
-                  showSensitiveData={showTransactionSensitiveData}
-                  onRequestSensitiveReveal={() => handleRequestSensitiveReveal({
-                    scope: 'ADMIN_TRANSACTIONS',
-                    targetType: 'TRANSACTION_AMOUNT_DETAILS',
-                    targetId: 'transactions-tab',
-                  })}
                 />
               )}
 
@@ -511,11 +509,17 @@ export default function AdminDashboard() {
         </main>
       </div>
 
-      {showClientDetailsModal && (
+      {showClientDetailsModal && selectedClient && (
         <ClientDetailsModal
           client={selectedClient}
           onClose={() => setShowClientDetailsModal(false)}
           onViewAccounts={handleViewClientAccounts}
+          showSensitiveData={showClientSensitiveData}
+          onRequestSensitiveReveal={() => handleRequestSensitiveReveal({
+            scope: 'ADMIN_CLIENTS',
+            targetType: 'CLIENT_CONTACT_INFO',
+            targetId: selectedClient.clientId,
+          })}
         />
       )}
 
@@ -583,14 +587,14 @@ export default function AdminDashboard() {
       {selectedTransactionId != null && (
         <TransactionDetailsModal
           id={selectedTransactionId}
-          maskSensitiveData={!showTransactionSensitiveData}
+          maskSensitiveData={false}
           onClose={() => setSelectedTransactionId(null)}
         />
       )}
 
       {showRevealModal && revealScope && (
         <RevealSensitiveDataModal
-          scopeLabel={revealScope.scope === 'ADMIN_ACCOUNTS' ? 'Account balances' : 'Transaction amounts and details'}
+          scopeLabel={revealScope.scope === 'ADMIN_ACCOUNTS' ? 'Account details' : 'Client contact info'}
           loading={revealLoading}
           onClose={() => {
             setShowRevealModal(false);

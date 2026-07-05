@@ -60,13 +60,13 @@ public class FraudFeatureEngineTest {
 
     @Test
     public void typeRiskLive_transferInternal_returnsOne() {
-        assertEquals(1.0, FraudFeatureEngine.computeTypeRiskLive("TRANSFER_INTERNAL"), 1e-9);
+        assertEquals(1.0, FraudFeatureEngine.computeTypeRiskLive("TR_INT"), 1e-9);
     }
 
     @Test
     public void typeRiskLive_transferExternal_returnsThree() {
         // FIX #1a: TRANSFER_EXTERNAL trebuie sa returneze 3.0 (nu 2.0)
-        assertEquals(3.0, FraudFeatureEngine.computeTypeRiskLive("TRANSFER_EXTERNAL"), 1e-9);
+        assertEquals(3.0, FraudFeatureEngine.computeTypeRiskLive("TR_EXT"), 1e-9);
     }
 
     @Test

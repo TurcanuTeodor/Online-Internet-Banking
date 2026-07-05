@@ -1,12 +1,11 @@
 import { X, FileText, Eye, EyeOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getTransactionsByIban } from '@/services/transactionService';
-import { maskIban, maskMoneyValue } from '@/lib/maskingUtils';
+import { maskIban } from '@/lib/maskingUtils';
 
-export default function AccountStatementModal({ account, onClose, showSensitiveData = false }) {
+export default function AccountStatementModal({ account, onClose }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [revealIban, setRevealIban] = useState(false);
 
   useEffect(() => {
     fetchTransactions();
@@ -38,21 +37,6 @@ export default function AccountStatementModal({ account, onClose, showSensitiveD
             </h2>
             <div className="text-xs text-zinc-400 mt-1 flex items-center gap-2">
               <div>
-                IBAN:{' '}
-                <span className="font-mono text-zinc-300">
-                  {revealIban ? account.accountIban : maskIban(account.accountIban)}
-                </span>
-              </div>
-              <button 
-                type="button" 
-                onClick={() => setRevealIban(!revealIban)}
-                className="text-zinc-500 hover:text-zinc-300 transition-colors"
-                title={revealIban ? "Hide IBAN" : "Reveal IBAN"}
-              >
-                {revealIban ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
-              <span>•</span>
-              <div>
                 Client ID: <span className="font-mono">{account.clientId ?? '—'}</span>
               </div>
             </div>
@@ -70,13 +54,11 @@ export default function AccountStatementModal({ account, onClose, showSensitiveD
           <div className="glass rounded-xl p-4">
             <label className="text-sm text-zinc-400">Current Balance</label>
             <p className="text-2xl font-bold text-emerald-400">
-              {showSensitiveData
-                ? (() => {
-                    const raw = account.accountBalance ?? account.balance;
-                    const n = parseFloat(raw);
-                    return Number.isFinite(n) ? n.toFixed(2) : '—';
-                  })()
-                : maskMoneyValue()}{' '}
+              {(() => {
+                const raw = account.accountBalance ?? account.balance;
+                const n = parseFloat(raw);
+                return Number.isFinite(n) ? n.toFixed(2) : '—';
+              })()}{' '}
               {account.currencyCode}
             </p>
           </div>
@@ -141,10 +123,10 @@ export default function AccountStatementModal({ account, onClose, showSensitiveD
                           <td className="px-4 py-3 text-sm font-medium">
                             <span className={sg === '+' ? 'text-emerald-400' : 'text-red-400'}>
                               {sg === '+' ? '+' : sg === '-' ? '-' : ''}
-                              {showSensitiveData ? (amt != null ? parseFloat(amt).toFixed(2) : '—') : maskMoneyValue()} {cur}
+                              {amt != null ? parseFloat(amt).toFixed(2) : '—'} {cur}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-sm text-zinc-400">{showSensitiveData ? (tx.details || '—') : 'Hidden'}</td>
+                          <td className="px-4 py-3 text-sm text-zinc-400">{tx.details || '—'}</td>
                         </tr>
                       );
                     })}

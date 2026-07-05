@@ -1,8 +1,8 @@
 const TYPE_LABELS = {
-  WITHDRAWAL: 'Withdrawal',
-  DEPOSIT: 'Deposit',
-  TRANSFER_INTERNAL: 'Internal Transfer',
-  TRANSFER_EXTERNAL: 'External Transfer',
+  WDL: 'Withdrawal',
+  DEP: 'Deposit',
+  TR_INT: 'Internal Transfer',
+  TR_EXT: 'External Transfer',
   TRANSFER: 'Transfer',
   TOP_UP: 'Card Top-up',
   PAYMENT: 'Payment',

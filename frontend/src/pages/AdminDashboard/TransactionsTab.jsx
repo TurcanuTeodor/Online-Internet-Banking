@@ -1,8 +1,5 @@
-import { Eye, Filter } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import PaginationControls from './PaginationControls';
-import { maskMoneyValue } from '@/lib/maskingUtils';
-
-const MASK_TEXT = 'Hidden';
 
 function transactionTypeOf(tx) {
   return tx.transactionType ?? tx.transactionTypeName ?? '—';
@@ -62,8 +59,6 @@ export default function TransactionsTab({
   showFilters,
   onToggleFilters,
   onViewDetails,
-  showSensitiveData,
-  onRequestSensitiveReveal,
 }) {
   const getTransactionTypes = () => {
     const types = new Set(transactions.map((tx) => transactionTypeOf(tx)).filter((x) => x && x !== '—'));
@@ -122,16 +117,6 @@ export default function TransactionsTab({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <h2 className="text-lg font-semibold">Transactions ({filteredTransactions.length})</h2>
         <div className="flex flex-wrap items-center gap-2">
-          {!showSensitiveData && (
-            <button
-              type="button"
-              onClick={onRequestSensitiveReveal}
-              className="btn-secondary flex items-center justify-center gap-2 border-amber-500/30 text-amber-300"
-            >
-              <Eye className="w-4 h-4" />
-              Reveal data
-            </button>
-          )}
           <button
             onClick={onToggleFilters}
             className={`btn-secondary flex items-center justify-center gap-2 ${showFilters ? 'bg-emerald-500/20 border-emerald-500/30' : ''}`}
@@ -295,25 +280,19 @@ export default function TransactionsTab({
                           {tx.accountId != null ? tx.accountId : '—'}
                         </td>
                         <td className="px-4 py-3 text-sm font-mono text-zinc-400">
-                          {showSensitiveData ? (destId != null ? destId : '—') : MASK_TEXT}
+                          {destId != null ? destId : '—'}
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          {showSensitiveData ? (
-                            <span
-                              className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${transactionTypeBadgeClass(typeLabel)}`}
-                            >
-                              {typeLabel}
-                            </span>
-                          ) : (
-                            <span className="inline-flex px-2 py-1 rounded-md text-xs font-medium bg-zinc-700/50 text-zinc-400 border border-zinc-600/60">
-                              {MASK_TEXT}
-                            </span>
-                          )}
+                          <span
+                            className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${transactionTypeBadgeClass(typeLabel)}`}
+                          >
+                            {typeLabel}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
                           <span className={sg === '+' ? 'text-emerald-400' : 'text-red-400'}>
                             {sg === '+' ? '+' : sg === '-' ? '-' : ''}
-                            {showSensitiveData ? (amt !== null ? amt.toFixed(2) : '—') : maskMoneyValue()} {cur}
+                            {amt !== null ? amt.toFixed(2) : '—'} {cur}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm">

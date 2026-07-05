@@ -31,7 +31,7 @@ package ro.app.fraud.tier3;
  * TRANSFER/CASH_OUT=3})
  * IMPORTANT: valoarea 2.0 a fost eliminata pentru a preveni out-of-distribution
  * la inferenta.
- * TRANSFER_EXTERNAL mapat pe 3.0 (la fel ca TRANSFER_INSTANT) — ambele sunt
+ * TR_EXT mapat pe 3.0 (la fel ca TRANSFER_INSTANT) — ambele sunt
  * ireversibile.
  * Motiv: transferurile instant (SEPA Instant) nu permit recall — risc maxim.
  *
@@ -78,9 +78,10 @@ public final class FraudFeatureEngine {
             return 1.0;
         return switch (type.toUpperCase().trim()) {
             case "POS_PAYMENT" -> 0.0; // Sigur: card fizic / biometrie
-            case "TRANSFER_INTERNAL" -> 1.0; // Risc normal: intern, reversibil
-            case "TRANSFER_EXTERNAL" -> 3.0; // Risc maxim: interbancar ireversibil (aliniat PaySim TRANSFER)
+            case "TR_INT" -> 1.0; // Risc normal: intern, reversibil
+            case "TR_EXT" -> 3.0; // Risc maxim: interbancar ireversibil (aliniat PaySim TRANSFER)
             case "TRANSFER_INSTANT" -> 3.0; // Risc maxim: SEPA Instant, no recall
+            case "WDL" -> 2.0; // Risc mediu
             default -> 1.0; // Default: risc normal
         };
     }

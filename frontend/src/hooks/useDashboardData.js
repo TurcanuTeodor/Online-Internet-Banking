@@ -37,8 +37,21 @@ export default function useDashboardData() {
         getTransactionsByClient(clientId),
         getPaymentHistory(clientId),
       ]);
+
+      const accountMap = new Map();
+      (accountsData || []).forEach(acc => accountMap.set(String(acc.id), acc));
+
+      const enrichedTransactions = (transactionsData || []).map(tx => {
+        const acc = accountMap.get(String(tx.accountId));
+        if (acc) {
+          return { ...tx, iban: acc.iban, currencyCode: acc.currencyCode };
+        }
+        return tx;
+      });
+
+      console.log("Enriched Transactions:", enrichedTransactions);
       setAccounts(accountsData);
-      setTransactions(transactionsData);
+      setTransactions(enrichedTransactions);
       setPayments(Array.isArray(paymentsData) ? paymentsData : []);
     } catch (err) {
       console.error('Error fetching data:', err);

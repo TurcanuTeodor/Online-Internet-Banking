@@ -40,7 +40,7 @@ public class InternalTransactionController {
         if (!internalApiSecret.equals(secret)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid internal API secret");
         }
-        if (!"DEPOSIT".equalsIgnoreCase(dto.getTransactionTypeCode())) {
+        if (!"DEP".equalsIgnoreCase(dto.getTransactionTypeCode())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only DEPOSIT is allowed on this endpoint");
         }
         Transaction entity = TransactionMapper.toEntity(dto);

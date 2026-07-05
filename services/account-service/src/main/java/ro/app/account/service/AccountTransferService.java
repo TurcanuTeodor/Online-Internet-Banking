@@ -197,27 +197,32 @@ public class AccountTransferService {
                     }
                 }
 
+                String toFullName = accountRepository.getClientFullName(to.getClientId());
+                String fromFullName = accountRepository.getClientFullName(from.getClientId());
+
                 Map<String, Object> debit = new HashMap<>();
                 debit.put("accountId", from.getId());
                 debit.put("destinationAccountId", to.getId());
-                debit.put("transactionTypeCode", "TRANSFER_INTERNAL");
+                debit.put("transactionTypeCode", "TR_INT");
                 debit.put("categoryCode", "OTHERS");
                 debit.put("amount", amount);
                 debit.put("originalAmount", amount);
                 debit.put("originalCurrencyCode", fromCurrency.getCode());
                 debit.put("sign", "-");
+                debit.put("merchant", toFullName);
                 debit.put("details", "Transfer to " + normalizedToIban);
                 debit.put("transactionDate", now.toString());
 
                 Map<String, Object> credit = new HashMap<>();
                 credit.put("accountId", to.getId());
                 credit.put("destinationAccountId", from.getId());
-                credit.put("transactionTypeCode", "TRANSFER_INTERNAL");
+                credit.put("transactionTypeCode", "TR_INT");
                 credit.put("categoryCode", "OTHERS");
                 credit.put("amount", convertedAmount);
                 credit.put("originalAmount", amount);
                 credit.put("originalCurrencyCode", fromCurrency.getCode());
                 credit.put("sign", "+");
+                credit.put("merchant", fromFullName);
                 credit.put("details", "Transfer from " + normalizedFromIban);
                 credit.put("transactionDate", now.toString());
 
@@ -300,7 +305,7 @@ public class AccountTransferService {
             body.put("currency", from.getCurrency().getCode());
             body.put("senderIban", from.getIban());
             body.put("receiverIban", to.getIban());
-            body.put("transactionType", "TRANSFER_INTERNAL");
+            body.put("transactionType", "TR_INT");
             body.put("selfTransfer", selfTransfer);
             body.put("accountAgeDays", accountAgeDays);
             // Soldul senderului pre-tranzactie — disponibil mereu (clientul nostru).

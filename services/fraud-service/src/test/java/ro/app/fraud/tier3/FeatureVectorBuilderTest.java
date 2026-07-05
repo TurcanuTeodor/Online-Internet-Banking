@@ -31,7 +31,7 @@ public class FeatureVectorBuilderTest {
         FraudEvaluationRequest req = new FraudEvaluationRequest();
         req.setAmount(1000.0);
         req.setAccountAgeDays(60);
-        req.setTransactionType("TRANSFER_EXTERNAL");
+        req.setTransactionType("TR_EXT");
         req.setOldBalanceOrg(5000.0);
 
         // Act
@@ -44,7 +44,7 @@ public class FeatureVectorBuilderTest {
     @Test
     public void build_amountRatio_normalizedCorrectly() {
         // 1000 / 50000 = 0.02
-        FraudEvaluationRequest req = buildRequest(1000.0, 60, "TRANSFER_EXTERNAL", 5000.0);
+        FraudEvaluationRequest req = buildRequest(1000.0, 60, "TR_EXT", 5000.0);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
 
@@ -54,7 +54,7 @@ public class FeatureVectorBuilderTest {
     @Test
     public void build_amountRatio_cappedAtOne() {
         // 60000 / 50000 = 1.2 → capped la 1.0
-        FraudEvaluationRequest req = buildRequest(60_000.0, 60, "TRANSFER_EXTERNAL", 100_000.0);
+        FraudEvaluationRequest req = buildRequest(60_000.0, 60, "TR_EXT", 100_000.0);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
 
@@ -72,7 +72,7 @@ public class FeatureVectorBuilderTest {
 
     @Test
     public void build_typeRisk_transferExternal_fix1a() {
-        FraudEvaluationRequest req = buildRequest(500.0, 60, "TRANSFER_EXTERNAL", 5000.0);
+        FraudEvaluationRequest req = buildRequest(500.0, 60, "TR_EXT", 5000.0);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
 
@@ -90,7 +90,7 @@ public class FeatureVectorBuilderTest {
 
     @Test
     public void build_hourSuspicion_isInValidRange() {
-        FraudEvaluationRequest req = buildRequest(500.0, 60, "TRANSFER_INTERNAL", 5000.0);
+        FraudEvaluationRequest req = buildRequest(500.0, 60, "TR_INT", 5000.0);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
 
@@ -101,7 +101,7 @@ public class FeatureVectorBuilderTest {
     @Test
     public void build_hourSuspicion_nighttimeHour_isMaxRisk() {
         // FIX #14: transactionHour=3 (noapte) → hourSuspicion = 1.0
-        FraudEvaluationRequest req = buildRequest(500.0, 60, "TRANSFER_INTERNAL", 5000.0);
+        FraudEvaluationRequest req = buildRequest(500.0, 60, "TR_INT", 5000.0);
         req.setTransactionHour(3);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
@@ -112,7 +112,7 @@ public class FeatureVectorBuilderTest {
     @Test
     public void build_newAccountFlag_newAccount_isOne() {
         // Cont de 10 zile < 30 → flag = 1.0
-        FraudEvaluationRequest req = buildRequest(500.0, 10, "TRANSFER_INTERNAL", 5000.0);
+        FraudEvaluationRequest req = buildRequest(500.0, 10, "TR_INT", 5000.0);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
 
@@ -122,7 +122,7 @@ public class FeatureVectorBuilderTest {
     @Test
     public void build_newAccountFlag_oldAccount_isZero() {
         // Cont de 365 zile → flag = 0.0
-        FraudEvaluationRequest req = buildRequest(500.0, 365, "TRANSFER_INTERNAL", 5000.0);
+        FraudEvaluationRequest req = buildRequest(500.0, 365, "TR_INT", 5000.0);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
 
@@ -132,7 +132,7 @@ public class FeatureVectorBuilderTest {
     @Test
     public void build_senderDepletionRatio_calculatedCorrectly() {
         // 500 / 2000 = 0.25
-        FraudEvaluationRequest req = buildRequest(500.0, 60, "TRANSFER_INTERNAL", 2000.0);
+        FraudEvaluationRequest req = buildRequest(500.0, 60, "TR_INT", 2000.0);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
 
@@ -141,7 +141,7 @@ public class FeatureVectorBuilderTest {
 
     @Test
     public void build_senderDepletionRatio_nullBalance_isZero() {
-        FraudEvaluationRequest req = buildRequest(500.0, 60, "TRANSFER_INTERNAL", null);
+        FraudEvaluationRequest req = buildRequest(500.0, 60, "TR_INT", null);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
 
@@ -150,7 +150,7 @@ public class FeatureVectorBuilderTest {
 
     @Test
     public void build_isRoundAmount_roundNumber_isOne() {
-        FraudEvaluationRequest req = buildRequest(500.0, 60, "TRANSFER_INTERNAL", 5000.0);
+        FraudEvaluationRequest req = buildRequest(500.0, 60, "TR_INT", 5000.0);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
 
@@ -159,7 +159,7 @@ public class FeatureVectorBuilderTest {
 
     @Test
     public void build_isRoundAmount_nonRoundNumber_isZero() {
-        FraudEvaluationRequest req = buildRequest(537.5, 60, "TRANSFER_INTERNAL", 5000.0);
+        FraudEvaluationRequest req = buildRequest(537.5, 60, "TR_INT", 5000.0);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
 
@@ -168,7 +168,7 @@ public class FeatureVectorBuilderTest {
 
     @Test
     public void build_isRoundAmount_floatingPointEpsilon_fix10() {
-        FraudEvaluationRequest req = buildRequest(500.0000000001, 60, "TRANSFER_INTERNAL", 5000.0);
+        FraudEvaluationRequest req = buildRequest(500.0000000001, 60, "TR_INT", 5000.0);
 
         double[] vector = FeatureVectorBuilder.build(req, emptyScoringResult(), defaultSnapshot());
 

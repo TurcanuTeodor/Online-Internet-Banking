@@ -21,4 +21,7 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Account a SET a.status = :closed WHERE a.clientId = :clientId AND a.status <> :closed")
     int gdprCloseAllByClientId(@Param("clientId") Long clientId, @Param("closed") AccountStatus closed);
+
+    @Query(value = "SELECT first_name || ' ' || last_name FROM clients.\"CLIENT\" WHERE id = :clientId", nativeQuery = true)
+    String getClientFullName(@Param("clientId") Long clientId);
 }

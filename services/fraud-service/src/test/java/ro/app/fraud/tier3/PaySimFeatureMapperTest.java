@@ -146,7 +146,7 @@ public class PaySimFeatureMapperTest {
     public void consistency_paySimTransferAndLiveExternal_sameTypeRisk() {
         // PaySim TRANSFER = Live TRANSFER_EXTERNAL = 3.0
         double paySimRisk = FraudFeatureEngine.computeTypeRiskPaySim("TRANSFER");
-        double liveRisk = FraudFeatureEngine.computeTypeRiskLive("TRANSFER_EXTERNAL");
+        double liveRisk = FraudFeatureEngine.computeTypeRiskLive("TR_EXT");
 
         assertEquals("PaySim TRANSFER and Live TRANSFER_EXTERNAL must produce 3.0",
                 paySimRisk, liveRisk, 1e-9);

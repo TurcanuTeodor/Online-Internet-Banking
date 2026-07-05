@@ -1,32 +1,9 @@
 import { X, Wallet, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import AdminRiskBadge from './AdminRiskBadge';
-import { maskEmail } from '@/lib/maskingUtils';
+import { maskEmail, maskPhone } from '@/lib/maskingUtils';
 
-function RevealableField({ label, rawValue, maskFn }) {
-  const [revealed, setRevealed] = useState(false);
-  const isMissing = !rawValue || rawValue === '—';
-  const displayValue = isMissing ? '—' : (revealed ? rawValue : maskFn(rawValue));
 
-  return (
-    <div>
-      <label className="text-xs text-zinc-400">{label}</label>
-      <div className="flex items-center gap-2">
-        <p className="text-sm font-medium">{displayValue}</p>
-        {!isMissing && (
-          <button 
-            type="button" 
-            onClick={() => setRevealed(!revealed)}
-            className="text-zinc-500 hover:text-zinc-300 transition-colors"
-            title={revealed ? "Hide" : "Reveal"}
-          >
-            {revealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function firstNameOf(c) {
   return c.firstName ?? c.clientFirstName ?? '';
@@ -40,14 +17,32 @@ function clientTypeOf(c) {
   return c.clientType ?? c.clientTypeName ?? '—';
 }
 
-export default function ClientDetailsModal({ client, onClose, onViewAccounts }) {
+export default function ClientDetailsModal({ 
+  client, 
+  onClose, 
+  onViewAccounts,
+  showSensitiveData,
+  onRequestSensitiveReveal
+}) {
   if (!client) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="glass rounded-2xl p-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Client details</h2>
+          <h2 className="text-xl font-bold flex items-center gap-3">
+            Client details
+            {!showSensitiveData && (
+              <button
+                type="button"
+                onClick={onRequestSensitiveReveal}
+                className="btn-secondary flex items-center gap-2 border-amber-500/30 text-amber-300 text-xs py-1 px-2"
+              >
+                <Eye className="w-3 h-3" />
+                Reveal data
+              </button>
+            )}
+          </h2>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors" type="button">
             <X className="w-5 h-5" />
           </button>
@@ -66,11 +61,14 @@ export default function ClientDetailsModal({ client, onClose, onViewAccounts }) 
             </p>
           </div>
 
-          <RevealableField label="Email" rawValue={client.email} maskFn={maskEmail} />
+          <div>
+            <label className="text-xs text-zinc-400">Email</label>
+            <p className="text-sm font-medium">{showSensitiveData ? client.email : maskEmail(client.email)}</p>
+          </div>
 
           <div>
             <label className="text-xs text-zinc-400">Phone</label>
-            <p className="text-sm font-medium">{client.phone || '—'}</p>
+            <p className="text-sm font-medium">{showSensitiveData ? client.phone : maskPhone(client.phone)}</p>
           </div>
 
           <div>

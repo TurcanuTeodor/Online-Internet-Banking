@@ -16,8 +16,6 @@ public class ContactInfoMapper {
             dto.setContactPerson(encryptionService.decryptFlexible(e.getContactPerson(), key, legacyKey));
             dto.setWebsite(encryptionService.decryptFlexible(e.getWebsite(), key, legacyKey));
             dto.setAddress(encryptionService.decryptFlexible(e.getAddress(), key, legacyKey));
-            dto.setCity(encryptionService.decryptFlexible(e.getCity(), key, legacyKey));
-            dto.setPostalCode(encryptionService.decryptFlexible(e.getPostalCode(), key, legacyKey));
         } catch (Exception ex) {
             // fallback: return encrypted values if decryption fails
             dto.setPhone(e.getPhone());
@@ -25,9 +23,11 @@ public class ContactInfoMapper {
             dto.setContactPerson(e.getContactPerson());
             dto.setWebsite(e.getWebsite());
             dto.setAddress(e.getAddress());
-            dto.setCity(e.getCity());
-            dto.setPostalCode(e.getPostalCode());
         }
+        // city and postalCode are stored as plaintext (new saves) or encrypted (legacy);
+        // use decryptOrPlain for backward-compatibility
+        dto.setCity(decryptOrPlain(e.getCity(), encryptionService, key, legacyKey));
+        dto.setPostalCode(decryptOrPlain(e.getPostalCode(), encryptionService, key, legacyKey));
         return dto;
     }
 
@@ -39,8 +39,6 @@ public class ContactInfoMapper {
             e.setContactPerson(encryptionService.encrypt(dto.getContactPerson(), key));
             e.setWebsite(encryptionService.encrypt(dto.getWebsite(), key));
             e.setAddress(encryptionService.encrypt(dto.getAddress(), key));
-            e.setCity(encryptionService.encrypt(dto.getCity(), key));
-            e.setPostalCode(encryptionService.encrypt(dto.getPostalCode(), key));
         } catch (Exception ex) {
             // fallback: store plain values if encryption fails
             e.setPhone(dto.getPhone());
@@ -48,9 +46,10 @@ public class ContactInfoMapper {
             e.setContactPerson(dto.getContactPerson());
             e.setWebsite(dto.getWebsite());
             e.setAddress(dto.getAddress());
-            e.setCity(dto.getCity());
-            e.setPostalCode(dto.getPostalCode());
         }
+        // city and postalCode stored as plaintext (no encryption)
+        e.setCity(dto.getCity());
+        e.setPostalCode(dto.getPostalCode());
         e.setClient(client);
         return e;
     }
@@ -62,8 +61,6 @@ public class ContactInfoMapper {
             e.setContactPerson(encryptionService.encrypt(dto.getContactPerson(), key));
             e.setWebsite(encryptionService.encrypt(dto.getWebsite(), key));
             e.setAddress(encryptionService.encrypt(dto.getAddress(), key));
-            e.setCity(encryptionService.encrypt(dto.getCity(), key));
-            e.setPostalCode(encryptionService.encrypt(dto.getPostalCode(), key));
         } catch (Exception ex) {
             // fallback: store plain values if encryption fails
             e.setPhone(dto.getPhone());
@@ -71,9 +68,25 @@ public class ContactInfoMapper {
             e.setContactPerson(dto.getContactPerson());
             e.setWebsite(dto.getWebsite());
             e.setAddress(dto.getAddress());
-            e.setCity(dto.getCity());
-            e.setPostalCode(dto.getPostalCode());
         }
+        // city and postalCode stored as plaintext (no encryption)
+        e.setCity(dto.getCity());
+        e.setPostalCode(dto.getPostalCode());
         return e;
+    }
+
+    /**
+     * Decrypts a value if it looks like encrypted data (3-part colon-separated base64),
+     * otherwise returns it as-is (plaintext). Handles transition from encrypted to plain storage.
+     */
+    private static String decryptOrPlain(String value, EncryptionService encryptionService, String key, String legacyKey) {
+        if (value == null || value.isBlank()) return value;
+        String[] parts = value.split(":");
+        if (parts.length != 3) return value; // plaintext — return as-is
+        try {
+            return encryptionService.decryptFlexible(value, key, legacyKey);
+        } catch (Exception e) {
+            return value;
+        }
     }
 }
