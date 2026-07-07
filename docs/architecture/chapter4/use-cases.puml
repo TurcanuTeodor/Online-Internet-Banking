@@ -1,0 +1,82 @@
+@startuml Use_Case_Diagram
+!theme plain
+left to right direction
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam actorStyle hollow
+skinparam nodesep 20
+skinparam ranksep 50
+
+
+actor "Client" as Client
+actor "Administrator" as Admin
+actor "Stripe Platform" as Stripe <<External System>>
+
+rectangle "CashTactics Banking Platform" {
+    
+    package "Identity & Access" {
+        usecase "Register Account" as UC_Register
+        usecase "Authenticate (Login & 2FA)" as UC_Auth
+    }
+    
+    package "Core Banking" {
+        usecase "View Dashboard & Balances" as UC_Dashboard
+        usecase "Initiate Transfer" as UC_Transfer
+        usecase "View Transaction History" as UC_History
+        usecase "Top-up via Card" as UC_Topup
+    }
+    
+    package "Fraud & Security" {
+        usecase "Evaluate Behavioral Risk" as UC_EvaluateRisk
+        usecase "Trigger Step-Up 2FA" as UC_StepUp
+        usecase "Review Fraud Alerts" as UC_ReviewFraud
+        usecase "Resolve Fraud Decisions" as UC_ResolveFraud
+    }
+
+    package "Administration" {
+        usecase "View Client Directory (Masked)" as UC_ViewClients
+        usecase "Reveal Sensitive Data" as UC_RevealData
+    }
+    
+    package "Payments Integration" {
+        usecase "Process Payment Intent" as UC_ProcessPayment
+        usecase "Settle Webhook Event" as UC_Webhook
+    }
+}
+
+' =========================================================
+' Client Relationships
+' =========================================================
+Client --> UC_Register
+Client --> UC_Auth
+Client --> UC_Dashboard
+Client --> UC_Transfer
+Client --> UC_Topup
+Client --> UC_History
+
+' =========================================================
+' Admin Relationships
+' =========================================================
+Admin --> UC_Auth
+Admin --> UC_ReviewFraud
+Admin --> UC_ViewClients
+
+' =========================================================
+' Includes & Extends (UML Specifications)
+' =========================================================
+UC_Transfer .> UC_EvaluateRisk : <<includes>>
+UC_EvaluateRisk .> UC_StepUp : <<extends>>
+UC_RevealData .> UC_ViewClients : <<extends>>
+UC_ResolveFraud .> UC_ReviewFraud : <<extends>>
+
+' =========================================================
+' External System (Stripe) Relationships
+' =========================================================
+UC_Topup --> Stripe : "Initiates"
+Stripe --> UC_ProcessPayment
+Stripe --> UC_Webhook : "Asynchronous Notification"
+
+@enduml

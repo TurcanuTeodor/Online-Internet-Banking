@@ -143,6 +143,14 @@ public class AccountTransferService {
                 throw new InsufficientFundsException("Insufficient funds");
             }
 
+            if (!ro.app.account.model.enums.AccountStatus.ACTIVE.equals(from.getStatus())) {
+                throw new BusinessRuleViolationException("Source account is suspended or closed");
+            }
+
+            if (!ro.app.account.model.enums.AccountStatus.ACTIVE.equals(to.getStatus())) {
+                throw new BusinessRuleViolationException("Destination account is suspended or closed");
+            }
+
             boolean isLargeTransfer = amount.compareTo(largeTransferThreshold) >= 0;
 
             if (isLargeTransfer) {
@@ -197,8 +205,9 @@ public class AccountTransferService {
                     }
                 }
 
-                String toFullName = accountRepository.getClientFullName(to.getClientId());
-                String fromFullName = accountRepository.getClientFullName(from.getClientId());
+                // We do not save the client's name here because the name is encrypted in the database
+                // and inserting it as a merchant saves the raw ciphertext. 
+                // We rely on the 'details' field containing the IBAN instead.
 
                 Map<String, Object> debit = new HashMap<>();
                 debit.put("accountId", from.getId());
@@ -209,7 +218,7 @@ public class AccountTransferService {
                 debit.put("originalAmount", amount);
                 debit.put("originalCurrencyCode", fromCurrency.getCode());
                 debit.put("sign", "-");
-                debit.put("merchant", toFullName);
+                debit.put("merchant", null);
                 debit.put("details", "Transfer to " + normalizedToIban);
                 debit.put("transactionDate", now.toString());
 
@@ -222,7 +231,7 @@ public class AccountTransferService {
                 credit.put("originalAmount", amount);
                 credit.put("originalCurrencyCode", fromCurrency.getCode());
                 credit.put("sign", "+");
-                credit.put("merchant", fromFullName);
+                credit.put("merchant", null);
                 credit.put("details", "Transfer from " + normalizedFromIban);
                 credit.put("transactionDate", now.toString());
 

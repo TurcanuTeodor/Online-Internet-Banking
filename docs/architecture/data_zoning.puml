@@ -1,0 +1,40 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+
+package "Centralized Zone\n(Identity & Authentication)" as zone1 #LightPink {
+  database "auth schema" {
+    [USERS]
+    [REFRESH_TOKENS]
+    note right: • password_hash (BCrypt)\n• encryption_salt\n• two_factor_secret (AES-256-GCM)
+  }
+}
+
+package "Private Zone\n(Encrypted PII & Fraud Intel)" as zone3 #LightYellow {
+  database "clients schema" {
+    [CLIENT_PROFILE]
+    note bottom: • first_name (AES-256-GCM)\n• last_name (AES-256-GCM)\n• email (AES-256-GCM)\n**Key = PBKDF2(user password, salt)**
+  }
+  database "fraud schema" {
+    [FRAUD_DECISION]
+    note bottom: • risk_score\n• IBANs pseudonymized (SHA-256)
+  }
+}
+
+package "Shared Zone\n(Core Banking Data)" as zone2 #LightCyan {
+  database "accounts schema" {
+    [ACCOUNTS]
+  }
+  database "transactions schema" {
+    [TRANSACTIONS]
+  }
+  database "payments schema" {
+    [PAYMENTS]
+  }
+  note bottom of zone2: No PII. IDs are logical references.\nData correlation requires REST API.
+}
+
+zone1 -[hidden]down- zone3
+zone3 -[hidden]right- zone2
+
+@enduml

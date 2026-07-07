@@ -185,7 +185,7 @@ export default function UserTransactionsTab({
                 <thead className="bg-zinc-800/90">
                   <tr>
                     <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase bg-zinc-800/95">Date</th>
-                    <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase bg-zinc-800/95">Type</th>
+                    <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase bg-zinc-800/95">Description</th>
                     <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase bg-zinc-800/95">Account</th>
                     <th className="sticky top-0 z-10 px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase bg-zinc-800/95">Amount</th>
                     <th className="sticky top-0 z-10 px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase bg-zinc-800/95">Action</th>

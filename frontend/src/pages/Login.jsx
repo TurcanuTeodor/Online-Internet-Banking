@@ -54,7 +54,7 @@ export default function Login() {
             <Lock className="w-7 h-7 text-emerald-400" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
-          <p className="text-zinc-500 mt-1.5 text-sm">Sign in to your CashTactics account</p>
+          <p className="text-zinc-500 mt-1.5 text-sm">Sign in to your Online-Internet-Banking account</p>
         </div>
 
         <div className="glass rounded-2xl p-8 shadow-2xl">
@@ -121,7 +121,7 @@ export default function Login() {
 
         <p className="text-zinc-600 text-xs text-center mt-5 flex items-center justify-center gap-1.5">
           <Lock className="w-3 h-3" />
-          CashTactics © 2026 — End-to-end encrypted
+          Online-Internet-Banking © 2026 — End-to-end encrypted
         </p>
       </div>
     </div>

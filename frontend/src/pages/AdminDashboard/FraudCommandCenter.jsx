@@ -223,7 +223,7 @@ export default function FraudCommandCenter({ clients = [], fraudAlerts = [] }) {
               <LineChart data={riskTimeData}>
                 <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
                 <XAxis dataKey="label" minTickGap={30} tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} />
-                <YAxis allowDecimals={false} domain={[0, (dataMax) => (dataMax < 5 ? 5 : 'auto')]} tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} label={{ value: 'Alerts', angle: -90, position: 'insideLeft', fill: '#71717a', fontSize: 11 }} />
+                <YAxis allowDecimals={false} domain={[0, (dataMax) => Math.max(dataMax, 5)]} tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={{ stroke: '#3f3f46' }} label={{ value: 'Alerts', angle: -90, position: 'insideLeft', fill: '#71717a', fontSize: 11 }} />
                 <Tooltip contentStyle={tooltipStyle()} />
                 <Line type="monotone" dataKey="highRiskCount" name="High-risk alerts" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 3 }} />
               </LineChart>

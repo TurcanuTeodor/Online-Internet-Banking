@@ -1,0 +1,273 @@
+@startuml Logical_ER_Diagram
+!theme plain
+top to bottom direction
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 10
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 50
+
+legend top left
+  |= Line Style |= Meaning |
+  | —————— | Physical FK (same schema) |
+  | - - - - - - | Logical reference (cross-schema, no FK constraint) |
+  ..
+  Fields annotated //AES-256-GCM// are encrypted at rest.
+  Fields annotated //BCrypt// or //SHA-256// are hashed.
+  **(*) = NOT NULL**
+endlegend
+
+' ========================================================================
+'  AUTH SCHEMA (auth-service :8081)
+' ========================================================================
+package "auth schema" as AUTH #FDE8E8 {
+  entity "USER" as USER {
+    * **id** : BIGSERIAL <<PK>>
+    --
+    * client_id : BIGINT <<UNIQUE>>
+    * username_or_email : VARCHAR(100) <<UNIQUE>>
+    * password_hash : VARCHAR(255) //BCrypt//
+    * role : ROLE_ENUM //{USER, ADMIN}//
+    * two_factor_enabled : BOOLEAN
+      two_factor_secret : VARCHAR(255) //AES-256-GCM//
+    * encryption_salt : VARCHAR(64) //Base64//
+    * enabled : BOOLEAN
+    * created_at : TIMESTAMP
+      updated_at : TIMESTAMP
+  }
+
+  entity "REFRESH_TOKENS" as REFRESH {
+    * **id** : BIGSERIAL <<PK>>
+    --
+    * token_hash : VARCHAR(100) //SHA-256//
+    * user_id : BIGINT <<FK>>
+    * created_at : TIMESTAMP
+    * expiry_date : TIMESTAMP
+      revoked_at : TIMESTAMP
+  }
+
+  USER ||--o{ REFRESH : "  has  "
+}
+
+' ========================================================================
+'  CLIENTS SCHEMA (client-service :8082)
+' ========================================================================
+package "clients schema" as CLIENTS #D5E8D4 {
+  entity "CLIENT" as CLIENT {
+    * **id** : BIGSERIAL <<PK>>
+    --
+    * first_name : VARCHAR(500) //AES-256-GCM//
+    * last_name : VARCHAR(500) //AES-256-GCM//
+    * client_type : CLIENT_TYPE_ENUM //{PF, PJ}//
+    * sex_type : SEX_TYPE_ENUM //{M, F, O}//
+    * risk_level : VARCHAR(50)
+    * active : BOOLEAN
+    * created_at : TIMESTAMP
+      updated_at : TIMESTAMP
+  }
+
+  entity "CONTACT_INFO" as CONTACT {
+    * **id** : BIGSERIAL <<PK>>
+    --
+    * client_id : BIGINT <<UNIQUE>> <<FK>>
+      email : VARCHAR(500) //AES-256-GCM//
+      phone : VARCHAR(500) //AES-256-GCM//
+      contact_person : VARCHAR(500) //AES-256-GCM//
+      website : VARCHAR(500) //AES-256-GCM//
+      address : VARCHAR(500) //AES-256-GCM//
+      city : VARCHAR(500) //AES-256-GCM//
+      postal_code : VARCHAR(500) //AES-256-GCM//
+    * created_at : TIMESTAMP
+      updated_at : TIMESTAMP
+  }
+
+  CLIENT ||--|| CONTACT : "  has  "
+}
+
+' ========================================================================
+'  ACCOUNTS SCHEMA (account-service :8083)
+' ========================================================================
+package "accounts schema" as ACCOUNTS #DAE8FC {
+  entity "ACCOUNT" as ACCOUNT {
+    * **id** : BIGSERIAL <<PK>>
+    --
+    * client_id : BIGINT
+    * iban : VARCHAR(34) <<UNIQUE>>
+    * balance : NUMERIC(15,2)
+    * currency_code : CURRENCY_ENUM //{EUR, USD, RON, GBP}//
+    * status : ACCOUNT_STATUS_ENUM //{ACTIVE, CLOSED, SUSPENDED}//
+    * created_at : TIMESTAMP
+      updated_at : TIMESTAMP
+  }
+
+  entity "SENSITIVE_DATA_REVEAL_AUDIT" as AUDIT {
+    * **id** : BIGSERIAL <<PK>>
+    --
+    * actor_username : VARCHAR(100)
+      actor_client_id : BIGINT
+    * actor_role : VARCHAR(30)
+    * scope : VARCHAR(80)
+    * target_type : VARCHAR(80)
+    * target_id : VARCHAR(120)
+    * reason_code : VARCHAR(60)
+      reason_details : TEXT
+    * created_at : TIMESTAMP
+  }
+}
+
+' ========================================================================
+'  TRANSACTIONS SCHEMA (transaction-service :8084)
+' ========================================================================
+package "transactions schema" as TRANSACTIONS #DAE8FC {
+  entity "TRANSACTION" as TX {
+    * **id** : BIGSERIAL <<PK>>
+    --
+    * account_id : BIGINT
+      destination_account_id : BIGINT
+    * transaction_type : TRANSACTION_TYPE_ENUM
+    * category : TRANSACTION_CATEGORY_ENUM
+    * amount : NUMERIC(15,2)
+    * original_amount : NUMERIC(15,2)
+      original_currency : CURRENCY_ENUM
+    * sign : VARCHAR(10)
+      merchant : VARCHAR(255)
+      details : VARCHAR(255)
+      risk_score : NUMERIC(5,4)
+    * flagged : BOOLEAN
+    * transaction_date : TIMESTAMP
+    * created_at : TIMESTAMP
+      updated_at : TIMESTAMP
+  }
+}
+
+' ========================================================================
+'  PAYMENTS SCHEMA (payment-service :8085)
+' ========================================================================
+package "payments schema" as PAYMENTS #DAE8FC {
+  entity "PAYMENT" as PAYMENT {
+    * **id** : BIGSERIAL <<PK>>
+    --
+    * client_id : BIGINT
+    * account_id : BIGINT
+    * amount : NUMERIC(15,2)
+    * currency : CURRENCY_ENUM
+    * status : PAYMENT_STATUS_ENUM //{PENDING, COMPLETED, FAILED, REFUNDED}//
+      stripe_payment_intent_id : VARCHAR(255)
+      description : VARCHAR(500)
+    * created_at : TIMESTAMP
+      updated_at : TIMESTAMP
+  }
+
+  entity "PAYMENT_METHOD" as PM {
+    * **id** : BIGSERIAL <<PK>>
+    --
+    * client_id : BIGINT
+    * stripe_payment_method_id : VARCHAR(255)
+      card_brand : VARCHAR(50)
+      card_last4 : VARCHAR(4)
+      expiry_month : INTEGER
+      expiry_year : INTEGER
+    * is_default : BOOLEAN
+    * created_at : TIMESTAMP
+  }
+
+  entity "STRIPE_CUSTOMER" as SC {
+    * **client_id** : BIGINT <<PK>>
+    --
+    * stripe_customer_id : VARCHAR(255) <<UNIQUE>>
+    * created_at : TIMESTAMP
+  }
+}
+
+' ========================================================================
+'  FRAUD SCHEMA (fraud-service :8086)
+' ========================================================================
+package "fraud schema" as FRAUD #D5E8D4 {
+  entity "FRAUD_DECISION" as FD {
+    * **id** : BIGSERIAL <<PK>>
+    --
+      transaction_id : BIGINT
+    * account_id : BIGINT
+    * client_id : BIGINT
+    * status : FRAUD_DECISION_STATUS_ENUM
+    * decided_by_tier : FRAUD_TIER_ENUM
+    * risk_score : DOUBLE PRECISION
+      rule_hits : TEXT
+      explanation : TEXT
+      reviewed_by_admin : VARCHAR(255)
+      admin_notes : TEXT
+    * user_resolution : VARCHAR(32)
+      user_resolution_notes : TEXT
+      user_resolved_at : TIMESTAMP
+      correlation_id : VARCHAR(64)
+      amount : DOUBLE PRECISION
+      currency_code : VARCHAR(10)
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+  }
+
+  entity "USER_BEHAVIOR_PROFILE" as UBP {
+    * **id** : BIGSERIAL <<PK>>
+    --
+    * client_id : BIGINT <<UNIQUE>>
+    * avg_transaction_amount : DOUBLE PRECISION
+    * max_transaction_amount : DOUBLE PRECISION
+    * transaction_count : BIGINT
+    * avg_daily_transactions : DOUBLE PRECISION
+    * typical_hour_start : INT
+    * typical_hour_end : INT
+      common_ibans : TEXT
+    * last_updated : TIMESTAMP
+  }
+}
+
+' ========================================================================
+'  CROSS-SCHEMA LOGICAL RELATIONSHIPS (dashed crow's foot lines)
+' ========================================================================
+
+' auth.USER ↔ clients.CLIENT (1:1 identity link)
+USER ||..|| CLIENT : "  identifies  "
+
+' clients.CLIENT → accounts.ACCOUNT (one client owns many accounts)
+CLIENT ||..o{ ACCOUNT : "  owns  "
+
+' accounts.ACCOUNT → transactions.TRANSACTION (one account has many txns)
+ACCOUNT ||..o{ TX : "  records  "
+
+' clients.CLIENT → payments.PAYMENT (one client initiates many payments)
+CLIENT ||..o{ PAYMENT : "  initiates  "
+
+' clients.CLIENT → payments.PAYMENT_METHOD (one client saves many cards)
+CLIENT ||..o{ PM : "  saves  "
+
+' clients.CLIENT → payments.STRIPE_CUSTOMER (one Stripe mapping per client)
+CLIENT ||..o| SC : "  maps to  "
+
+' clients.CLIENT → fraud.FRAUD_DECISION (one client has many evaluations)
+CLIENT ||..o{ FD : "  evaluated in  "
+
+' transactions.TRANSACTION → fraud.FRAUD_DECISION (optional post-hoc link)
+TX |o..o| FD : "  linked to  "
+
+' clients.CLIENT → fraud.USER_BEHAVIOR_PROFILE (one profile per client)
+CLIENT ||..o| UBP : "  profiled in  "
+
+' ========================================================================
+'  NOTES
+' ========================================================================
+note bottom of TRANSACTIONS
+  **Cross-schema isolation:**
+  All dashed lines represent logical references
+  enforced at the application layer via
+  authenticated REST API calls.
+  No physical FK constraints exist between schemas.
+  Each schema is independently versioned via Flyway.
+  --
+  **Additional references (not drawn):**
+  PAYMENT.account_id → ACCOUNT
+  FRAUD_DECISION.account_id → ACCOUNT
+end note
+
+@enduml

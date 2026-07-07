@@ -1,0 +1,112 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 60
+skinparam defaultTextAlignment center
+
+' Define Arrow Colors & Styles for Cleanliness
+!define SYNC_REST -[bold,#DarkRed]->
+!define ASYNC_EVENT -[dashed,#008000]->
+!define DB_CONN -[dotted,#666666]->
+
+actor "Client & Admin" as user
+
+' Layer 1: Frontend Client
+package "Layer 1: Frontend Client" {
+  component "React SPA" as ui #LightBlue
+}
+
+' Left Column for External Concerns
+cloud "External Services" as external {
+  component "Stripe API" as stripe
+  component "ECB" as ecb
+  stripe -[hidden]down- ecb
+}
+
+' Layer 2: Gateway & Redis
+node "Layer 2: API Gateway & Cache" {
+  component "API Gateway\n(Routing, JWT, Rate Limiting)" as gateway #LightCyan
+  database "Redis\n(Token Blacklist, Cache, Pub/Sub, Locks)" as redis #LightYellow
+  gateway -[hidden]right- redis
+}
+
+' Layer 3: Microservices Grid
+package "Layer 3: Microservices Cluster" {
+  component "Payment Service" as payment #LightGreen
+  component "Account Service" as account #LightGreen
+  component "Fraud Service\n(Tier 1, 2, 3 ML)" as fraud #LightPink
+  component "Transaction Service" as tx #LightGreen
+  component "Client Service" as client #LightGreen
+  component "Auth Service" as auth #LightGreen
+
+  ' Force Horizontal Ordering
+  payment -[hidden]right- account
+  account -[hidden]right- fraud
+  fraud -[hidden]right- tx
+  tx -[hidden]right- client
+  client -[hidden]right- auth
+}
+
+' Layer 4: Databases
+database "Layer 4: PostgreSQL (Schema-per-service)" as pg {
+  artifact "payments schema" as db_payment
+  artifact "accounts schema" as db_account
+  artifact "fraud schema" as db_fraud
+  artifact "transactions schema" as db_tx
+  artifact "clients schema" as db_client
+  artifact "auth schema" as db_auth
+
+  ' Match Horizontal Ordering
+  db_payment -[hidden]right- db_account
+  db_account -[hidden]right- db_fraud
+  db_fraud -[hidden]right- db_tx
+  db_tx -[hidden]right- db_client
+  db_client -[hidden]right- db_auth
+}
+
+' ==========================================
+' RELATIONSHIPS & FLOWS
+' ==========================================
+
+' 1. Top-Down User Traffic
+user SYNC_REST ui : Browser Action
+ui SYNC_REST gateway : HTTPS (REST)
+
+' 2. Gateway to Microservices
+gateway SYNC_REST payment
+gateway SYNC_REST account
+gateway SYNC_REST fraud
+gateway SYNC_REST tx
+gateway SYNC_REST client
+gateway SYNC_REST auth
+
+' 3. Inter-Service Synchronous Dependencies
+payment SYNC_REST account : Credit Top-Up
+account SYNC_REST fraud : Sync Risk Check
+account SYNC_REST tx : Save Ledger History
+client SYNC_REST auth : GDPR Orchestration
+
+' 4. Database Connections (Vertical Dotted Lines)
+gateway DB_CONN redis : Check Blacklist
+account DB_CONN redis : Pub/Sub & Locks
+payment DB_CONN db_payment
+account DB_CONN db_account
+fraud DB_CONN db_fraud
+tx DB_CONN db_tx
+client DB_CONN db_client
+auth DB_CONN db_auth
+
+' 5. External Integrations (Asynchronous & Synchronous)
+payment ASYNC_EVENT stripe : Async Webhooks
+account SYNC_REST ecb : Fetch FX Rates
+
+' Global Layout Hints
+external -[hidden]right- payment
+user -[hidden]down- ui
+ui -[hidden]down- gateway
+gateway -[hidden]down- payment
+payment -[hidden]down- db_payment
+
+@enduml

@@ -1,0 +1,80 @@
+@startuml Transfer_Flow
+!theme plain
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam sequenceMessageAlign center
+
+actor "User" as USER
+participant "Frontend\n(React)" as FE
+participant "API Gateway\n:8443" as GW
+participant "Account Service\n:8083" as ACC
+participant "Auth Service\n:8081" as AUTH
+participant "Fraud Service\n:8086" as FRAUD
+participant "Transaction Service\n:8084" as TX
+
+== Transfer Initiation ==
+USER -> FE : Click "Transfer"
+FE -> GW : POST /api/accounts/transfer\n[TransferRequest]
+GW -> GW : Validate JWT
+GW -> ACC : Forward request + JWT
+
+== Validation & Lock Acquisition ==
+ACC -> ACC : Validate ownership, existence, balance; acquire ordered locks
+
+== Fraud Check (Synchronous) ==
+ACC -> FRAUD : POST /api/internal/fraud/evaluate\n[FraudEvaluationRequest]
+
+FRAUD -> FRAUD : Tier1: static rules (amount, velocity, account-age)
+
+alt Tier 1: STEP_UP_REQUIRED
+  FRAUD -> FRAUD : Skip Tier 2
+else Tier 1: ALLOW or MANUAL_REVIEW
+  FRAUD -> TX : GET /api/internal/transactions/by-account/{id}
+  TX --> FRAUD : Transaction history
+  FRAUD -> FRAUD : Tier2: behavioral score from history-derived features
+end
+
+FRAUD --> ACC : {decisionId, status, riskScore, explanation}
+
+== Step-Up Authentication (if required) ==
+alt Fraud status == STEP_UP_REQUIRED
+  ACC -> AUTH : POST /api/internal/auth/step-up\n[TOTP check]
+  alt Valid TOTP
+    AUTH --> ACC : 200 OK
+  else Invalid/Missing TOTP
+    ACC --> GW : 428 Precondition Required
+    GW --> FE : 428 error
+    FE --> USER : "Please enter 2FA code"
+  end
+else Fraud status == FLAG
+  note right of ACC
+    FLAG means: transfer proceeds but
+    decision recorded for admin review.
+  end note
+else Fraud status == BLOCK
+  ACC --> GW : 422 BusinessRuleViolation
+  GW --> FE : 422 error
+  FE --> USER : "Transaction blocked"
+end
+
+== Balance Update ==
+ACC -> ACC : Apply FX if needed; persist debit/credit atomically
+ACC -> ACC : Publish Redis cache invalidation events
+
+== Transaction Records ==
+ACC -> TX : Create debit and credit transaction records\n[JWT]
+TX --> ACC : 201 Created
+
+ACC -> ACC : Release Redisson locks
+
+ACC --> GW : 200 OK
+GW --> FE : Transfer successful
+FE --> USER : "Transfer complete"
+
+== Asynchronous Fraud Analysis ==
+note over ACC, FRAUD
+  If final status == ALLOW, fraud-service schedules Tier 3 ML analysis
+  in the fraudAsyncExecutor thread pool (does NOT delay response).
+end note
+
+@enduml

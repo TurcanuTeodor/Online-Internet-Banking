@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { ShieldAlert, X } from 'lucide-react';
+import { ShieldAlert, X, Loader2 } from 'lucide-react';
 
-export default function StepUpModal({ onVerify, onCancel, error }) {
+export default function StepUpModal({ onVerify, onCancel, error, loading }) {
   const [code, setCode] = useState(['', '', '', '', '', '']);
 
   const handleChange = (index, value) => {
@@ -88,10 +88,17 @@ export default function StepUpModal({ onVerify, onCancel, error }) {
 
         <button
           onClick={submit}
-          disabled={code.join('').length !== 6}
-          className="w-full py-3.5 bg-indigo-500 hover:bg-indigo-600 disabled:bg-white/10 disabled:text-white/30 text-white rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/20 disabled:shadow-none"
+          disabled={code.join('').length !== 6 || loading}
+          className="w-full py-3.5 bg-indigo-500 hover:bg-indigo-600 disabled:bg-white/10 disabled:text-white/30 text-white rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/20 disabled:shadow-none flex items-center justify-center gap-2"
         >
-          Verify & Transfer
+          {loading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Verifying...
+            </>
+          ) : (
+            'Verify & Transfer'
+          )}
         </button>
       </div>
     </div>

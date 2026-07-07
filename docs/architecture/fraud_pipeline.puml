@@ -1,0 +1,45 @@
+@startuml
+skinparam activityShape octagon
+
+start
+:Transaction Evaluation Request;
+
+partition "Tier 1: Rule Engine (Deterministic)" {
+  :Check Static Rules\n- Large Amount?\n- Burst Limit?\n- New Account?;
+  if () then ([Hit])
+    :Decision: BLOCK or STEP_UP;
+    stop
+  else ([Pass])
+  endif
+}
+
+partition "Tier 2: Behavioral Scoring" {
+  :Fetch Historical Profile;
+  :Compute Composite Score\n(Amount, Frequency, Time, Category);
+  if () then ([Score >= 70])
+    :Decision: FLAG\n(Manual Review);
+  elseif () then ([Score >= 50])
+    :Decision: STEP_UP\n(Require 2FA);
+    stop
+  else ([Score < 50])
+    :Decision: ALLOW;
+  endif
+}
+
+partition "Tier 3: Isolation Forest ML (Asynchronous)" {
+  split
+    :Transaction Proceeds\n(Immediate User Response);
+    stop
+  split again
+    :Build 6D Feature Vector;
+    :Calculate Anomaly Score;
+    if () then ([Score > Calibrated Threshold])
+      :Update Decision to FLAG;
+      :Generate Explainability\n(Perturbation Analysis);
+      :Trigger Admin Alert;
+    else ([No])
+    endif
+    stop
+  end split
+}
+@enduml

@@ -1,0 +1,90 @@
+@startuml Container_Diagram
+!theme plain
+top to bottom direction
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam packageStyle rectangle
+
+' Arrow styling
+skinparam ArrowColor #555555
+skinparam ArrowThickness 1.3
+skinparam ArrowFontSize 10
+skinparam ArrowFontStyle bold
+skinparam ArrowFontColor #111111
+
+ 
+' ── Row 1: User ──────────────────────────────────────────────────────────────
+actor "User / Admin" as USER
+
+' ── Row 2: Frontend ──────────────────────────────────────────────────────────
+rectangle "<<Container: SPA>>\nFrontend\nReact + Vite  :5173" as FE #89CFF0
+
+' ── Row 3: API Gateway ───────────────────────────────────────────────────────
+rectangle "<<Container: API Gateway>>\nAPI Gateway — Spring Cloud Gateway  :8443\n \nJWT validation · Login rate limit (5/60s)\nGlobal rate limit (50/s) · Logout blacklist\nCircuit breaker · Audit logging" as GW #5B9BD5
+
+' ── Row 4: Microservices (2 columns) ─────────────────────────────────────────
+package "Microservices" {
+    together {
+        rectangle "<<Container>>\nAuth Service\nSpring Boot  :8081" as AUTH #6DB33F
+        rectangle "<<Container>>\nClient Service\nSpring Boot  :8082" as CLIENT #6DB33F
+        rectangle "<<Container>>\nAccount Service\nSpring Boot  :8083\n \nCaffeine + Redis cache\nRedisson distributed locks" as ACCOUNT #6DB33F
+    }
+    together {
+        rectangle "<<Container>>\nTransaction Service\nSpring Boot  :8084" as TX #6DB33F
+        rectangle "<<Container>>\nPayment Service\nSpring Boot  :8085" as PAY #6DB33F
+        rectangle "<<Container>>\nFraud Service\nSpring Boot  :8086\n \nTier 1: Rule Engine\nTier 2: Behavioral Scoring\nTier 3: Isolation Forest ML" as FRAUD #6DB33F
+    }
+}
+
+' ── Row 5: Data ──────────────────────────────────────────────────────────────
+package "Data" {
+    together {
+        database "<<Cache>>\nRedis 7\n \nToken blacklist\nRate limit counters\nAccount cache\nRedisson locks\nPub/Sub invalidation" as REDIS #DC382D
+        database "<<Database>>\nPostgreSQL 16\nSingle instance\n \nSchemas:\nauth · clients · accounts\ntransactions · payments · fraud" as DB #336791
+    }
+}
+
+' ── Row 6: External ──────────────────────────────────────────────────────────
+package "External Systems" {
+    together {
+        rectangle "<<External>>\nStripe API" as STRIPE #AAAAAA
+        rectangle "<<External>>\nEuropean\nCentral Bank" as ECB #AAAAAA
+    }
+}
+
+' ── Vertical flow arrows ──────────────────────────────────────────────────────
+USER    --> FE  : HTTPS
+FE      --> GW  : JSON / REST
+
+' Layout hint: keep Redis near the Gateway row
+GW -[hidden]right-> REDIS
+
+' Gateway → services
+GW --> AUTH    : /api/auth/**
+GW --> CLIENT  : /api/clients/**\n/api/gdpr/**
+GW --> ACCOUNT : /api/accounts/**
+GW --> TX      : /api/transactions/**
+GW --> PAY     : /api/payments/**\n/api/payment-methods/**
+GW --> FRAUD   : /api/fraud/**
+
+' Redis connections
+GW      --> REDIS : Token blacklist\nRate limit counters
+ACCOUNT --> REDIS : Cache + locks\nPub/Sub
+
+' DB connections (grouped labels)
+AUTH    --> DB : JDBC (auth)
+CLIENT  --> DB : JDBC (clients)
+ACCOUNT --> DB : JDBC (accounts)
+TX      --> DB : JDBC (transactions)
+PAY     --> DB : JDBC (payments)
+FRAUD   --> DB : JDBC (fraud)
+
+' External
+PAY     --> STRIPE : Stripe API
+ACCOUNT --> ECB    : Daily FX rates\n[HTTPS / XML]
+
+@enduml

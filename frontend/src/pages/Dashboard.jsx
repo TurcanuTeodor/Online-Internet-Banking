@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import useDashboardData from '@/hooks/useDashboardData';
 import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts';
 import { getMyFraudAlerts, resolveMyFraudAlert } from '@/services/fraudService';
+import { normalizeTransactionType } from '@/lib/analyticsTransforms';
 
 import TopUpModal from '../components/TopUpModal';
 import CardsPaymentsTab from '../components/CardsPaymentsTab';
@@ -31,9 +32,12 @@ export default function Dashboard() {
   const data = useDashboardData();
   const {
     clientId, sub, twoFaEnabled, setTwoFaEnabled,
-    accounts, transactions, ledgerTransactions,
-    loading, fetchData, totalBalance, activeAccountsCount, monthlyOutgoing,
+    accounts, transactions,
+    loading, refreshData: fetchData, error,
+    totalBalance, activeAccountsCount, monthlyOutgoing,
   } = data;
+
+  const ledgerTransactions = transactions || [];
 
   const [showBalances, setShowBalances] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
@@ -114,7 +118,7 @@ export default function Dashboard() {
         return false;
       });
     }
-    if (filters.type !== 'all') filtered = filtered.filter(tx => tx.transactionTypeName === filters.type);
+    if (filters.type !== 'all') filtered = filtered.filter(tx => normalizeTransactionType(tx) === filters.type);
     if (filters.sign !== 'all') filtered = filtered.filter(tx => tx.sign === filters.sign);
     if (filters.dateFrom) { const d = new Date(filters.dateFrom); d.setHours(0,0,0,0); filtered = filtered.filter(tx => new Date(tx.transactionDate) >= d); }
     if (filters.dateTo) { const d = new Date(filters.dateTo); d.setHours(23,59,59,999); filtered = filtered.filter(tx => new Date(tx.transactionDate) <= d); }
@@ -123,7 +127,7 @@ export default function Dashboard() {
     return filtered;
   };
 
-  const getTransactionTypes = () => Array.from(new Set(ledgerTransactions.map(tx => tx.transactionTypeName))).sort();
+  const getTransactionTypes = () => Array.from(new Set(ledgerTransactions.map(tx => normalizeTransactionType(tx)))).sort();
 
   const filteredTransactions = getFilteredTransactions();
   const latestActivity = ledgerTransactions.slice(0, 5);
@@ -195,7 +199,7 @@ export default function Dashboard() {
             <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center shrink-0">
               <Wallet className="w-5 h-5 text-emerald-400" />
             </div>
-            <h1 className="text-lg sm:text-xl font-bold truncate">CashTactics Dashboard</h1>
+            <h1 className="text-lg sm:text-xl font-bold truncate">Online-Internet-Banking Dashboard</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => setShowSearch(true)} className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors" title="Search (Ctrl+K)">
@@ -216,6 +220,21 @@ export default function Dashboard() {
       </nav>
 
       <div className={`${contentWidthClass} mx-auto px-6 py-8`}>
+        {error && (
+          <div className="mb-6 glass rounded-2xl border border-red-500/15 bg-red-500/8 p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" />
+              <div>
+                <p className="text-red-300 font-semibold">Data loading error</p>
+                <p className="text-sm text-zinc-400">{error}</p>
+              </div>
+            </div>
+            <button type="button" onClick={fetchData} className="btn-secondary text-sm px-3 py-1.5">
+              Retry
+            </button>
+          </div>
+        )}
+
         {clientId && !loading && (
           <div className="border-b border-gray-700 mb-6">
             <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2">

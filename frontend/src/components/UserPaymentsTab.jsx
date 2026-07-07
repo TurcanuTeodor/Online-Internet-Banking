@@ -55,7 +55,7 @@ export default function UserPaymentsTab({ accounts, onSuccess, onError, onRefres
       const message = err?.response?.data?.message || err?.message || 'Transfer failed';
       
       if (status === 428) {
-        setStepUpError(message);
+        setStepUpError(totpCode ? message : '');
         setShowStepUp(true);
       } else {
         setSubmitError(message);
@@ -74,6 +74,7 @@ export default function UserPaymentsTab({ accounts, onSuccess, onError, onRefres
           error={stepUpError}
           onVerify={(code) => submitTransfer(code)}
           onCancel={() => setShowStepUp(false)}
+          loading={busy}
         />
       )}
       <div className="glass rounded-2xl p-6">

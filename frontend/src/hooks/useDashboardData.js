@@ -32,11 +32,19 @@ export default function useDashboardData() {
     if (!clientId) return;
     setLoading(true);
     try {
-      const [accountsData, transactionsData, paymentsData] = await Promise.all([
+      const results = await Promise.allSettled([
         getAccountsByClient(clientId),
         getTransactionsByClient(clientId),
         getPaymentHistory(clientId),
       ]);
+
+      const accountsData = results[0].status === 'fulfilled' ? results[0].value : [];
+      const transactionsData = results[1].status === 'fulfilled' ? results[1].value : [];
+      const paymentsData = results[2].status === 'fulfilled' ? results[2].value : [];
+
+      if (results.some(r => r.status === 'rejected')) {
+        setError('Failed to load some dashboard data');
+      }
 
       const accountMap = new Map();
       (accountsData || []).forEach(acc => accountMap.set(String(acc.id), acc));
@@ -66,35 +74,7 @@ export default function useDashboardData() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
-  const normalizedPaymentEntries = (payments || [])
-    .filter((p) => {
-      const status = String(p?.status || '').toUpperCase();
-      const type = String(p?.paymentType || p?.type || '').toUpperCase();
-      const successLike = ['SUCCEEDED', 'SUCCESS', 'COMPLETED', 'PAID'].includes(status);
-      const topUpLike = type.includes('TOP') || type.includes('DEPOSIT') || type.includes('FUND');
-      return successLike && topUpLike;
-    })
-    .map((p) => {
-      const rawType = p.paymentType || p.type || '';
-      const typeText = String(rawType).toUpperCase();
-      const isTopUp = typeText.includes('TOP') || typeText.includes('DEPOSIT') || typeText.includes('FUND');
-      return {
-        id: `payment-${p.id}`,
-        transactionDate: p.createdAt || p.updatedAt,
-        transactionTypeName: rawType || 'PAYMENT',
-        transactionTypeCode: rawType || 'PAYMENT',
-        displayLabel: p.merchant || p.provider || (isTopUp ? 'Card Top-up' : 'Payment'),
-        accountIban: p.accountIban || null,
-        currencyCode: p.currencyCode || 'EUR',
-        amount: Number(p.amount || 0),
-        sign: isTopUp ? '+' : '-',
-        paymentId: p.id,
-        source: 'payment',
-        status: p.status,
-      };
-    });
-
-  const ledgerTransactions = [...(transactions || []), ...normalizedPaymentEntries]
+  const ledgerTransactions = [...(transactions || [])]
     .sort((a, b) => new Date(b.transactionDate || 0).getTime() - new Date(a.transactionDate || 0).getTime());
 
   const totalBalance = accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0);

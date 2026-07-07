@@ -366,7 +366,7 @@ export default function AdminDashboard() {
           <Shield className="w-5 h-5 text-emerald-400" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-bold truncate">CashTactics</p>
+          <p className="text-sm font-bold truncate">Online-Internet-Banking</p>
           <p className="text-xs text-zinc-500">Admin</p>
         </div>
       </div>

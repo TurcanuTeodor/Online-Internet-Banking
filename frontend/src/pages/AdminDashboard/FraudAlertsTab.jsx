@@ -10,12 +10,13 @@ const STATUS_CONFIG = {
   FLAG: { label: 'FLAG', cls: 'badge-flag', icon: AlertTriangle },
   MANUAL_REVIEW: { label: 'MANUAL REVIEW', cls: 'badge-review', icon: Clock },
   ALLOW: { label: 'ALLOW', cls: 'badge-allow', icon: CheckCircle },
+  STEP_UP_REQUIRED: { label: 'STEP UP', cls: 'badge-review', icon: Clock },
 };
 
 const TIER_CONFIG = {
   TIER1_RULES: { label: 'Tier 1', cls: 'badge-tier1' },
   TIER2_BEHAVIORAL: { label: 'Tier 2', cls: 'badge-tier2' },
-  TIER3_LLM: { label: 'Tier 3 LLM', cls: 'badge-flag' },
+  TIER3_ML: { label: 'Tier 3 ML', cls: 'badge-flag' },
 };
 
 function StatusBadge({ status }) {

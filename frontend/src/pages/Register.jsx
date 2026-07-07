@@ -97,7 +97,7 @@ export default function Register() {
             <UserPlus className="w-7 h-7 text-emerald-400" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Create account</h1>
-          <p className="text-zinc-500 mt-1.5 text-sm">Join CashTactics today</p>
+          <p className="text-zinc-500 mt-1.5 text-sm">Join Online-Internet-Banking today</p>
         </div>
 
         <div className="glass rounded-2xl p-8 shadow-2xl">
@@ -183,7 +183,19 @@ export default function Register() {
               </div>
             )}
 
-            <button type="submit" disabled={loading} className="w-full btn-primary flex items-center justify-center gap-2 py-3 mt-1">
+            <button
+              type="submit"
+              disabled={
+                loading ||
+                !(
+                  formData.password.length >= 8 &&
+                  /[A-Z]/.test(formData.password) &&
+                  /[0-9]/.test(formData.password) &&
+                  /[!@#$%^&*]/.test(formData.password)
+                )
+              }
+              className="w-full btn-primary flex items-center justify-center gap-2 py-3 mt-1"
+            >
               {loading ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Creating account…</>
               ) : (
@@ -204,7 +216,7 @@ export default function Register() {
 
         <p className="text-zinc-600 text-xs text-center mt-5 flex items-center justify-center gap-1.5">
           <Lock className="w-3 h-3" />
-          CashTactics © 2026 — End-to-end encrypted
+          Online-Internet-Banking © 2026 — End-to-end encrypted
         </p>
       </div>
     </div>

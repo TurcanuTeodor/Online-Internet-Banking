@@ -1,0 +1,70 @@
+@startuml Gateway_Request_Flow
+!theme plain
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+
+participant "Frontend\n(Browser)" as CLIENT
+box "API Gateway (Port 8443) GlobalFilter chain" #F5F5DC
+  participant "Logout\nBlacklist\nFilter" as LOGOUT
+  participant "Login\nRate Limit\nFilter" as LOGINRATE
+  participant "Global\nRate Limit\nFilter" as RATE
+  participant "Audit\nLogging\nFilter" as AUDIT
+  participant "JWT Auth\nFilter" as JWT
+  participant "Circuit Breaker\n+ Router" as ROUTE
+  participant "Fallback\nController" as FALLBACK
+end box
+participant "Target\nMicroservice" as SERVICE
+
+note over LOGOUT, ROUTE: Filters execute in configured precedence.
+
+== Incoming Request ==
+CLIENT -> LOGOUT : HTTP Request
+
+alt POST /api/auth/logout
+  LOGOUT -> LOGOUT : Blacklist token in Redis (TTL = remaining life)
+end
+
+LOGOUT -> LOGINRATE
+
+alt POST /api/auth/login
+  LOGINRATE -> LOGINRATE : Per-IP login limiter (5/60s)
+  LOGINRATE --> CLIENT : [Exceeded] 429 Too Many Requests
+end
+
+LOGINRATE -> RATE
+
+RATE -> RATE : Global limiter (50/s, excludes OPTIONS and login)
+
+alt Global rate exceeded
+  RATE --> CLIENT : 429 Too Many Requests
+end
+
+RATE -> AUDIT
+
+AUDIT -> AUDIT : Log: timestamp, identity, method, path, IP, status
+
+AUDIT -> JWT
+
+== JWT Validation ==
+alt Public route
+  JWT -> ROUTE : Skip JWT validation
+else Protected route
+  JWT -> JWT : Validate bearer token: blacklist + signature + exp
+  alt Invalid
+    JWT --> CLIENT : 401 Unauthorized
+  else Valid
+    JWT -> ROUTE
+  end
+end
+
+== Routing + Circuit Breaker ==
+alt Circuit CLOSED
+  ROUTE -> SERVICE : Forward request
+  SERVICE --> ROUTE : Response
+  ROUTE --> CLIENT : Forward response
+else Circuit OPEN
+  ROUTE -> FALLBACK : Redirect to fallback
+  FALLBACK --> CLIENT : 503 Service Unavailable (Retry-After)
+end
+
+@enduml

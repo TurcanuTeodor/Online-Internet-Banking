@@ -1,0 +1,57 @@
+@startuml
+autonumber
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 20
+skinparam sequenceMessageAlign center
+
+actor "User" as user
+participant "React SPA\n(Client)" as ui
+participant "API Gateway\n(Security Enforcement)" as gw #LightCyan
+participant "Account Service\n(Protected Resource)" as acc #LightGreen
+participant "Fraud Service\n(Risk Engine)" as fraud #LightPink
+participant "Auth Service\n(Identity & 2FA)" as auth #LightGreen
+
+== Phase 1: Initial Request & Denial ==
+
+user -> ui : Initiate Large Transfer
+ui -> gw : POST /api/accounts/transfer\n[Authorization: Bearer <JWT>]
+gw -> acc : Forward Request
+
+acc -> fraud : POST /internal/fraud/evaluate
+fraud --> acc : Decision: **STEP_UP**\n(High Risk Score)
+
+acc --> gw : 428 Precondition Required\n{"error": "TOTP_REQUIRED"}
+gw --> ui : 428 Precondition Required
+
+== Phase 2: Challenge & Step-Up (2FA) ==
+
+ui --> user : Prompt for Google Authenticator Code
+user -> ui : Inputs 6-digit code (e.g. 123456)
+
+ui -> gw : POST /api/accounts/transfer\n[Authorization: Bearer <JWT>]\n**[X-TOTP-Code: 123456]**
+
+note over gw
+  API Gateway intercepts the X-TOTP-Code
+  and delegates validation to Auth Service
+  before allowing the request through.
+end note
+
+gw -> auth : GET /internal/auth/verify-totp?code=123456
+auth --> gw : 200 OK (Code is Valid)
+
+== Phase 3: Execution ==
+
+gw -> acc : Forward Request\n(2FA Verified)
+acc -> fraud : POST /internal/fraud/evaluate
+note right of fraud
+  Fraud Service acknowledges
+  2FA was successfully completed.
+end note
+fraud --> acc : Decision: **ALLOW**
+
+acc -> acc : Execute Transfer...
+acc --> gw : 201 Created
+gw --> ui : Transfer Successful
+ui --> user : Display Success Screen
+
+@enduml

@@ -1,0 +1,62 @@
+@startuml InterService_Communication
+!theme plain
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam nodesep 80
+skinparam ranksep 90
+skinparam packageStyle rectangle
+
+ 
+note as N1
+  All calls are synchronous REST
+  (Spring RestTemplate / RestClient).
+  Two auth patterns:
+  1. JWT forwarding (user-initiated)
+  2. X-Internal-Api-Secret (service-initiated)
+end note
+
+package "Core Services" {
+  rectangle "Transaction\nService\n:8084" as TX #6DB33F
+  rectangle "Fraud\nService\n:8086" as FRAUD #6DB33F
+  rectangle "Account\nService\n:8083" as ACCOUNT #6DB33F
+  rectangle "Payment\nService\n:8085" as PAY #6DB33F
+  rectangle "Client\nService\n:8082" as CLIENT #6DB33F
+  rectangle "Auth\nService\n:8081" as AUTH #6DB33F
+}
+
+' === Grid layout (3 rows x 2 cols) ===
+TX -[hidden]right-> FRAUD
+ACCOUNT -[hidden]right-> PAY
+CLIENT -[hidden]right-> AUTH
+
+TX -[hidden]down-> ACCOUNT
+ACCOUNT -[hidden]down-> CLIENT
+FRAUD -[hidden]down-> PAY
+PAY -[hidden]down-> AUTH
+
+' === Core banking flows ===
+ACCOUNT -up-> TX : Create debit/credit tx records\n[JWT forwarded]
+ACCOUNT -up-> FRAUD : Fraud evaluation (sync, Tier 1 + Tier 2)\n[X-Internal-Api-Secret]
+
+' === Fraud pipeline: Tier 2 sync context fetch ===
+FRAUD -left-> TX : Fetch tx history (sync, Tier 2)\n[X-Internal-Api-Secret]
+
+' === Fraud alert resolution: freeze/unfreeze accounts ===
+FRAUD -down-> ACCOUNT : Freeze / unfreeze account\n(on fraud alert resolution)\n[X-Internal-Api-Secret]
+
+' === Payment settlement ===
+PAY -left-> ACCOUNT : Apply Stripe top-up credit\n[X-Internal-Api-Secret]
+
+' === Encryption lifecycle & step-up MFA ===
+AUTH -left-> CLIENT : Re-encrypt PII on password change\n[X-Internal-Api-Secret]
+ACCOUNT -down-> AUTH : Verify step-up TOTP code\n[X-Internal-Api-Secret]
+CLIENT -right-> AUTH : Verify step-up TOTP code\n[X-Internal-Api-Secret]
+
+' === GDPR erasure cascade (all from client-service) ===
+CLIENT -right-> AUTH : Deactivate user (GDPR)\n[X-Internal-Api-Secret]
+CLIENT -up-> ACCOUNT : Fetch account IDs + close all accounts (GDPR)\n[X-Internal-Api-Secret]
+CLIENT -up-> TX : Anonymize transaction details (GDPR)\n[X-Internal-Api-Secret]
+
+@enduml

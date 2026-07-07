@@ -173,7 +173,6 @@ export default function AccountsTab({
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">IBAN</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Client ID</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Currency</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Balance</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Opened</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-zinc-300 uppercase tracking-wide w-px">Actions</th>
@@ -192,9 +191,6 @@ export default function AccountsTab({
                           <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded text-xs">
                             {acc.currencyCode}
                           </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium text-emerald-400">
-                          {formatBalance(acc)}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <span

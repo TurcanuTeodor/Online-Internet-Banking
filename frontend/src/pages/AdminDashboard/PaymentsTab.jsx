@@ -22,7 +22,7 @@ function formatCreated(p) {
 
 function statusBadgeClass(status) {
   const s = String(status || '').toUpperCase();
-  if (s === 'SUCCEEDED') return 'badge badge-active';
+  if (s === 'COMPLETED') return 'badge badge-active';
   if (s === 'FAILED') return 'badge badge-block';
   if (s === 'PENDING') return 'badge badge-review';
   return 'badge bg-zinc-500/15 text-zinc-300 border border-zinc-500/25';
@@ -155,7 +155,7 @@ export default function PaymentsTab({ clients = [] }) {
                 <tbody className="divide-y divide-zinc-800">
                   {paginatedPayments.map((p) => {
                     const pid = paymentIdOf(p);
-                    const canRefund = String(p?.status ?? '').toUpperCase() === 'SUCCEEDED';
+                    const canRefund = String(p?.status ?? '').toUpperCase() === 'COMPLETED';
                     return (
                       <tr key={String(pid)} className="hover:bg-zinc-800/30 transition-colors">
                         <td className="px-4 py-3 text-sm font-mono text-zinc-300">{pid}</td>

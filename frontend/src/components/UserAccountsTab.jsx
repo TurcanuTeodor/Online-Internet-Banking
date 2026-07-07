@@ -11,6 +11,35 @@ const CURRENCY_THEME = {
   DEFAULT: { from: 'from-zinc-500/20', to: 'to-zinc-600/10', icon: 'text-zinc-400', border: 'hover:border-zinc-500/30' }
 };
 
+const copyToClipboard = async (text) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('IBAN copied to clipboard!');
+      return;
+    } catch (err) {
+      console.warn('Clipboard API failed, falling back to execCommand', err);
+    }
+  }
+  
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "absolute";
+    textArea.style.left = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    document.execCommand('copy');
+    textArea.remove();
+    toast.success('IBAN copied to clipboard!');
+  } catch (err) {
+    console.error('Fallback copy failed', err);
+    toast.error('Failed to copy IBAN. Please copy manually.');
+  }
+};
+
 export default function UserAccountsTab({
   accounts,
   transactions,
@@ -119,10 +148,7 @@ export default function UserAccountsTab({
                         type="button"
                         className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700/50 rounded transition-colors shrink-0 ml-2"
                         title="Copy IBAN"
-                        onClick={() => {
-                          navigator.clipboard.writeText(account.iban);
-                          toast.success('IBAN copied to clipboard!');
-                        }}
+                        onClick={() => copyToClipboard(account.iban)}
                       >
                         <Copy className="w-4 h-4" />
                       </button>
@@ -133,27 +159,35 @@ export default function UserAccountsTab({
                     {showBalances ? formatCurrency(account.balance, account.currencyCode) : '••••••'}
                   </p>
                   
-                  <div className={`mt-auto grid gap-3 ${canTopUp ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className="mt-auto grid gap-3 grid-cols-2">
                     <button
+                      disabled={!canTopUp}
                       onClick={() => {
                         setSelectedAccount(account);
                         setActiveModal('transfer');
                       }}
-                      className="btn-primary w-full flex items-center justify-center gap-2"
+                      className={`w-full flex items-center justify-center gap-2 ${
+                        canTopUp
+                          ? 'btn-primary'
+                          : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed rounded-xl py-2.5 font-semibold text-sm transition-colors'
+                      }`}
                     >
                       <Send className="w-4 h-4" />
                       Transfer
                     </button>
-                    {canTopUp && (
-                      <button
-                        type="button"
-                        onClick={() => setTopUpAccount(account)}
-                        className="btn-secondary w-full flex items-center justify-center gap-2 border-emerald-500/30 text-emerald-300"
-                      >
-                        <CreditCard className="w-4 h-4" />
-                        Top up
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      disabled={!canTopUp}
+                      onClick={() => setTopUpAccount(account)}
+                      className={`w-full flex items-center justify-center gap-2 ${
+                        canTopUp
+                          ? 'btn-secondary border-emerald-500/30 text-emerald-300'
+                          : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed rounded-xl py-2.5 font-semibold text-sm transition-colors'
+                      }`}
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      Top up
+                    </button>
                   </div>
                 </div>
               );

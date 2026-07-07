@@ -1,12 +1,18 @@
-import { Filter } from 'lucide-react';
+import { Filter, AlertTriangle } from 'lucide-react';
 import PaginationControls from './PaginationControls';
 
+import { normalizeTransactionType } from '@/lib/analyticsTransforms';
+
 function transactionTypeOf(tx) {
-  return tx.transactionType ?? tx.transactionTypeName ?? '—';
+  return normalizeTransactionType(tx);
 }
 
 function signOf(tx) {
-  return tx.sign ?? tx.transactionSign ?? '';
+  const explicit = String(tx.sign ?? tx.transactionSign ?? '').trim();
+  if (explicit === '+' || explicit === '-') return explicit;
+  const amt = amountOf(tx);
+  if (amt === null) return '';
+  return amt < 0 ? '-' : '+';
 }
 
 function amountOf(tx) {
@@ -244,13 +250,9 @@ export default function TransactionsTab({
               <table className="w-full">
                 <thead className="bg-zinc-800/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">ID</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Date &amp; time</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Account ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Destination account ID</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Type</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Amount</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase tracking-wide">Risk score</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-zinc-300 uppercase tracking-wide w-px">Actions</th>
                   </tr>
                 </thead>
@@ -264,7 +266,6 @@ export default function TransactionsTab({
 
                     return (
                       <tr key={tx.transactionId} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="px-4 py-3 text-sm font-mono text-zinc-400">{tx.transactionId}</td>
                         <td className="px-4 py-3 text-sm text-zinc-400">
                           {tx.transactionDate
                             ? new Date(tx.transactionDate).toLocaleString('en-GB', {
@@ -276,27 +277,23 @@ export default function TransactionsTab({
                               })
                             : '—'}
                         </td>
-                        <td className="px-4 py-3 text-sm font-mono text-zinc-300">
-                          {tx.accountId != null ? tx.accountId : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-mono text-zinc-400">
-                          {destId != null ? destId : '—'}
-                        </td>
                         <td className="px-4 py-3 text-sm">
-                          <span
-                            className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${transactionTypeBadgeClass(typeLabel)}`}
-                          >
-                            {typeLabel}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${transactionTypeBadgeClass(typeLabel)}`}
+                            >
+                              {typeLabel}
+                            </span>
+                            {(Boolean(tx.flagged) || (tx.riskScore != null && parseFloat(tx.riskScore) > 70)) && (
+                              <AlertTriangle className="w-4 h-4 text-amber-500" title="Flagged or High Risk" />
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
-                          <span className={sg === '+' ? 'text-emerald-400' : 'text-red-400'}>
+                          <span className={sg === '+' ? 'text-emerald-400' : sg === '-' ? 'text-red-400' : 'text-zinc-400'}>
                             {sg === '+' ? '+' : sg === '-' ? '-' : ''}
-                            {amt !== null ? amt.toFixed(2) : '—'} {cur}
+                            {amt !== null ? Math.abs(amt).toFixed(2) : '—'} {cur}
                           </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`font-semibold ${riskScoreColor(tx)}`}>{formatRiskScore(tx)}</span>
                         </td>
                         <td className="px-4 py-3 text-sm text-right">
                           <button

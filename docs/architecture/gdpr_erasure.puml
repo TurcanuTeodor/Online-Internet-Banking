@@ -1,0 +1,50 @@
+@startuml
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 20
+
+actor "Client" as user
+participant "Client Service\n(Orchestrator)" as client #LightGreen
+participant "Auth Service" as auth #LightCyan
+participant "Account Service" as acc #LightPink
+participant "Transaction Service" as tx #LightYellow
+
+user -> client : Request Account Deletion\n(Right to Erasure)
+activate client
+
+client -> auth : 1. Identity Deactivation
+note right
+  - Revoke all tokens
+  - Disable login access
+  - Purge TOTP secret
+end note
+auth --> client : OK
+
+client -> acc : 2. Account Discovery
+acc --> client : Return all associated Account IDs
+
+client -> tx : 3. Transaction Anonymization\n(List of Account IDs)
+note right
+  - Overwrite merchant names
+  - Overwrite transfer notes with "ANONYMIZED"
+  - Preserve financial amounts for auditing
+end note
+tx --> client : OK
+
+client -> acc : 4. Account Closure
+note right
+  - Verify zero balance
+  - Set status to CLOSED
+end note
+acc --> client : OK
+
+client -> client : 5. Local Data Erasure
+note left
+  - Delete contact info records
+  - Overwrite first/last name with encrypt("DELETED")
+  - Mark profile as INACTIVE
+end note
+
+client --> user : Erasure Complete (200 OK)
+deactivate client
+
+@enduml

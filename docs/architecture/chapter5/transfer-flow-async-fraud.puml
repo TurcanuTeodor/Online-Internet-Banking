@@ -1,0 +1,36 @@
+@startuml Transfer_Flow_Async_Tier3
+!theme plain
+autonumber
+hide footbox
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam sequenceMessageAlign center
+
+participant "Fraud Service\n:8086\n(fraudAsyncExecutor)" as FRAUD
+participant "Fraud DB\n(fraud schema)" as DB
+
+note over FRAUD
+  Triggered only when synchronous Tier 1 + Tier 2 returned ALLOW.
+  Runs in a dedicated thread pool: does NOT block user response.
+end note
+
+== Tier 3 ML Inference ==
+FRAUD -> FRAUD : Load FraudEvaluationRequest from memory
+FRAUD -> FRAUD : Build feature vector (amount/type/time/account-age/depletion/roundness)
+FRAUD -> FRAUD : Apply MinMax scaling
+FRAUD -> FRAUD : IsolationForest.score(scaledFeatures) -> anomalyScore
+
+== Decision ==
+alt anomalyScore > calibrated threshold
+  == Post-Hoc FLAG ==
+  FRAUD -> FRAUD : Generate explainability artifacts (feature impact + rationale)
+  FRAUD -> DB : Update fraud_decision to FLAG, tier=TIER3_ML, risk_score, explanation
+  note right of DB
+    Admin dashboard will surface alert.
+    Transfer is already completed.
+  end note
+else anomalyScore <= threshold
+  FRAUD -> DB : No update (existing ALLOW decision stands)
+end
+
+@enduml

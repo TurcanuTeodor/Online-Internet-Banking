@@ -255,7 +255,7 @@ export default function DashboardOverview({ clients, accounts, transactions }) {
                     <Cell key={entry.name} fill={TYPE_COLORS[index % TYPE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={tooltipStyle()} />
+                <Tooltip contentStyle={tooltipStyle()} itemStyle={{ color: '#e4e4e7' }} />
                 <Legend 
                   layout="horizontal" 
                   align="center" 

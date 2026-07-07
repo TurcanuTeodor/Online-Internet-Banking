@@ -1,3 +1,5 @@
+import { TRANSACTION_TYPE_CONFIG, resolveTransactionTypeKey } from '../components/transactionCategoryConfig';
+
 function toNumber(value) {
   const n = Number.parseFloat(value);
   return Number.isFinite(n) ? n : 0;
@@ -20,9 +22,15 @@ function dayKey(dateValue) {
   return d.toISOString().slice(0, 10);
 }
 
-function normalizeTransactionType(tx) {
+export function normalizeTransactionType(tx) {
+  const typeKey = resolveTransactionTypeKey(tx);
+  if (TRANSACTION_TYPE_CONFIG[typeKey]) {
+    return TRANSACTION_TYPE_CONFIG[typeKey].label;
+  }
+
   const raw = tx?.transactionTypeName || tx?.transactionTypeCode || tx?.transactionType || tx?.type;
   if (!raw) return 'Other';
+
   return String(raw)
     .toLowerCase()
     .replace(/_/g, ' ')

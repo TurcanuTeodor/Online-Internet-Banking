@@ -12,6 +12,7 @@ Full-stack microservices banking project (Java/Spring Boot + React/Vite).
 ### Test accounts
 - Admin: `admin@cashtactics.com` / `password`
 - User: `user@cashtactics.com` / `password`
+*(Note: These emails use the previous `cashtactics.com` test domain, but the application is fully branded as Online Internet Banking.)*
 
 ### Start everything with Docker Compose
 
@@ -92,11 +93,11 @@ Detailed docs are in `docs/`:
 Use `docs/postman/postman_collection.json` and set:
 - `baseUrl = https://localhost:8443`
 
-## Thesis Demo Checklist (5 Minutes)
+## Application Walkthrough 
 
 Use this sequence to demonstrate the implemented privacy and fraud flows clearly.
 
-### 1. Start stack
+### 1. Start stack 
 
 ```bash
 docker compose --env-file .env -p online-internet-banking-prod -f deploy/docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
@@ -130,7 +131,14 @@ Open:
 4. Resolve one alert as `LEGITIMATE` and one as `FRAUD_REPORTED` (if available).
 5. Verify status and resolution notes update in Security Center.
 
-### 5. Optional technical validation
+### 5. Admin Analytics
+
+1. Switch back to Admin Dashboard.
+2. In the main Overview tab, scroll down to the "Platform Analytics" section.
+3. Point out the "Activity Distribution" pie chart, which visualizes the distribution of transaction types across all users.
+4. Explain how this dynamic chart updates based on the filtered time range.
+
+### 6. Optional technical validation
 
 ```bash
 docker compose logs -f account-service fraud-service api-gateway frontend

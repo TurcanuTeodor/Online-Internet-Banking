@@ -1,0 +1,49 @@
+@startuml
+autonumber
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 20
+
+actor "User" as user
+participant "React Frontend" as ui
+participant "API Gateway" as gw #LightCyan
+participant "Account Service" as acc #LightGreen
+database "Redis" as redis #LightYellow
+participant "Fraud Service" as fraud #LightPink
+participant "Transaction Service" as tx #LightGreen
+database "PostgreSQL" as db
+
+user -> ui : Input transfer details\n(Amount, Destination IBAN)
+ui -> gw : POST /api/accounts/transfer\n[+ JWT Token]
+gw -> gw : Validate JWT &\nCheck Blacklist (Redis)
+gw -> acc : Route request
+acc -> redis : Acquire distributed locks\n(Deadlock prevention)
+acc -> acc : Verify available funds
+
+acc -> fraud : POST /internal/fraud/evaluate
+note right of fraud
+  Tier 1: Static Rules
+  Tier 2: Behavioral Profile
+  Tier 3: ML Analysis (Async)
+end note
+fraud --> acc : Return decision\n(ALLOW / STEP_UP)
+
+alt decision == STEP_UP
+    acc --> gw : 428 Precondition Required
+    gw --> ui : Prompt for TOTP code (2FA)
+    user -> ui : Input TOTP code
+    ui -> gw : Retry request + TOTP Header
+end
+
+acc -> acc : Update account balances
+acc -> redis : Invalidate local cache (Pub/Sub)
+
+acc -> tx : Save transaction history\n(Internal API call)
+tx -> db : Persist DEBIT and CREDIT
+tx --> acc : 201 Created
+
+acc -> redis : Release distributed locks
+acc --> gw : 200 OK
+gw --> ui : Transfer successful
+ui --> user : Display confirmation
+
+@enduml
