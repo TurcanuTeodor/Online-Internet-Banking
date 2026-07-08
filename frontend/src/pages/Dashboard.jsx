@@ -32,12 +32,10 @@ export default function Dashboard() {
   const data = useDashboardData();
   const {
     clientId, sub, twoFaEnabled, setTwoFaEnabled,
-    accounts, transactions,
-    loading, refreshData: fetchData, error,
+    accounts, transactions, ledgerTransactions,
+    loading, fetchData, error,
     totalBalance, activeAccountsCount, monthlyOutgoing,
   } = data;
-
-  const ledgerTransactions = transactions || [];
 
   const [showBalances, setShowBalances] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
